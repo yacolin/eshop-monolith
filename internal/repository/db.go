@@ -2,6 +2,8 @@ package repository
 
 import (
 	"eshop-monolith/internal/domain/category"
+	"eshop-monolith/internal/domain/product"
+	"eshop-monolith/internal/domain/shared"
 	"eshop-monolith/internal/pkg/config"
 	"fmt"
 	"time"
@@ -58,6 +60,8 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	// 自动迁移表结构
 	if err := db.AutoMigrate(
 		&category.Category{},
+		&product.Product{},
+		&shared.ProductCategory{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}

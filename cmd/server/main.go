@@ -50,7 +50,7 @@ func main() {
 	repos := repository.NewRepositories(db, redisClient)
 
 	// 初始化路由
-	router := routes.SetupRouter(cfg, repos)
+	router := routes.SetupRouter(cfg, repos, db)
 
 	// 创建HTTP服务器
 	server := &http.Server{

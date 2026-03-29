@@ -9,6 +9,7 @@ import (
 	"eshop-monolith/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // setupCategoryRoutes 设置分类相关路由
@@ -33,8 +34,30 @@ func setupCategoryRoutes(router *gin.RouterGroup, repos *repository.Repositories
 	}
 }
 
+// setupProductRoutes 设置产品相关路由
+func setupProductRoutes(router *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB) {
+	// 初始化产品服务
+	productService := service.NewProductService(repos.Product, nil, db)
+
+	// 初始化产品处理器
+	productHandler := handlers.NewProductHandler(productService)
+
+	// 产品路由
+	products := router.Group("/products")
+	{
+		// 列出所有产品
+		products.GET("", productHandler.ListProducts)
+
+		// 根据ID获取产品
+		products.GET("/:id", productHandler.GetProduct)
+
+		// 根据分类获取产品
+		products.GET("/category/:category_id", productHandler.ListProductsByCategory)
+	}
+}
+
 // SetupRouter 设置路由
-func SetupRouter(cfg *config.Config, repos *repository.Repositories) *gin.Engine {
+func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB) *gin.Engine {
 	router := gin.Default()
 
 	// 添加全局错误处理中间件
@@ -61,6 +84,8 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories) *gin.Engine
 		// 公开路由
 		// 分类路由（公开）
 		setupCategoryRoutes(v1, repos)
+		// 产品路由（公开）
+		setupProductRoutes(v1, repos, db)
 
 		// 需要认证的路由组
 		auth := v1.Group("/")
