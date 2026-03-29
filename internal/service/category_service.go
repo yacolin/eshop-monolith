@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"eshop-monolith/internal/api/dto"
 	"eshop-monolith/internal/domain/category"
 	"eshop-monolith/internal/eventbus"
 )
@@ -21,33 +22,13 @@ func NewCategoryService(repo category.Repository, bus *eventbus.Bus) *CategorySe
 	}
 }
 
-// CreateCategoryRequest 创建分类请求
-type CreateCategoryRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	ParentID    *int64 `json:"parent_id"`
-	Level       int    `json:"level"`
-	Path        string `json:"path"`
-}
-
-// UpdateCategoryRequest 更新分类请求
-type UpdateCategoryRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	ParentID    *int64 `json:"parent_id"`
-	Level       int    `json:"level"`
-	Path        string `json:"path"`
-}
-
 // CreateCategory 创建分类
-func (s *CategoryService) CreateCategory(ctx context.Context, req *CreateCategoryRequest) (*category.Category, error) {
+func (s *CategoryService) CreateCategory(ctx context.Context, req *dto.CreateCategoryDTO) (*category.Category, error) {
 	// 创建分类
 	newCategory := &category.Category{
 		Name:        req.Name,
 		Description: req.Description,
 		ParentID:    req.ParentID,
-		Level:       req.Level,
-		Path:        req.Path,
 	}
 
 	// 保存分类
@@ -60,8 +41,6 @@ func (s *CategoryService) CreateCategory(ctx context.Context, req *CreateCategor
 		CategoryID: newCategory.ID,
 		Name:       newCategory.Name,
 		ParentID:   newCategory.ParentID,
-		Level:      newCategory.Level,
-		Path:       newCategory.Path,
 	})
 
 	return newCategory, nil
@@ -72,9 +51,9 @@ func (s *CategoryService) GetCategoryByID(ctx context.Context, id int64) (*categ
 	return s.repo.FindByID(ctx, id)
 }
 
-// GetCategoryByPath 根据路径获取分类
-func (s *CategoryService) GetCategoryByPath(ctx context.Context, path string) (*category.Category, error) {
-	return s.repo.FindByPath(ctx, path)
+// ListAllCategories 列出所有分类
+func (s *CategoryService) ListAllCategories(ctx context.Context) ([]category.Category, error) {
+	return s.repo.ListAll(ctx)
 }
 
 // ListRootCategories 列出根分类
@@ -87,13 +66,8 @@ func (s *CategoryService) ListSubCategories(ctx context.Context, parentID int64)
 	return s.repo.ListByParent(ctx, parentID)
 }
 
-// ListAllCategories 列出所有分类
-func (s *CategoryService) ListAllCategories(ctx context.Context) ([]category.Category, error) {
-	return s.repo.ListAll(ctx)
-}
-
 // UpdateCategory 更新分类
-func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *UpdateCategoryRequest) (*category.Category, error) {
+func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *dto.UpdateCategoryDTO) (*category.Category, error) {
 	// 获取分类
 	existingCategory, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -101,11 +75,15 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *Upd
 	}
 
 	// 更新分类信息
-	existingCategory.Name = req.Name
-	existingCategory.Description = req.Description
-	existingCategory.ParentID = req.ParentID
-	existingCategory.Level = req.Level
-	existingCategory.Path = req.Path
+	if req.Name != nil {
+		existingCategory.Name = *req.Name
+	}
+	if req.Description != nil {
+		existingCategory.Description = *req.Description
+	}
+	if req.ParentID != nil {
+		existingCategory.ParentID = req.ParentID
+	}
 
 	// 保存分类
 	if err := s.repo.Update(ctx, existingCategory); err != nil {
@@ -117,8 +95,6 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *Upd
 		CategoryID: existingCategory.ID,
 		Name:       existingCategory.Name,
 		ParentID:   existingCategory.ParentID,
-		Level:      existingCategory.Level,
-		Path:       existingCategory.Path,
 	})
 
 	return existingCategory, nil
@@ -142,8 +118,6 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
 		CategoryID: existingCategory.ID,
 		Name:       existingCategory.Name,
 		ParentID:   existingCategory.ParentID,
-		Level:      existingCategory.Level,
-		Path:       existingCategory.Path,
 	})
 
 	return nil

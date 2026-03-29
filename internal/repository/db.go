@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"eshop-monolith/internal/domain/category"
 	"eshop-monolith/internal/pkg/config"
 	"fmt"
 	"time"
@@ -39,7 +40,7 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.Charset)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		return nil, err
@@ -53,6 +54,13 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	// 自动迁移表结构
+	if err := db.AutoMigrate(
+		&category.Category{},
+	); err != nil {
+		return nil, fmt.Errorf("failed to migrate database: %w", err)
+	}
 
 	return db, nil
 }

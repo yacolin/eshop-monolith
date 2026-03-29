@@ -18,26 +18,33 @@ import (
 
 func main() {
 	// 加载配置
+	log.Println("Loading config...")
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
+	log.Printf("Config loaded successfully: Server port %d", cfg.Server.Port)
 
 	// 日志已通过 init() 函数自动初始化
+	log.Println("Logger initialized")
 
 	// 初始化数据库
+	log.Println("Initializing database...")
 	db, err := repository.InitDB(cfg.MySQL)
 	if err != nil {
-		logger.Error("Failed to initialize database", "error", err)
+		log.Printf("Failed to initialize database: %v", err)
 		os.Exit(1)
 	}
+	log.Println("Database initialized successfully")
 
 	// 初始化Redis
+	log.Println("Initializing Redis...")
 	redisClient, err := repository.InitRedis(cfg.Redis)
 	if err != nil {
-		logger.Error("Failed to initialize Redis", "error", err)
+		log.Printf("Failed to initialize Redis: %v", err)
 		os.Exit(1)
 	}
+	log.Println("Redis initialized successfully")
 
 	// 初始化仓储
 	repos := repository.NewRepositories(db, redisClient)
@@ -55,9 +62,9 @@ func main() {
 
 	// 启动服务器
 	go func() {
-		logger.Info("Server starting", "port", cfg.Server.Port)
+		log.Printf("Server starting on port %d...", cfg.Server.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("Failed to start server", "error", err)
+			log.Printf("Failed to start server: %v", err)
 			os.Exit(1)
 		}
 	}()

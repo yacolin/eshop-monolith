@@ -9,15 +9,22 @@ import (
 
 var globalConfig *Config
 
+// PaginationConfig 分页配置
+type PaginationConfig struct {
+	DefaultSize int
+	MaxSize     int
+}
+
 // Config 应用配置
 type Config struct {
-	Server    ServerConfig
-	MySQL     MySQLConfig
-	Redis     RedisConfig
-	JWT       JWTConfig
-	Log       LogConfig
-	RateLimit RateLimitConfig
-	CORS      CORSConfig
+	Server     ServerConfig
+	MySQL      MySQLConfig
+	Redis      RedisConfig
+	JWT        JWTConfig
+	Log        LogConfig
+	RateLimit  RateLimitConfig
+	CORS       CORSConfig
+	Pagination PaginationConfig
 }
 
 // ServerConfig 服务器配置
@@ -163,4 +170,8 @@ func setDefaults() {
 	viper.SetDefault("cors.allowed_origins", []string{"http://localhost:3000", "http://localhost:8080"})
 	viper.SetDefault("cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 	viper.SetDefault("cors.allowed_headers", []string{"Origin", "Content-Type", "Authorization"})
+
+	// 分页配置
+	viper.SetDefault("pagination.default_size", 10)
+	viper.SetDefault("pagination.max_size", 100)
 }

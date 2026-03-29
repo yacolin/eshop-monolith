@@ -7,10 +7,10 @@ import (
 // User 用户领域模型
 type User struct {
 	ID        int64     `json:"id" gorm:"primaryKey;autoIncrement"`
-	Username  string    `json:"username" gorm:"uniqueIndex"`
-	Email     string    `json:"email" gorm:"uniqueIndex"`
-	Password  string    `json:"password"`
-	Role      string    `json:"role"`
+	Username  string    `json:"username" gorm:"type:varchar(50);uniqueIndex"`
+	Email     string    `json:"email" gorm:"type:varchar(100);uniqueIndex"`
+	Password  string    `json:"password" gorm:"type:varchar(100)"`
+	Role      string    `json:"role" gorm:"type:varchar(20)"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -18,7 +18,7 @@ type User struct {
 // Role 角色模型
 type Role struct {
 	ID          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
-	Name        string    `json:"name" gorm:"uniqueIndex"`
+	Name        string    `json:"name" gorm:"type:varchar(50);uniqueIndex"`
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 }
@@ -26,7 +26,7 @@ type Role struct {
 // Permission 权限模型
 type Permission struct {
 	ID          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
-	Name        string    `json:"name" gorm:"uniqueIndex"`
+	Name        string    `json:"name" gorm:"type:varchar(50);uniqueIndex"`
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 }

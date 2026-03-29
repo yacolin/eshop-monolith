@@ -66,7 +66,7 @@ func (r CategoryRepository) ListByParent(ctx context.Context, parentID int64) ([
 // ListAll 列出所有分类
 func (r CategoryRepository) ListAll(ctx context.Context) ([]category.Category, error) {
 	var categories []category.Category
-	err := r.db.WithContext(ctx).Order("path ASC").Find(&categories).Error
+	err := r.db.WithContext(ctx).Order("id ASC").Find(&categories).Error
 	if err != nil {
 		return nil, err
 	}
