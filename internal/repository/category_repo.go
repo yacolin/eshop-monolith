@@ -125,13 +125,5 @@ func (r CategoryRepository) applyQueryConditions(ctx context.Context, q category
 
 // applyOrder 应用排序
 func (r CategoryRepository) applyOrder(db *gorm.DB, q category.CategoryListQuery) *gorm.DB {
-	order := "id asc"
-	if q.SortBy != "" {
-		ord := q.Order
-		if ord != "asc" && ord != "desc" {
-			ord = "asc"
-		}
-		order = q.SortBy + " " + ord
-	}
-	return db.Order(order)
+	return applyOrder(db, q.SortBy, q.Order, "id asc")
 }

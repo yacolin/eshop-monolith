@@ -5,6 +5,7 @@ import (
 
 	"eshop-monolith/internal/domain/category"
 	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/pkg/errcode"
 )
 
 // CategoryService 分类服务
@@ -52,7 +53,11 @@ func (s *CategoryService) CreateCategory(ctx context.Context, req *category.Crea
 
 // GetCategoryByID 根据ID获取分类
 func (s *CategoryService) GetCategoryByID(ctx context.Context, id int64) (*category.Category, error) {
-	return s.repo.FindByID(ctx, id)
+	category, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errcode.ErrNotFound
+	}
+	return category, nil
 }
 
 // ListAllCategories 列出所有分类
