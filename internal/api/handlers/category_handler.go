@@ -1,24 +1,13 @@
 package handlers
 
 import (
-	"strconv"
-
 	"eshop-monolith/internal/domain/category"
 	"eshop-monolith/internal/pkg/response"
+	"eshop-monolith/internal/pkg/utils"
 	"eshop-monolith/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
-
-// parseIntParam 解析路径参数为int64
-func parseIntParam(c *gin.Context, param string) (int64, error) {
-	idStr := c.Param(param)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
-}
 
 // CategoryHandler 分类处理器
 type CategoryHandler struct {
@@ -85,13 +74,13 @@ func (h *CategoryHandler) ListRootCategories(c *gin.Context) {
 // @Tags 分类管理
 // @Accept json
 // @Produce json
-// @Param parent_id path int true "父分类ID"
+// @Param id path int true "父分类ID"
 // @Success 200 {object} response.Response{data=[]category.Category}
 // @Failure 400 {object} response.Response{error=string}
 // @Failure 500 {object} response.Response{error=string}
-// @Router /api/categories/{parent_id}/children [get]
+// @Router /api/categories/{id}/children [get]
 func (h *CategoryHandler) ListSubCategories(c *gin.Context) {
-	parentID, err := parseIntParam(c, "parent_id")
+	parentID, err := utils.ParseIntParam(c, "id")
 	if err != nil {
 		c.Error(err)
 		return
@@ -104,4 +93,100 @@ func (h *CategoryHandler) ListSubCategories(c *gin.Context) {
 	}
 
 	response.Success(c, categories)
+}
+
+// CreateCategory 创建分类
+// @Summary 创建分类
+// @Description 创建一个新的分类
+// @Tags 分类
+// @Accept json
+// @Produce json
+// @Param category body dto.CreateCategoryDTO true "分类信息"
+// @Success 200 {object} models.Category "成功"
+// @Router /inventory/api/v1/categories [post]
+func (h *CategoryHandler) CreateCategory(c *gin.Context) {
+	var req category.CreateCategoryDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		return
+	}
+
+	result, err := h.categoryService.CreateCategory(c, &req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result)
+}
+
+// GetCategoryByID 获取分类详情
+// @Summary 获取分类详情
+// @Description 根据ID获取分类详细信息
+// @Tags 分类
+// @Produce json
+// @Param id path string true "分类ID"
+// @Success 200 {object} models.Category "成功"
+// @Router /inventory/api/v1/categories/{id} [get]
+func (h *CategoryHandler) GetCategoryByID(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	category, err := h.categoryService.GetCategoryByID(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, category)
+}
+
+// UpdateCategory 更新分类
+// @Summary 更新分类
+// @Description 根据ID更新分类信息
+// @Tags 分类
+// @Accept json
+// @Produce json
+// @Param id path string true "分类ID"
+// @Param category body dto.UpdateCategoryDTO true "分类信息"
+// @Success 200 {object} models.Category "成功"
+// @Router /inventory/api/v1/categories/{id} [put]
+func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	var req category.UpdateCategoryDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		return
+	}
+	category, err := h.categoryService.UpdateCategory(c, id, &req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, category)
+}
+
+// DeleteCategory 删除分类
+// @Summary 删除分类
+// @Description 根据ID删除分类
+// @Tags 分类
+// @Produce json
+// @Param id path string true "分类ID"
+// @Success 200 {object} map[string]string "成功"
+// @Router /inventory/api/v1/categories/{id} [delete]
+func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	if err := h.categoryService.DeleteCategory(c, id); err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, gin.H{"message": "deleted"})
 }
