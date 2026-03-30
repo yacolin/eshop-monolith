@@ -2,6 +2,7 @@ package repository
 
 import (
 	"eshop-monolith/internal/domain/category"
+	"eshop-monolith/internal/domain/inventory"
 	"eshop-monolith/internal/domain/product"
 	"eshop-monolith/internal/domain/shared"
 	"eshop-monolith/internal/pkg/config"
@@ -62,6 +63,7 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&category.Category{},
 		&product.Product{},
 		&shared.ProductCategory{},
+		&inventory.Inventory{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}

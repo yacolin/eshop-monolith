@@ -92,3 +92,56 @@ func (r ProductRepository) Update(ctx context.Context, product *product.Product)
 func (r ProductRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&product.Product{}, "id = ?", id).Error
 }
+
+// ListProducts 列出产品（支持查询条件）
+func (r ProductRepository) ListProducts(ctx context.Context, q product.ProductListQuery, offset, limit int) ([]product.Product, error) {
+	var products []product.Product
+	db := r.applyQueryConditions(ctx, q)
+	db = r.applyOrder(db, q)
+
+	// 执行查询
+	err := db.Offset(offset).Limit(limit).Find(&products).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return products, nil
+}
+
+// CountProducts 统计产品数量
+func (r ProductRepository) CountProducts(ctx context.Context, q product.ProductListQuery) (int64, error) {
+	var total int64
+	db := r.applyQueryConditions(ctx, q)
+
+	// 执行统计（不需要排序）
+	if err := db.Count(&total).Error; err != nil {
+		return 0, err
+	}
+
+	return total, nil
+}
+
+// applyQueryConditions 应用查询条件（不包含排序）
+func (r ProductRepository) applyQueryConditions(ctx context.Context, q product.ProductListQuery) *gorm.DB {
+	db := r.db.WithContext(ctx).Model(&product.Product{})
+	if q.Name != "" {
+		db = db.Where("name LIKE ?", "%"+q.Name+"%")
+	}
+	if q.SKU != "" {
+		db = db.Where("sku = ?", q.SKU)
+	}
+	return db
+}
+
+// applyOrder 应用排序
+func (r ProductRepository) applyOrder(db *gorm.DB, q product.ProductListQuery) *gorm.DB {
+	order := "id asc"
+	if q.SortBy != "" {
+		ord := q.Order
+		if ord != "asc" && ord != "desc" {
+			ord = "asc"
+		}
+		order = q.SortBy + " " + ord
+	}
+	return db.Order(order)
+}

@@ -20,4 +20,9 @@ type Repository interface {
 	Update(ctx context.Context, category *Category) error
 	// Delete 删除分类
 	Delete(ctx context.Context, id int64) error
+
+	// ListCategories 列出分类
+	ListCategories(ctx context.Context, q CategoryListQuery, offset, limit int) ([]Category, error)
+	// CountCategories 统计分类数量
+	CountCategories(ctx context.Context, q CategoryListQuery) (int64, error)
 }

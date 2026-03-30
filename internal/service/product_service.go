@@ -27,25 +27,8 @@ func NewProductService(repo product.Repository, bus *eventbus.Bus, db *gorm.DB) 
 	}
 }
 
-// CreateProductRequest 创建产品请求
-type CreateProductRequest struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       int64   `json:"price"`
-	SKU         string  `json:"sku"`
-	CategoryIDs []int64 `json:"category_ids"`
-}
-
-// UpdateProductRequest 更新产品请求
-type UpdateProductRequest struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       int64   `json:"price"`
-	CategoryIDs []int64 `json:"category_ids"`
-}
-
 // CreateProduct 创建产品
-func (s *ProductService) CreateProduct(ctx context.Context, req *CreateProductRequest) (*product.Product, error) {
+func (s *ProductService) CreateProduct(ctx context.Context, req *product.CreateProductDTO) (*product.Product, error) {
 	// 创建产品
 	newProduct := &product.Product{
 		Name:        req.Name,
@@ -120,13 +103,8 @@ func (s *ProductService) ListProductsByCategory(ctx context.Context, categoryID 
 	return s.repo.ListByCategory(ctx, categoryID, page, pageSize)
 }
 
-// ListAllProducts 列出所有产品
-func (s *ProductService) ListAllProducts(ctx context.Context, page, pageSize int) ([]product.Product, int64, error) {
-	return s.repo.ListAll(ctx, page, pageSize)
-}
-
 // UpdateProduct 更新产品
-func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *UpdateProductRequest) (*product.Product, error) {
+func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *product.UpdateProductDTO) (*product.Product, error) {
 	// 获取产品
 	existingProduct, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -201,4 +179,27 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
 	})
 
 	return nil
+}
+
+// ListAllProducts 列出所有产品
+func (s *ProductService) ListAllProducts(ctx context.Context, page, pageSize int) ([]product.Product, int64, error) {
+	return s.repo.ListAll(ctx, page, pageSize)
+}
+
+func (s *ProductService) ListProducts(ctx context.Context, q product.ProductListQuery) (*product.ProductListResult, error) {
+	offset := (q.Page - 1) * q.Size
+	list, err := s.repo.ListProducts(ctx, q, offset, q.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	total, err := s.repo.CountProducts(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	return &product.ProductListResult{
+		List:  list,
+		Total: total,
+	}, nil
 }

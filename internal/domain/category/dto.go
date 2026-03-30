@@ -1,7 +1,6 @@
-package dto
+package category
 
 import (
-	"eshop-monolith/internal/domain/category"
 	"eshop-monolith/internal/pkg/query"
 )
 
@@ -14,10 +13,8 @@ type CategoryListQuery struct {
 	Order    string  `form:"order,default=asc"` // asc or desc
 }
 
-type CategoryListResult struct {
-	Total int64               `json:"total"`
-	List  []category.Category `json:"list"`
-}
+// CategoryListResult 分类列表结果（使用泛型）
+type CategoryListResult = query.ListResult[Category]
 
 // CreateCategoryDTO 创建分类请求
 type CreateCategoryDTO struct {

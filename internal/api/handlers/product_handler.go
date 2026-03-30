@@ -3,13 +3,12 @@ package handlers
 import (
 	"strconv"
 
+	"eshop-monolith/internal/domain/product"
 	"eshop-monolith/internal/pkg/response"
 	"eshop-monolith/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
-
-
 
 // ProductHandler 产品处理器
 type ProductHandler struct {
@@ -29,24 +28,26 @@ func NewProductHandler(productService *service.ProductService) *ProductHandler {
 // @Tags 产品管理
 // @Accept json
 // @Produce json
-// @Success 200 {object} response.Response{data=[]product.Product}
+// @Success 200 {object} response.Response{data=product.ProductListResult}
 // @Failure 500 {object} response.Response{error=string}
 // @Router /api/products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
-	// 解析分页参数
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
-
-	products, total, err := h.productService.ListAllProducts(c, page, pageSize)
-	if err != nil {
-		response.SysError(c, err)
+	var q product.ProductListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
 		return
 	}
 
-	response.Success(c, gin.H{
-		"list":  products,
-		"total": total,
-	})
+	// normalize pagination values (ensure page>=1, 1<=size<=100)
+	(&q).Normalize()
+
+	result, err := h.productService.ListProducts(c, q)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result)
 }
 
 // GetProduct 根据ID获取产品

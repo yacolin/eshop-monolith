@@ -3,6 +3,7 @@ package handlers
 import (
 	"strconv"
 
+	"eshop-monolith/internal/domain/category"
 	"eshop-monolith/internal/pkg/response"
 	"eshop-monolith/internal/service"
 
@@ -41,13 +42,22 @@ func NewCategoryHandler(categoryService *service.CategoryService) *CategoryHandl
 // @Failure 500 {object} response.Response{error=string}
 // @Router /api/categories [get]
 func (h *CategoryHandler) ListCategories(c *gin.Context) {
-	categories, err := h.categoryService.ListAllCategories(c)
+	var q category.CategoryListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
+		return
+	}
+
+	// normalize pagination values (ensure page>=1, 1<=size<=100)
+	(&q).Normalize()
+
+	result, err := h.categoryService.ListCategories(c, q)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	response.Success(c, categories)
+	response.Success(c, result)
 }
 
 // ListRootCategories 列出根分类

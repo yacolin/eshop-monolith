@@ -56,6 +56,22 @@ func setupProductRoutes(router *gin.RouterGroup, repos *repository.Repositories,
 	}
 }
 
+// setupInventoryRoutes 设置库存相关路由
+func setupInventoryRoutes(router *gin.RouterGroup, repos *repository.Repositories) {
+	// 初始化库存服务
+	inventoryService := service.NewInventoryService(repos.Inventory, nil)
+
+	// 初始化库存处理器
+	inventoryHandler := handlers.NewInventoryHandler(inventoryService)
+
+	// 库存路由
+	inventories := router.Group("/inventories")
+	{
+		// 列出所有库存
+		inventories.GET("", inventoryHandler.ListInventories)
+	}
+}
+
 // SetupRouter 设置路由
 func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB) *gin.Engine {
 	router := gin.Default()
@@ -86,6 +102,9 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		setupCategoryRoutes(v1, repos)
 		// 产品路由（公开）
 		setupProductRoutes(v1, repos, db)
+
+		// 库存路由（公开）
+		setupInventoryRoutes(v1, repos)
 
 		// 需要认证的路由组
 		auth := v1.Group("/")

@@ -54,11 +54,6 @@ func (s *InventoryService) GetInventoryByProductID(ctx context.Context, productI
 	return s.repo.FindInventoryByProductID(ctx, productID)
 }
 
-// ListInventories 列出所有库存
-func (s *InventoryService) ListInventories(ctx context.Context, page, pageSize int) ([]inventory.Inventory, int64, error) {
-	return s.repo.ListInventories(ctx, page, pageSize)
-}
-
 // UpdateInventory 更新库存
 func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64, req *UpdateInventoryRequest) (*inventory.Inventory, error) {
 	// 获取库存
@@ -111,4 +106,23 @@ func (s *InventoryService) ReleaseInventory(ctx context.Context, productID int64
 // CheckInventory 检查库存
 func (s *InventoryService) CheckInventory(ctx context.Context, productID int64) (*inventory.Inventory, error) {
 	return s.repo.FindInventoryByProductID(ctx, productID)
+}
+
+// ListInventories 列出所有库存
+func (s *InventoryService) ListInventories(ctx context.Context, q inventory.InventoryListQuery) (*inventory.InventoryListResult, error) {
+	offset := (q.Page - 1) * q.Size
+	list, err := s.repo.ListInventories(ctx, q, offset, q.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	total, err := s.repo.CountInventories(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	return &inventory.InventoryListResult{
+		List:  list,
+		Total: total,
+	}, nil
 }

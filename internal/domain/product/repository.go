@@ -20,4 +20,9 @@ type Repository interface {
 	Update(ctx context.Context, product *Product) error
 	// Delete 删除产品
 	Delete(ctx context.Context, id int64) error
+
+	// ListProducts 列出产品
+	ListProducts(ctx context.Context, q ProductListQuery, offset, limit int) ([]Product, error)
+	// CountProducts 统计产品数量
+	CountProducts(ctx context.Context, q ProductListQuery) (int64, error)
 }

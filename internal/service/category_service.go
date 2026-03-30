@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"eshop-monolith/internal/api/dto"
 	"eshop-monolith/internal/domain/category"
 	"eshop-monolith/internal/eventbus"
 )
@@ -22,8 +21,13 @@ func NewCategoryService(repo category.Repository, bus *eventbus.Bus) *CategorySe
 	}
 }
 
+type CategoryListResult struct {
+	Total int64               `json:"total"`
+	List  []category.Category `json:"list"`
+}
+
 // CreateCategory 创建分类
-func (s *CategoryService) CreateCategory(ctx context.Context, req *dto.CreateCategoryDTO) (*category.Category, error) {
+func (s *CategoryService) CreateCategory(ctx context.Context, req *category.CreateCategoryDTO) (*category.Category, error) {
 	// 创建分类
 	newCategory := &category.Category{
 		Name:        req.Name,
@@ -67,7 +71,7 @@ func (s *CategoryService) ListSubCategories(ctx context.Context, parentID int64)
 }
 
 // UpdateCategory 更新分类
-func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *dto.UpdateCategoryDTO) (*category.Category, error) {
+func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *category.UpdateCategoryDTO) (*category.Category, error) {
 	// 获取分类
 	existingCategory, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -121,4 +125,22 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
 	})
 
 	return nil
+}
+
+func (s *CategoryService) ListCategories(ctx context.Context, q category.CategoryListQuery) (*CategoryListResult, error) {
+	offset := (q.Page - 1) * q.Size
+	list, err := s.repo.ListCategories(ctx, q, offset, q.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	total, err := s.repo.CountCategories(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CategoryListResult{
+		List:  list,
+		Total: total,
+	}, nil
 }

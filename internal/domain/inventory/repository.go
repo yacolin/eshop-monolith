@@ -17,5 +17,6 @@ type Repository interface {
 	// UpdateInventory 更新库存
 	UpdateInventory(ctx context.Context, inventory *Inventory) error
 	// ListInventories 列出所有库存
-	ListInventories(ctx context.Context, page, pageSize int) ([]Inventory, int64, error)
+	ListInventories(ctx context.Context, query InventoryListQuery, offset, limit int) ([]Inventory, error)
+	CountInventories(ctx context.Context, query InventoryListQuery) (int64, error)
 }
