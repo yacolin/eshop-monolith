@@ -18,9 +18,9 @@ type InventoryListResult = query.ListResult[Inventory]
 
 // CreateInventoryDTO 创建库存请求
 type CreateInventoryDTO struct {
-	ProductID string `json:"product_id" binding:"required"`
-	Quantity  int    `json:"quantity" binding:"required,min=0"`
-	Threshold int    `json:"threshold" binding:"min=0"`
+	ProductID int64 `json:"product_id" binding:"required"`
+	Quantity  int   `json:"quantity" binding:"required,min=0"`
+	Threshold int   `json:"threshold" binding:"min=0"`
 }
 
 // UpdateInventoryDTO 更新库存请求
@@ -32,18 +32,18 @@ type UpdateInventoryDTO struct {
 
 // ReserveInventoryDTO 预订库存请求
 type ReserveInventoryDTO struct {
-	ProductID string `json:"product_id" binding:"required"`
-	Quantity  int    `json:"quantity" binding:"required,min=1"`
+	ProductID int64 `json:"product_id" binding:"required"`
+	Quantity  int   `json:"quantity" binding:"required,min=1"`
 }
 
 // ReleaseInventoryDTO 释放库存请求
 type ReleaseInventoryDTO struct {
-	ProductID string `json:"product_id" binding:"required"`
-	Quantity  int    `json:"quantity" binding:"required,min=1"`
+	ProductID int64 `json:"product_id" binding:"required"`
+	Quantity  int   `json:"quantity" binding:"required,min=1"`
 }
 
 // AdjustInventoryDTO 调整库存请求
 type AdjustInventoryDTO struct {
-	ProductID string `json:"product_id" binding:"required"`
-	Quantity  int    `json:"quantity" binding:"required"` // 正数增加，负数减少
+	ProductID int64 `json:"product_id" binding:"required"`
+	Quantity  int   `json:"quantity" binding:"required"` // 正数增加，负数减少
 }

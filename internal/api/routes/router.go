@@ -30,7 +30,19 @@ func setupCategoryRoutes(router *gin.RouterGroup, repos *repository.Repositories
 		categories.GET("/root", categoryHandler.ListRootCategories)
 
 		// 列出子分类
-		categories.GET("/:parent_id/children", categoryHandler.ListSubCategories)
+		categories.GET("/:id/children", categoryHandler.ListSubCategories)
+
+		// 根据ID获取分类
+		categories.GET("/:id", categoryHandler.GetCategoryByID)
+
+		// 创建分类
+		categories.POST("", categoryHandler.CreateCategory)
+
+		// 更新分类
+		categories.PUT("/:id", categoryHandler.UpdateCategory)
+
+		// 删除分类
+		categories.DELETE("/:id", categoryHandler.DeleteCategory)
 	}
 }
 

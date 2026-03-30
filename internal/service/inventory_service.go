@@ -6,6 +6,7 @@ import (
 
 	"eshop-monolith/internal/domain/inventory"
 	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/pkg/errcode"
 )
 
 // InventoryService 库存服务
@@ -34,12 +35,16 @@ type UpdateInventoryRequest struct {
 }
 
 // CreateInventory 创建库存
-func (s *InventoryService) CreateInventory(ctx context.Context, req *CreateInventoryRequest) (*inventory.Inventory, error) {
+func (s *InventoryService) CreateInventory(ctx context.Context, req *inventory.CreateInventoryDTO) (*inventory.Inventory, error) {
+
 	// 创建库存
 	inv := &inventory.Inventory{
 		ProductID: req.ProductID,
 		Quantity:  req.Quantity,
+		Threshold: req.Threshold,
 	}
+
+	inv.UpdateStatus() // 根据数量和阈值设置初始状态
 
 	// 保存库存
 	if err := s.repo.CreateInventory(ctx, inv); err != nil {
@@ -51,19 +56,30 @@ func (s *InventoryService) CreateInventory(ctx context.Context, req *CreateInven
 
 // GetInventoryByProductID 根据产品ID获取库存
 func (s *InventoryService) GetInventoryByProductID(ctx context.Context, productID int64) (*inventory.Inventory, error) {
-	return s.repo.FindInventoryByProductID(ctx, productID)
+	inventory, err := s.repo.FindInventoryByProductID(ctx, productID)
+	if err != nil {
+		return nil, errcode.ErrNotFound
+	}
+	return inventory, nil
 }
 
 // UpdateInventory 更新库存
-func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64, req *UpdateInventoryRequest) (*inventory.Inventory, error) {
+func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64, req *inventory.UpdateInventoryDTO) (*inventory.Inventory, error) {
 	// 获取库存
 	inv, err := s.repo.FindInventoryByProductID(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 更新库存
-	inv.Quantity = req.Quantity
+	if req.Quantity != nil {
+		inv.Quantity = *req.Quantity
+	}
+	if req.Threshold != nil {
+		inv.Threshold = *req.Threshold
+	}
+	if req.Reserved != nil {
+		inv.Reserved = *req.Reserved
+	}
 
 	// 保存库存
 	if err := s.repo.UpdateInventory(ctx, inv); err != nil {
@@ -74,30 +90,30 @@ func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64,
 }
 
 // ReserveInventory 预占库存
-func (s *InventoryService) ReserveInventory(ctx context.Context, productID int64, quantity int) error {
-	if err := s.repo.ReserveInventory(ctx, productID, quantity); err != nil {
+func (s *InventoryService) ReserveInventory(ctx context.Context, req *inventory.ReserveInventoryDTO) error {
+	if err := s.repo.ReserveInventory(ctx, req.ProductID, req.Quantity); err != nil {
 		return err
 	}
 
 	// 发布库存预占事件
 	s.bus.Publish(inventory.InventoryReservedEvent{
-		ProductID: fmt.Sprintf("%d", productID),
-		Quantity:  quantity,
+		ProductID: fmt.Sprintf("%d", req.ProductID),
+		Quantity:  req.Quantity,
 	})
 
 	return nil
 }
 
 // ReleaseInventory 释放库存
-func (s *InventoryService) ReleaseInventory(ctx context.Context, productID int64, quantity int) error {
-	if err := s.repo.ReleaseInventory(ctx, productID, quantity); err != nil {
+func (s *InventoryService) ReleaseInventory(ctx context.Context, req *inventory.ReleaseInventoryDTO) error {
+	if err := s.repo.ReleaseInventory(ctx, req.ProductID, req.Quantity); err != nil {
 		return err
 	}
 
 	// 发布库存释放事件
 	s.bus.Publish(inventory.InventoryReleasedEvent{
-		ProductID: fmt.Sprintf("%d", productID),
-		Quantity:  quantity,
+		ProductID: fmt.Sprintf("%d", req.ProductID),
+		Quantity:  req.Quantity,
 	})
 
 	return nil

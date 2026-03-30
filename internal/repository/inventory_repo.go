@@ -24,6 +24,16 @@ func (r InventoryRepository) CreateInventory(ctx context.Context, inventory *inv
 	return r.db.WithContext(ctx).Create(inventory).Error
 }
 
+// GetInventoryByID 根据ID查询库存
+func (r InventoryRepository) GetInventoryByID(ctx context.Context, id string) (*inventory.Inventory, error) {
+	var inv inventory.Inventory
+	err := r.db.WithContext(ctx).First(&inv, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
 // FindInventoryByProductID 根据产品ID查询库存
 func (r InventoryRepository) FindInventoryByProductID(ctx context.Context, productID int64) (*inventory.Inventory, error) {
 	var inv inventory.Inventory
