@@ -1,14 +1,14 @@
 package routes
 
 import (
-	"eshop-monolith/internal/api/handlers"
+	"eshop-monolith/internal/inventory/api/handlers"
+	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/internal/repository"
-	"eshop-monolith/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-func registerCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories) {
+func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories) {
 	categoryService := service.NewCategoryService(repos.Category, nil)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
@@ -23,4 +23,3 @@ func registerCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories)
 		categories.DELETE("/:id", categoryHandler.DeleteCategory)
 	}
 }
-

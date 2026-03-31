@@ -1,14 +1,14 @@
 package routes
 
 import (
-	"eshop-monolith/internal/api/handlers"
+	"eshop-monolith/internal/inventory/api/handlers"
+	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/internal/repository"
-	"eshop-monolith/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-func registerInventoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories) {
+func RegisterInventoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories) {
 	inventoryService := service.NewInventoryService(repos.Inventory, nil)
 	inventoryHandler := handlers.NewInventoryHandler(inventoryService)
 
@@ -18,4 +18,3 @@ func registerInventoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories
 		inventories.GET("/product/:productId", inventoryHandler.GetInventoryByProductID)
 	}
 }
-

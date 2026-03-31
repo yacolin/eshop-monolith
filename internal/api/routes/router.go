@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"eshop-monolith/internal/inventory/api/routes"
 	"eshop-monolith/internal/pkg/config"
 	"eshop-monolith/internal/pkg/middleware"
 	"eshop-monolith/internal/pkg/response"
@@ -36,9 +37,13 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		})
 
 		// 公开路由（按领域拆分注册）
-		registerCategoryRoutes(v1, repos)
-		registerProductRoutes(v1, repos, db)
-		registerInventoryRoutes(v1, repos)
+		// registerCategoryRoutes(v1, repos)
+		// registerProductRoutes(v1, repos, db)
+		// registerInventoryRoutes(v1, repos)
+
+		routes.RegisterCategoryRoutes(v1, repos)
+		routes.RegisterProductRoutes(v1, repos, db)
+		routes.RegisterInventoryRoutes(v1, repos)
 
 		// 需要认证的路由组
 		auth := v1.Group("/")

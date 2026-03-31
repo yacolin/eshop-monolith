@@ -4,20 +4,20 @@ import (
 	"context"
 	"fmt"
 
-	"eshop-monolith/internal/domain/inventory"
 	"eshop-monolith/internal/domain/order"
 	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/inventory/domain/repositories"
 )
 
 // OrderService 订单服务
 type OrderService struct {
 	orderRepo     order.Repository
-	inventoryRepo inventory.Repository
+	inventoryRepo repositories.IinventoryRepository
 	bus           *eventbus.Bus
 }
 
 // NewOrderService 创建订单服务
-func NewOrderService(orderRepo order.Repository, inventoryRepo inventory.Repository, bus *eventbus.Bus) *OrderService {
+func NewOrderService(orderRepo order.Repository, inventoryRepo repositories.IinventoryRepository, bus *eventbus.Bus) *OrderService {
 	return &OrderService{
 		orderRepo:     orderRepo,
 		inventoryRepo: inventoryRepo,

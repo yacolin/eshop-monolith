@@ -1,6 +1,7 @@
-package category
+package dto
 
 import (
+	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/pkg/query"
 )
 
@@ -14,7 +15,7 @@ type CategoryListQuery struct {
 }
 
 // CategoryListResult 分类列表结果（使用泛型）
-type CategoryListResult = query.ListResult[Category]
+type CategoryListResult = query.ListResult[models.Category]
 
 // CreateCategoryDTO 创建分类请求
 type CreateCategoryDTO struct {

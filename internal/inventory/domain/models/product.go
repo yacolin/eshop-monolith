@@ -1,4 +1,4 @@
-package product
+package models
 
 import (
 	"eshop-monolith/internal/pkg/utils"

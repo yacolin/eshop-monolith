@@ -1,6 +1,7 @@
-package product
+package dto
 
 import (
+	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/pkg/query"
 )
 
@@ -15,7 +16,7 @@ type ProductListQuery struct {
 }
 
 // ProductListResult 商品列表结果（使用泛型）
-type ProductListResult = query.ListResult[Product]
+type ProductListResult = query.ListResult[models.Product]
 
 // CreateProductDTO 创建商品请求
 type CreateProductDTO struct {

@@ -1,4 +1,4 @@
-package inventory
+package events
 
 // InventoryReservedEvent 库存预占事件
 type InventoryReservedEvent struct {

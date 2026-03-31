@@ -1,13 +1,31 @@
-package repository
+package repositories
 
 import (
 	"context"
 
-	"gorm.io/gorm"
-
-	"eshop-monolith/internal/domain/inventory"
 	"eshop-monolith/internal/domain/shared"
+	"eshop-monolith/internal/inventory/api/dto"
+	"eshop-monolith/internal/inventory/domain/models"
+
+	"gorm.io/gorm"
 )
+
+// IinventoryRepository 库存仓储接口
+type IinventoryRepository interface {
+	// CreateInventory 创建库存
+	CreateInventory(ctx context.Context, models *models.Inventory) error
+	// FindInventoryByProductID 根据产品ID查询库存
+	FindInventoryByProductID(ctx context.Context, productID int64) (*models.Inventory, error)
+	// ReserveInventory 预占库存
+	ReserveInventory(ctx context.Context, productID int64, quantity int) error
+	// ReleaseInventory 释放库存
+	ReleaseInventory(ctx context.Context, productID int64, quantity int) error
+	// UpdateInventory 更新库存
+	UpdateInventory(ctx context.Context, models *models.Inventory) error
+	// ListInventories 列出所有库存
+	ListInventories(ctx context.Context, query dto.InventoryListQuery, offset, limit int) ([]models.Inventory, error)
+	CountInventories(ctx context.Context, query dto.InventoryListQuery) (int64, error)
+}
 
 // InventoryRepository 库存仓储实现
 type InventoryRepository struct {
@@ -20,13 +38,13 @@ func NewInventoryRepository(db *gorm.DB) InventoryRepository {
 }
 
 // CreateInventory 创建库存
-func (r InventoryRepository) CreateInventory(ctx context.Context, inventory *inventory.Inventory) error {
-	return r.db.WithContext(ctx).Create(inventory).Error
+func (r InventoryRepository) CreateInventory(ctx context.Context, models *models.Inventory) error {
+	return r.db.WithContext(ctx).Create(models).Error
 }
 
 // GetInventoryByID 根据ID查询库存
-func (r InventoryRepository) GetInventoryByID(ctx context.Context, id string) (*inventory.Inventory, error) {
-	var inv inventory.Inventory
+func (r InventoryRepository) GetInventoryByID(ctx context.Context, id string) (*models.Inventory, error) {
+	var inv models.Inventory
 	err := r.db.WithContext(ctx).First(&inv, "id = ?", id).Error
 	if err != nil {
 		return nil, err
@@ -35,8 +53,8 @@ func (r InventoryRepository) GetInventoryByID(ctx context.Context, id string) (*
 }
 
 // FindInventoryByProductID 根据产品ID查询库存
-func (r InventoryRepository) FindInventoryByProductID(ctx context.Context, productID int64) (*inventory.Inventory, error) {
-	var inv inventory.Inventory
+func (r InventoryRepository) FindInventoryByProductID(ctx context.Context, productID int64) (*models.Inventory, error) {
+	var inv models.Inventory
 	err := r.db.WithContext(ctx).First(&inv, "product_id = ?", productID).Error
 	if err != nil {
 		return nil, err
@@ -48,7 +66,7 @@ func (r InventoryRepository) FindInventoryByProductID(ctx context.Context, produ
 func (r InventoryRepository) ReserveInventory(ctx context.Context, productID int64, quantity int) error {
 	// 使用事务保证原子性
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var inv inventory.Inventory
+		var inv models.Inventory
 		if err := tx.First(&inv, "product_id = ?", productID).Error; err != nil {
 			return err
 		}
@@ -68,7 +86,7 @@ func (r InventoryRepository) ReserveInventory(ctx context.Context, productID int
 func (r InventoryRepository) ReleaseInventory(ctx context.Context, productID int64, quantity int) error {
 	// 使用事务保证原子性
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var inv inventory.Inventory
+		var inv models.Inventory
 		if err := tx.First(&inv, "product_id = ?", productID).Error; err != nil {
 			return err
 		}
@@ -85,17 +103,17 @@ func (r InventoryRepository) ReleaseInventory(ctx context.Context, productID int
 }
 
 // UpdateInventory 更新库存
-func (r InventoryRepository) UpdateInventory(ctx context.Context, inventory *inventory.Inventory) error {
+func (r InventoryRepository) UpdateInventory(ctx context.Context, models *models.Inventory) error {
 	// 更新库存状态
-	inventory.UpdateStatus()
-	return r.db.WithContext(ctx).Save(inventory).Error
+	models.UpdateStatus()
+	return r.db.WithContext(ctx).Save(models).Error
 }
 
 // DeductInventory 扣减库存（确认订单时使用）
 func (r InventoryRepository) DeductInventory(ctx context.Context, productID int64, quantity int) error {
 	// 使用事务保证原子性
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var inv inventory.Inventory
+		var inv models.Inventory
 		if err := tx.First(&inv, "product_id = ?", productID).Error; err != nil {
 			return err
 		}
@@ -117,7 +135,7 @@ func (r InventoryRepository) DeductInventory(ctx context.Context, productID int6
 func (r InventoryRepository) IncreaseInventory(ctx context.Context, productID int64, quantity int) error {
 	// 使用事务保证原子性
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var inv inventory.Inventory
+		var inv models.Inventory
 		if err := tx.First(&inv, "product_id = ?", productID).Error; err != nil {
 			return err
 		}
@@ -130,10 +148,10 @@ func (r InventoryRepository) IncreaseInventory(ctx context.Context, productID in
 }
 
 // FindLowStockInventories 查询低库存商品
-func (r InventoryRepository) FindLowStockInventories(ctx context.Context) ([]inventory.Inventory, error) {
-	var inventories []inventory.Inventory
+func (r InventoryRepository) FindLowStockInventories(ctx context.Context) ([]models.Inventory, error) {
+	var inventories []models.Inventory
 	err := r.db.WithContext(ctx).
-		Where("status = ? OR status = ?", inventory.InventoryStatusLowStock, inventory.InventoryStatusOutOfStock).
+		Where("status = ? OR status = ?", models.InventoryStatusLowStock, models.InventoryStatusOutOfStock).
 		Find(&inventories).Error
 	if err != nil {
 		return nil, err
@@ -142,8 +160,8 @@ func (r InventoryRepository) FindLowStockInventories(ctx context.Context) ([]inv
 }
 
 // FindInventoryByID 根据ID查询库存
-func (r InventoryRepository) FindInventoryByID(ctx context.Context, id int64) (*inventory.Inventory, error) {
-	var inv inventory.Inventory
+func (r InventoryRepository) FindInventoryByID(ctx context.Context, id int64) (*models.Inventory, error) {
+	var inv models.Inventory
 	err := r.db.WithContext(ctx).First(&inv, id).Error
 	if err != nil {
 		return nil, err
@@ -153,12 +171,12 @@ func (r InventoryRepository) FindInventoryByID(ctx context.Context, id int64) (*
 
 // DeleteInventory 删除库存
 func (r InventoryRepository) DeleteInventory(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Delete(&inventory.Inventory{}, id).Error
+	return r.db.WithContext(ctx).Delete(&models.Inventory{}, id).Error
 }
 
 // ListInventories 列出所有库存
-func (r InventoryRepository) ListInventories(ctx context.Context, q inventory.InventoryListQuery, offset, limit int) ([]inventory.Inventory, error) {
-	var inventories []inventory.Inventory
+func (r InventoryRepository) ListInventories(ctx context.Context, q dto.InventoryListQuery, offset, limit int) ([]models.Inventory, error) {
+	var inventories []models.Inventory
 	db := r.applyQueryConditions(ctx, q)
 	db = r.applyOrder(db, q)
 
@@ -172,7 +190,7 @@ func (r InventoryRepository) ListInventories(ctx context.Context, q inventory.In
 }
 
 // CountInventories 查询库存总数
-func (r InventoryRepository) CountInventories(ctx context.Context, q inventory.InventoryListQuery) (int64, error) {
+func (r InventoryRepository) CountInventories(ctx context.Context, q dto.InventoryListQuery) (int64, error) {
 	var total int64
 	db := r.applyQueryConditions(ctx, q)
 
@@ -185,8 +203,8 @@ func (r InventoryRepository) CountInventories(ctx context.Context, q inventory.I
 }
 
 // applyQueryConditions 应用查询条件（不包含排序）
-func (r InventoryRepository) applyQueryConditions(ctx context.Context, q inventory.InventoryListQuery) *gorm.DB {
-	db := r.db.WithContext(ctx).Model(&inventory.Inventory{})
+func (r InventoryRepository) applyQueryConditions(ctx context.Context, q dto.InventoryListQuery) *gorm.DB {
+	db := r.db.WithContext(ctx).Model(&models.Inventory{})
 	db = db.Joins("JOIN products ON inventories.product_id = products.id")
 
 	if q.ProductName != "" {
@@ -205,6 +223,19 @@ func (r InventoryRepository) applyQueryConditions(ctx context.Context, q invento
 }
 
 // applyOrder 应用排序
-func (r InventoryRepository) applyOrder(db *gorm.DB, q inventory.InventoryListQuery) *gorm.DB {
+func (r InventoryRepository) applyOrder(db *gorm.DB, q dto.InventoryListQuery) *gorm.DB {
 	return applyOrder(db, q.SortBy, q.Order, "id asc")
+}
+
+func applyOrder(db *gorm.DB, sortBy, order, defaultOrder string) *gorm.DB {
+	ord := order
+	if ord != "asc" && ord != "desc" {
+		ord = "asc"
+	}
+
+	o := defaultOrder
+	if sortBy != "" {
+		o = sortBy + " " + ord
+	}
+	return db.Order(o)
 }

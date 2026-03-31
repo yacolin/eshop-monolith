@@ -4,19 +4,22 @@ import (
 	"context"
 	"fmt"
 
-	"eshop-monolith/internal/domain/inventory"
 	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/inventory/api/dto"
+	"eshop-monolith/internal/inventory/domain/models"
+	"eshop-monolith/internal/inventory/domain/repositories"
+	"eshop-monolith/internal/inventory/events"
 	"eshop-monolith/internal/pkg/errcode"
 )
 
 // InventoryService 库存服务
 type InventoryService struct {
-	repo inventory.Repository
+	repo repositories.IinventoryRepository
 	bus  *eventbus.Bus
 }
 
 // NewInventoryService 创建库存服务
-func NewInventoryService(repo inventory.Repository, bus *eventbus.Bus) *InventoryService {
+func NewInventoryService(repo repositories.IinventoryRepository, bus *eventbus.Bus) *InventoryService {
 	return &InventoryService{
 		repo: repo,
 		bus:  bus,
@@ -35,10 +38,10 @@ type UpdateInventoryRequest struct {
 }
 
 // CreateInventory 创建库存
-func (s *InventoryService) CreateInventory(ctx context.Context, req *inventory.CreateInventoryDTO) (*inventory.Inventory, error) {
+func (s *InventoryService) CreateInventory(ctx context.Context, req *dto.CreateInventoryDTO) (*models.Inventory, error) {
 
 	// 创建库存
-	inv := &inventory.Inventory{
+	inv := &models.Inventory{
 		ProductID: req.ProductID,
 		Quantity:  req.Quantity,
 		Threshold: req.Threshold,
@@ -55,7 +58,7 @@ func (s *InventoryService) CreateInventory(ctx context.Context, req *inventory.C
 }
 
 // GetInventoryByProductID 根据产品ID获取库存
-func (s *InventoryService) GetInventoryByProductID(ctx context.Context, productID int64) (*inventory.Inventory, error) {
+func (s *InventoryService) GetInventoryByProductID(ctx context.Context, productID int64) (*models.Inventory, error) {
 	inventory, err := s.repo.FindInventoryByProductID(ctx, productID)
 	if err != nil {
 		return nil, errcode.ErrNotFound
@@ -64,7 +67,7 @@ func (s *InventoryService) GetInventoryByProductID(ctx context.Context, productI
 }
 
 // UpdateInventory 更新库存
-func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64, req *inventory.UpdateInventoryDTO) (*inventory.Inventory, error) {
+func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64, req *dto.UpdateInventoryDTO) (*models.Inventory, error) {
 	// 获取库存
 	inv, err := s.repo.FindInventoryByProductID(ctx, productID)
 	if err != nil {
@@ -90,13 +93,13 @@ func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64,
 }
 
 // ReserveInventory 预占库存
-func (s *InventoryService) ReserveInventory(ctx context.Context, req *inventory.ReserveInventoryDTO) error {
+func (s *InventoryService) ReserveInventory(ctx context.Context, req *dto.ReserveInventoryDTO) error {
 	if err := s.repo.ReserveInventory(ctx, req.ProductID, req.Quantity); err != nil {
 		return err
 	}
 
 	// 发布库存预占事件
-	s.bus.Publish(inventory.InventoryReservedEvent{
+	s.bus.Publish(events.InventoryReservedEvent{
 		ProductID: fmt.Sprintf("%d", req.ProductID),
 		Quantity:  req.Quantity,
 	})
@@ -105,13 +108,13 @@ func (s *InventoryService) ReserveInventory(ctx context.Context, req *inventory.
 }
 
 // ReleaseInventory 释放库存
-func (s *InventoryService) ReleaseInventory(ctx context.Context, req *inventory.ReleaseInventoryDTO) error {
+func (s *InventoryService) ReleaseInventory(ctx context.Context, req *dto.ReleaseInventoryDTO) error {
 	if err := s.repo.ReleaseInventory(ctx, req.ProductID, req.Quantity); err != nil {
 		return err
 	}
 
 	// 发布库存释放事件
-	s.bus.Publish(inventory.InventoryReleasedEvent{
+	s.bus.Publish(events.InventoryReleasedEvent{
 		ProductID: fmt.Sprintf("%d", req.ProductID),
 		Quantity:  req.Quantity,
 	})
@@ -120,12 +123,12 @@ func (s *InventoryService) ReleaseInventory(ctx context.Context, req *inventory.
 }
 
 // CheckInventory 检查库存
-func (s *InventoryService) CheckInventory(ctx context.Context, productID int64) (*inventory.Inventory, error) {
+func (s *InventoryService) CheckInventory(ctx context.Context, productID int64) (*models.Inventory, error) {
 	return s.repo.FindInventoryByProductID(ctx, productID)
 }
 
 // ListInventories 列出所有库存
-func (s *InventoryService) ListInventories(ctx context.Context, q inventory.InventoryListQuery) (*inventory.InventoryListResult, error) {
+func (s *InventoryService) ListInventories(ctx context.Context, q dto.InventoryListQuery) (*dto.InventoryListResult, error) {
 	offset := (q.Page - 1) * q.Size
 	list, err := s.repo.ListInventories(ctx, q, offset, q.Size)
 	if err != nil {
@@ -137,7 +140,7 @@ func (s *InventoryService) ListInventories(ctx context.Context, q inventory.Inve
 		return nil, err
 	}
 
-	return &inventory.InventoryListResult{
+	return &dto.InventoryListResult{
 		List:  list,
 		Total: total,
 	}, nil

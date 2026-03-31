@@ -1,6 +1,9 @@
-package inventory
+package dto
 
-import "eshop-monolith/internal/pkg/query"
+import (
+	"eshop-monolith/internal/inventory/domain/models"
+	"eshop-monolith/internal/pkg/query"
+)
 
 // InventoryListQuery 库存列表查询参数
 type InventoryListQuery struct {
@@ -14,7 +17,7 @@ type InventoryListQuery struct {
 }
 
 // InventoryListResult 库存列表结果（使用泛型）
-type InventoryListResult = query.ListResult[Inventory]
+type InventoryListResult = query.ListResult[models.Inventory]
 
 // CreateInventoryDTO 创建库存请求
 type CreateInventoryDTO struct {

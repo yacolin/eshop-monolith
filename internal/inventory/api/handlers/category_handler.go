@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"eshop-monolith/internal/domain/category"
+	"eshop-monolith/internal/inventory/api/dto"
+	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/internal/pkg/response"
 	"eshop-monolith/internal/pkg/utils"
-	"eshop-monolith/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,11 +27,11 @@ func NewCategoryHandler(categoryService *service.CategoryService) *CategoryHandl
 // @Tags 分类管理
 // @Accept json
 // @Produce json
-// @Success 200 {object} response.Response{data=[]category.Category}
+// @Success 200 {object} response.Response{data=dto.CategoryListResult}
 // @Failure 500 {object} response.Response{error=string}
 // @Router /api/categories [get]
 func (h *CategoryHandler) ListCategories(c *gin.Context) {
-	var q category.CategoryListQuery
+	var q dto.CategoryListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
 		c.Error(err)
 		return
@@ -55,7 +55,7 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 // @Tags 分类管理
 // @Accept json
 // @Produce json
-// @Success 200 {object} response.Response{data=[]category.Category}
+// @Success 200 {object} response.Response{data=[]models.Category}
 // @Failure 500 {object} response.Response{error=string}
 // @Router /api/categories/root [get]
 func (h *CategoryHandler) ListRootCategories(c *gin.Context) {
@@ -75,7 +75,7 @@ func (h *CategoryHandler) ListRootCategories(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "父分类ID"
-// @Success 200 {object} response.Response{data=[]category.Category}
+// @Success 200 {object} response.Response{data=[]models.Category}
 // @Failure 400 {object} response.Response{error=string}
 // @Failure 500 {object} response.Response{error=string}
 // @Router /api/categories/{id}/children [get]
@@ -101,11 +101,11 @@ func (h *CategoryHandler) ListSubCategories(c *gin.Context) {
 // @Tags 分类
 // @Accept json
 // @Produce json
-// @Param category body dto.CreateCategoryDTO true "分类信息"
+// @Param models body dto.CreateCategoryDTO true "分类信息"
 // @Success 200 {object} models.Category "成功"
 // @Router /inventory/api/v1/categories [post]
 func (h *CategoryHandler) CreateCategory(c *gin.Context) {
-	var req category.CreateCategoryDTO
+	var req dto.CreateCategoryDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
@@ -130,12 +130,12 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 // @Router /inventory/api/v1/categories/{id} [get]
 func (h *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
-	category, err := h.categoryService.GetCategoryByID(c, id)
+	models, err := h.categoryService.GetCategoryByID(c, id)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	response.Success(c, category)
+	response.Success(c, models)
 }
 
 // UpdateCategory 更新分类
@@ -145,7 +145,7 @@ func (h *CategoryHandler) GetCategoryByID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "分类ID"
-// @Param category body dto.UpdateCategoryDTO true "分类信息"
+// @Param models body dto.UpdateCategoryDTO true "分类信息"
 // @Success 200 {object} models.Category "成功"
 // @Router /inventory/api/v1/categories/{id} [put]
 func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
@@ -155,18 +155,18 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	var req category.UpdateCategoryDTO
+	var req dto.UpdateCategoryDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
 	}
-	category, err := h.categoryService.UpdateCategory(c, id, &req)
+	models, err := h.categoryService.UpdateCategory(c, id, &req)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	response.Success(c, category)
+	response.Success(c, models)
 }
 
 // DeleteCategory 删除分类

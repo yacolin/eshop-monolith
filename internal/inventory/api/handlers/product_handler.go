@@ -3,10 +3,10 @@ package handlers
 import (
 	"strconv"
 
-	"eshop-monolith/internal/domain/product"
+	"eshop-monolith/internal/inventory/api/dto"
+	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/internal/pkg/response"
 	"eshop-monolith/internal/pkg/utils"
-	"eshop-monolith/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,11 +29,11 @@ func NewProductHandler(productService *service.ProductService) *ProductHandler {
 // @Tags 产品管理
 // @Accept json
 // @Produce json
-// @Success 200 {object} response.Response{data=product.ProductListResult}
+// @Success 200 {object} response.Response{data=dto.ProductListResult}
 // @Failure 500 {object} response.Response{error=string}
 // @Router /api/products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
-	var q product.ProductListQuery
+	var q dto.ProductListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
 		c.Error(err)
 		return
@@ -121,7 +121,7 @@ func (h *ProductHandler) ListProductsByCategory(c *gin.Context) {
 // @Success 200 {object} models.Product "成功"
 // @Router /inventory/api/v1/products [post]
 func (h *ProductHandler) CreateProduct(c *gin.Context) {
-	var req product.CreateProductDTO
+	var req dto.CreateProductDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
@@ -147,7 +147,7 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 
-	var req product.UpdateProductDTO
+	var req dto.UpdateProductDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return

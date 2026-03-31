@@ -1,10 +1,9 @@
 package repository
 
 import (
-	"eshop-monolith/internal/domain/category"
-	"eshop-monolith/internal/domain/inventory"
-	"eshop-monolith/internal/domain/product"
 	"eshop-monolith/internal/domain/shared"
+	"eshop-monolith/internal/inventory/domain/models"
+	"eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/internal/pkg/config"
 	"fmt"
 	"time"
@@ -60,10 +59,10 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 
 	// 自动迁移表结构
 	if err := db.AutoMigrate(
-		&category.Category{},
-		&product.Product{},
+		&models.Category{},
+		&models.Product{},
 		&shared.ProductCategory{},
-		&inventory.Inventory{},
+		&models.Inventory{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
@@ -83,22 +82,18 @@ func InitRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	return client, nil
 }
 
-// Repositories 仓储集合
+// // Repositories 仓储集合
 type Repositories struct {
-	Order     OrderRepository
-	Inventory InventoryRepository
-	User      UserRepository
-	Product   ProductRepository
-	Category  CategoryRepository
+	Inventory repositories.IinventoryRepository
+	Product   repositories.IproductRepository
+	Category  repositories.IcategoryRepository
 }
 
-// NewRepositories 创建仓储集合
+// // NewRepositories 创建仓储集合
 func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 	return &Repositories{
-		Order:     NewOrderRepository(db),
-		Inventory: NewInventoryRepository(db),
-		User:      NewUserRepository(db),
-		Product:   NewProductRepository(db),
-		Category:  NewCategoryRepository(db),
+		Inventory: repositories.NewInventoryRepository(db),
+		Product:   repositories.NewProductRepository(db),
+		Category:  repositories.NewCategoryRepository(db),
 	}
 }

@@ -1,9 +1,9 @@
 package eventbus
 
 import (
-	"eshop-monolith/internal/domain/inventory"
 	"eshop-monolith/internal/domain/order"
 	"eshop-monolith/internal/domain/user"
+	"eshop-monolith/internal/inventory/events"
 	"eshop-monolith/internal/pkg/logger"
 )
 
@@ -57,7 +57,7 @@ func handleOrderCancelled(event interface{}) {
 
 // handleInventoryReserved 处理库存预占事件
 func handleInventoryReserved(event interface{}) {
-	e, ok := event.(inventory.InventoryReservedEvent)
+	e, ok := event.(events.InventoryReservedEvent)
 	if !ok {
 		return
 	}
@@ -67,7 +67,7 @@ func handleInventoryReserved(event interface{}) {
 
 // handleInventoryReleased 处理库存释放事件
 func handleInventoryReleased(event interface{}) {
-	e, ok := event.(inventory.InventoryReleasedEvent)
+	e, ok := event.(events.InventoryReleasedEvent)
 	if !ok {
 		return
 	}
@@ -77,7 +77,7 @@ func handleInventoryReleased(event interface{}) {
 
 // handleInventoryLow 处理库存不足事件
 func handleInventoryLow(event interface{}) {
-	e, ok := event.(inventory.InventoryLowEvent)
+	e, ok := event.(events.InventoryLowEvent)
 	if !ok {
 		return
 	}

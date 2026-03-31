@@ -1,16 +1,18 @@
 package routes
 
 import (
-	"eshop-monolith/internal/api/handlers"
+	"eshop-monolith/internal/inventory/api/handlers"
+	"eshop-monolith/internal/inventory/domain/repositories"
+	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/internal/repository"
-	"eshop-monolith/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func registerProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB) {
-	productService := service.NewProductService(repos.Product, nil, db)
+func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB) {
+	productRepo := repositories.NewProductRepository(db)
+	productService := service.NewProductService(productRepo, nil, db)
 	productHandler := handlers.NewProductHandler(productService)
 
 	products := v1.Group("/products")
@@ -20,4 +22,3 @@ func registerProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 		products.GET("/category/:category_id", productHandler.ListProductsByCategory)
 	}
 }
-

@@ -3,19 +3,22 @@ package service
 import (
 	"context"
 
-	"eshop-monolith/internal/domain/category"
 	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/inventory/api/dto"
+	"eshop-monolith/internal/inventory/domain/models"
+	"eshop-monolith/internal/inventory/domain/repositories"
+	"eshop-monolith/internal/inventory/events"
 	"eshop-monolith/internal/pkg/errcode"
 )
 
 // CategoryService 分类服务
 type CategoryService struct {
-	repo category.Repository
+	repo repositories.IcategoryRepository
 	bus  *eventbus.Bus
 }
 
 // NewCategoryService 创建分类服务
-func NewCategoryService(repo category.Repository, bus *eventbus.Bus) *CategoryService {
+func NewCategoryService(repo repositories.IcategoryRepository, bus *eventbus.Bus) *CategoryService {
 	return &CategoryService{
 		repo: repo,
 		bus:  bus,
@@ -23,14 +26,14 @@ func NewCategoryService(repo category.Repository, bus *eventbus.Bus) *CategorySe
 }
 
 type CategoryListResult struct {
-	Total int64               `json:"total"`
-	List  []category.Category `json:"list"`
+	Total int64             `json:"total"`
+	List  []models.Category `json:"list"`
 }
 
 // CreateCategory 创建分类
-func (s *CategoryService) CreateCategory(ctx context.Context, req *category.CreateCategoryDTO) (*category.Category, error) {
+func (s *CategoryService) CreateCategory(ctx context.Context, req *dto.CreateCategoryDTO) (*models.Category, error) {
 	// 创建分类
-	newCategory := &category.Category{
+	newCategory := &models.Category{
 		Name:        req.Name,
 		Description: req.Description,
 		ParentID:    req.ParentID,
@@ -42,7 +45,7 @@ func (s *CategoryService) CreateCategory(ctx context.Context, req *category.Crea
 	}
 
 	// 发布分类创建事件
-	s.bus.Publish(category.CategoryCreatedEvent{
+	s.bus.Publish(events.CategoryCreatedEvent{
 		CategoryID: newCategory.ID,
 		Name:       newCategory.Name,
 		ParentID:   newCategory.ParentID,
@@ -52,7 +55,7 @@ func (s *CategoryService) CreateCategory(ctx context.Context, req *category.Crea
 }
 
 // GetCategoryByID 根据ID获取分类
-func (s *CategoryService) GetCategoryByID(ctx context.Context, id int64) (*category.Category, error) {
+func (s *CategoryService) GetCategoryByID(ctx context.Context, id int64) (*models.Category, error) {
 	category, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, errcode.ErrNotFound
@@ -61,22 +64,22 @@ func (s *CategoryService) GetCategoryByID(ctx context.Context, id int64) (*categ
 }
 
 // ListAllCategories 列出所有分类
-func (s *CategoryService) ListAllCategories(ctx context.Context) ([]category.Category, error) {
+func (s *CategoryService) ListAllCategories(ctx context.Context) ([]models.Category, error) {
 	return s.repo.ListAll(ctx)
 }
 
 // ListRootCategories 列出根分类
-func (s *CategoryService) ListRootCategories(ctx context.Context) ([]category.Category, error) {
+func (s *CategoryService) ListRootCategories(ctx context.Context) ([]models.Category, error) {
 	return s.repo.ListRoot(ctx)
 }
 
 // ListSubCategories 列出子分类
-func (s *CategoryService) ListSubCategories(ctx context.Context, parentID int64) ([]category.Category, error) {
+func (s *CategoryService) ListSubCategories(ctx context.Context, parentID int64) ([]models.Category, error) {
 	return s.repo.ListByParent(ctx, parentID)
 }
 
 // UpdateCategory 更新分类
-func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *category.UpdateCategoryDTO) (*category.Category, error) {
+func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *dto.UpdateCategoryDTO) (*models.Category, error) {
 	// 获取分类
 	existingCategory, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -100,7 +103,7 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *cat
 	}
 
 	// 发布分类更新事件
-	s.bus.Publish(category.CategoryUpdatedEvent{
+	s.bus.Publish(events.CategoryUpdatedEvent{
 		CategoryID: existingCategory.ID,
 		Name:       existingCategory.Name,
 		ParentID:   existingCategory.ParentID,
@@ -123,7 +126,7 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
 	}
 
 	// 发布分类删除事件
-	s.bus.Publish(category.CategoryDeletedEvent{
+	s.bus.Publish(events.CategoryDeletedEvent{
 		CategoryID: existingCategory.ID,
 		Name:       existingCategory.Name,
 		ParentID:   existingCategory.ParentID,
@@ -132,7 +135,7 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *CategoryService) ListCategories(ctx context.Context, q category.CategoryListQuery) (*CategoryListResult, error) {
+func (s *CategoryService) ListCategories(ctx context.Context, q dto.CategoryListQuery) (*CategoryListResult, error) {
 	offset := (q.Page - 1) * q.Size
 	list, err := s.repo.ListCategories(ctx, q, offset, q.Size)
 	if err != nil {
