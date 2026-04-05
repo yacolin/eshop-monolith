@@ -1,9 +1,9 @@
 package eventbus
 
 import (
-	"eshop-monolith/internal/domain/order"
 	"eshop-monolith/internal/domain/user"
-	"eshop-monolith/internal/inventory/events"
+	inventoryEvents "eshop-monolith/internal/inventory/events"
+	orderEvents "eshop-monolith/internal/order/events"
 	"eshop-monolith/internal/pkg/logger"
 )
 
@@ -27,37 +27,37 @@ func RegisterHandlers(bus *Bus) {
 
 // handleOrderCreated 处理订单创建事件
 func handleOrderCreated(event interface{}) {
-	e, ok := event.(order.OrderCreatedEvent)
+	e, ok := event.(orderEvents.OrderCreatedEvent)
 	if !ok {
 		return
 	}
-	logger.Info("Order created", "order_id", e.OrderID, "user_id", e.UserID, "total_amount", e.TotalAmount)
+	logger.Info("Order created", "order_id", e.OrderID, "customer_id", e.CustomerID, "total_amount", e.TotalAmount)
 	// 这里可以添加发送通知、记录日志等逻辑
 }
 
 // handleOrderStatusChanged 处理订单状态变更事件
 func handleOrderStatusChanged(event interface{}) {
-	e, ok := event.(order.OrderStatusChangedEvent)
+	e, ok := event.(orderEvents.OrderPaidEvent)
 	if !ok {
 		return
 	}
-	logger.Info("Order status changed", "order_id", e.OrderID, "old_status", e.OldStatus, "new_status", e.NewStatus)
+	logger.Info("Order status changed", "order_id", e.OrderID, "customer_id", e.CustomerID, "total_amount", e.TotalAmount)
 	// 这里可以添加状态变更通知等逻辑
 }
 
 // handleOrderCancelled 处理订单取消事件
 func handleOrderCancelled(event interface{}) {
-	e, ok := event.(order.OrderCancelledEvent)
+	e, ok := event.(orderEvents.OrderCancelledEvent)
 	if !ok {
 		return
 	}
-	logger.Info("Order cancelled", "order_id", e.OrderID, "user_id", e.UserID)
+	logger.Info("Order cancelled", "order_id", e.OrderID, "customer_id", e.CustomerID)
 	// 这里可以添加退款处理等逻辑
 }
 
 // handleInventoryReserved 处理库存预占事件
 func handleInventoryReserved(event interface{}) {
-	e, ok := event.(events.InventoryReservedEvent)
+	e, ok := event.(inventoryEvents.InventoryReservedEvent)
 	if !ok {
 		return
 	}
@@ -67,7 +67,7 @@ func handleInventoryReserved(event interface{}) {
 
 // handleInventoryReleased 处理库存释放事件
 func handleInventoryReleased(event interface{}) {
-	e, ok := event.(events.InventoryReleasedEvent)
+	e, ok := event.(inventoryEvents.InventoryReleasedEvent)
 	if !ok {
 		return
 	}
@@ -77,7 +77,7 @@ func handleInventoryReleased(event interface{}) {
 
 // handleInventoryLow 处理库存不足事件
 func handleInventoryLow(event interface{}) {
-	e, ok := event.(events.InventoryLowEvent)
+	e, ok := event.(inventoryEvents.InventoryLowEvent)
 	if !ok {
 		return
 	}
