@@ -1,9 +1,10 @@
 package eventbus
 
 import (
-	"eshop-monolith/internal/domain/user"
 	inventoryEvents "eshop-monolith/internal/inventory/events"
 	orderEvents "eshop-monolith/internal/order/events"
+	userEvents "eshop-monolith/internal/user/events"
+
 	"eshop-monolith/internal/pkg/logger"
 )
 
@@ -87,7 +88,7 @@ func handleInventoryLow(event interface{}) {
 
 // handleUserRegistered 处理用户注册事件
 func handleUserRegistered(event interface{}) {
-	e, ok := event.(user.UserRegisteredEvent)
+	e, ok := event.(userEvents.UserRegisteredEvent)
 	if !ok {
 		return
 	}
@@ -97,7 +98,7 @@ func handleUserRegistered(event interface{}) {
 
 // handleUserLoggedIn 处理用户登录事件
 func handleUserLoggedIn(event interface{}) {
-	e, ok := event.(user.UserLoggedInEvent)
+	e, ok := event.(userEvents.UserLoggedInEvent)
 	if !ok {
 		return
 	}
@@ -107,10 +108,10 @@ func handleUserLoggedIn(event interface{}) {
 
 // handleUserProfileUpdated 处理用户资料更新事件
 func handleUserProfileUpdated(event interface{}) {
-	e, ok := event.(user.UserProfileUpdatedEvent)
+	e, ok := event.(userEvents.UserProfileUpdatedEvent)
 	if !ok {
 		return
 	}
-	logger.Info("User profile updated", "user_id", e.UserID, "username", e.Username)
+	logger.Info("User profile updated", "user_id", e.UserID, "nickname", e.Nickname)
 	// 这里可以添加资料更新通知等逻辑
 }

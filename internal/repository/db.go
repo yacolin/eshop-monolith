@@ -6,6 +6,9 @@ import (
 	invModels "eshop-monolith/internal/inventory/domain/models"
 	invRepos "eshop-monolith/internal/inventory/domain/repositories"
 
+	userModels "eshop-monolith/internal/user/domain/models"
+	userRepos "eshop-monolith/internal/user/domain/repositories"
+
 	orderModels "eshop-monolith/internal/order/domain/models"
 	orderRepos "eshop-monolith/internal/order/domain/repositories"
 
@@ -72,6 +75,14 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 
 		&orderModels.Order{},
 		&orderModels.OrderItem{},
+
+		&userModels.User{},
+		&userModels.UserInfo{},
+		&userModels.Permission{},
+		&userModels.Role{},
+		&userModels.UserIdentity{},
+		&userModels.AuthToken{},
+		&userModels.LoginHistory{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
@@ -93,18 +104,32 @@ func InitRedis(cfg config.RedisConfig) (*redis.Client, error) {
 
 // // Repositories 仓储集合
 type Repositories struct {
-	Inventory invRepos.IinventoryRepository
-	Product   invRepos.IproductRepository
-	Category  invRepos.IcategoryRepository
-	Order     orderRepos.IorderRepository
+	Inventory    invRepos.IinventoryRepository
+	Product      invRepos.IproductRepository
+	Category     invRepos.IcategoryRepository
+	Order        orderRepos.IorderRepository
+	User         userRepos.IuserRepository
+	UserInfo     userRepos.IuserInfoRepository
+	UserIdentity userRepos.IuserIdentityRepository
+	AuthToken    userRepos.IauthTokenRepository
+	LoginHistory userRepos.IloginHistoryRepository
+	Role         userRepos.IroleRepository
+	Permission   userRepos.IpermissionRepository
 }
 
 // // NewRepositories 创建仓储集合
 func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 	return &Repositories{
-		Inventory: invRepos.NewInventoryRepository(db),
-		Product:   invRepos.NewProductRepository(db),
-		Category:  invRepos.NewCategoryRepository(db),
-		Order:     orderRepos.NewOrderRepository(db),
+		Inventory:    invRepos.NewInventoryRepository(db),
+		Product:      invRepos.NewProductRepository(db),
+		Category:     invRepos.NewCategoryRepository(db),
+		Order:        orderRepos.NewOrderRepository(db),
+		User:         userRepos.NewUserRepository(db),
+		UserInfo:     userRepos.NewUserInfoRepository(db),
+		UserIdentity: userRepos.NewUserIdentityRepository(db),
+		AuthToken:    userRepos.NewAuthTokenRepository(db),
+		LoginHistory: userRepos.NewLoginHistoryRepository(db),
+		Role:         userRepos.NewRoleRepository(db),
+		Permission:   userRepos.NewPermissionRepository(db),
 	}
 }

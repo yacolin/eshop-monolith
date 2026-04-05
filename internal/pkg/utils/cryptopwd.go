@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"crypto/rand"
+	"fmt"
+	"math/big"
 	"time"
 
 	"eshop-monolith/internal/pkg/config"
@@ -19,17 +22,17 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func GenerateToken(userID string) (string, error) {
+func GenerateToken(userID int64) (string, error) {
 	// default to 24h access token for backwards compatibility
 	return GenerateAccessToken(userID)
 }
 
-func GenerateAccessToken(userID string) (string, error) {
-	return generateTokenWithType(userID, 15*time.Minute, "access")
+func GenerateAccessToken(userID int64) (string, error) {
+	return generateTokenWithType(fmt.Sprintf("%d", userID), 15*time.Minute, "access")
 }
 
-func GenerateRefreshToken(userID string) (string, error) {
-	return generateTokenWithType(userID, 7*24*time.Hour, "refresh")
+func GenerateRefreshToken(userID int64) (string, error) {
+	return generateTokenWithType(fmt.Sprintf("%d", userID), 7*24*time.Hour, "refresh")
 }
 
 func generateTokenWithType(userID string, ttl time.Duration, typ string) (string, error) {
@@ -72,4 +75,19 @@ func ParseToken(tokenString string) (jwt.MapClaims, error) {
 	}
 
 	return nil, jwt.ErrTokenInvalidClaims
+}
+
+// GenerateRandomString 生成指定长度的随机字符串
+func GenerateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	result := make([]byte, length)
+	for i := range result {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			// 如果生成失败，使用时间戳
+			return fmt.Sprintf("%d", time.Now().UnixNano())
+		}
+		result[i] = charset[num.Int64()]
+	}
+	return string(result)
 }
