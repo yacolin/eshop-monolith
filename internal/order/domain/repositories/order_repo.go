@@ -34,17 +34,17 @@ type OrderRepository struct {
 }
 
 // NewOrderRepository 创建订单仓储
-func NewOrderRepository(db *gorm.DB) OrderRepository {
-	return OrderRepository{db: db}
+func NewOrderRepository(db *gorm.DB) IorderRepository {
+	return &OrderRepository{db: db}
 }
 
 // Create 创建订单
-func (r OrderRepository) Create(ctx context.Context, order *models.Order) error {
+func (r *OrderRepository) Create(ctx context.Context, order *models.Order) error {
 	return r.db.WithContext(ctx).Create(order).Error
 }
 
 // FindByID 根据ID查询订单
-func (r OrderRepository) FindByID(ctx context.Context, id int64) (*models.Order, error) {
+func (r *OrderRepository) FindByID(ctx context.Context, id int64) (*models.Order, error) {
 	var foundOrder models.Order
 	err := r.db.WithContext(ctx).Preload("Items").First(&foundOrder, "id = ?", id).Error
 	if err != nil {
@@ -54,7 +54,7 @@ func (r OrderRepository) FindByID(ctx context.Context, id int64) (*models.Order,
 }
 
 // FindByUserID 根据用户ID查询订单列表
-func (r OrderRepository) FindByUserID(ctx context.Context, userID int64, page, pageSize int) ([]models.Order, int64, error) {
+func (r *OrderRepository) FindByUserID(ctx context.Context, userID int64, page, pageSize int) ([]models.Order, int64, error) {
 	var orders []models.Order
 	var total int64
 
@@ -74,21 +74,21 @@ func (r OrderRepository) FindByUserID(ctx context.Context, userID int64, page, p
 }
 
 // Update 更新订单
-func (r OrderRepository) Update(ctx context.Context, order *models.Order) error {
+func (r *OrderRepository) Update(ctx context.Context, order *models.Order) error {
 	return r.db.WithContext(ctx).Save(order).Error
 }
 
 // UpdateStatus 更新订单状态
-func (r OrderRepository) UpdateStatus(ctx context.Context, id int64, status string) error {
+func (r *OrderRepository) UpdateStatus(ctx context.Context, id int64, status string) error {
 	return r.db.WithContext(ctx).Model(&models.Order{}).Where("id = ?", id).Update("status", status).Error
 }
 
 // Delete 删除订单
-func (r OrderRepository) Delete(ctx context.Context, id int64) error {
+func (r *OrderRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&models.Order{}, "id = ?", id).Error
 }
 
-func (r OrderRepository) ListByQuery(ctx context.Context, q dto.OrderListQuery, offset, limit int) ([]models.Order, error) {
+func (r *OrderRepository) ListByQuery(ctx context.Context, q dto.OrderListQuery, offset, limit int) ([]models.Order, error) {
 	var list []models.Order
 	db := r.applyQueryConditions(ctx, q)
 	db = r.applyOrder(db, q)
@@ -100,7 +100,7 @@ func (r OrderRepository) ListByQuery(ctx context.Context, q dto.OrderListQuery, 
 	return list, nil
 }
 
-func (r OrderRepository) CountByQuery(ctx context.Context, q dto.OrderListQuery) (int64, error) {
+func (r *OrderRepository) CountByQuery(ctx context.Context, q dto.OrderListQuery) (int64, error) {
 	var count int64
 	db := r.applyQueryConditions(ctx, q)
 
@@ -112,7 +112,7 @@ func (r OrderRepository) CountByQuery(ctx context.Context, q dto.OrderListQuery)
 }
 
 // applyQueryConditions 应用查询条件（不包含排序）
-func (r OrderRepository) applyQueryConditions(ctx context.Context, q dto.OrderListQuery) *gorm.DB {
+func (r *OrderRepository) applyQueryConditions(ctx context.Context, q dto.OrderListQuery) *gorm.DB {
 	db := r.db.WithContext(ctx).Model(&models.Order{})
 	if q.CustomerID != nil {
 		db = db.Where("customer_id = ?", q.CustomerID)
@@ -133,6 +133,6 @@ func (r OrderRepository) applyQueryConditions(ctx context.Context, q dto.OrderLi
 }
 
 // applyOrder 应用排序
-func (r OrderRepository) applyOrder(db *gorm.DB, q dto.OrderListQuery) *gorm.DB {
+func (r *OrderRepository) applyOrder(db *gorm.DB, q dto.OrderListQuery) *gorm.DB {
 	return query.ApplyOrder(db, q.SortBy, q.Order, "id asc")
 }

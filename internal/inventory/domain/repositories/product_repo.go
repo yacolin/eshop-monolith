@@ -39,17 +39,17 @@ type ProductRepository struct {
 }
 
 // NewProductRepository 创建产品仓储
-func NewProductRepository(db *gorm.DB) ProductRepository {
-	return ProductRepository{db: db}
+func NewProductRepository(db *gorm.DB) IproductRepository {
+	return &ProductRepository{db: db}
 }
 
 // Create 创建产品
-func (r ProductRepository) Create(ctx context.Context, product *models.Product) error {
+func (r *ProductRepository) Create(ctx context.Context, product *models.Product) error {
 	return r.db.WithContext(ctx).Create(product).Error
 }
 
 // FindByID 根据ID查询产品
-func (r ProductRepository) FindByID(ctx context.Context, id int64) (*models.Product, error) {
+func (r *ProductRepository) FindByID(ctx context.Context, id int64) (*models.Product, error) {
 	var p models.Product
 	err := r.db.WithContext(ctx).First(&p, "id = ?", id).Error
 	if err != nil {
@@ -59,7 +59,7 @@ func (r ProductRepository) FindByID(ctx context.Context, id int64) (*models.Prod
 }
 
 // FindBySKU 根据SKU查询产品
-func (r ProductRepository) FindBySKU(ctx context.Context, sku string) (*models.Product, error) {
+func (r *ProductRepository) FindBySKU(ctx context.Context, sku string) (*models.Product, error) {
 	var p models.Product
 	err := r.db.WithContext(ctx).First(&p, "sku = ?", sku).Error
 	if err != nil {
@@ -69,7 +69,7 @@ func (r ProductRepository) FindBySKU(ctx context.Context, sku string) (*models.P
 }
 
 // ListByCategory 根据分类查询产品
-func (r ProductRepository) ListByCategory(ctx context.Context, categoryID int64, page, pageSize int) ([]models.Product, int64, error) {
+func (r *ProductRepository) ListByCategory(ctx context.Context, categoryID int64, page, pageSize int) ([]models.Product, int64, error) {
 	var products []models.Product
 	var total int64
 
@@ -89,7 +89,7 @@ func (r ProductRepository) ListByCategory(ctx context.Context, categoryID int64,
 }
 
 // ListAll 列出所有产品
-func (r ProductRepository) ListAll(ctx context.Context, page, pageSize int) ([]models.Product, int64, error) {
+func (r *ProductRepository) ListAll(ctx context.Context, page, pageSize int) ([]models.Product, int64, error) {
 	var products []models.Product
 	var total int64
 
@@ -109,17 +109,17 @@ func (r ProductRepository) ListAll(ctx context.Context, page, pageSize int) ([]m
 }
 
 // Update 更新产品
-func (r ProductRepository) Update(ctx context.Context, product *models.Product) error {
+func (r *ProductRepository) Update(ctx context.Context, product *models.Product) error {
 	return r.db.WithContext(ctx).Save(product).Error
 }
 
 // Delete 删除产品
-func (r ProductRepository) Delete(ctx context.Context, id int64) error {
+func (r *ProductRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&models.Product{}, "id = ?", id).Error
 }
 
 // ListProducts 列出产品（支持查询条件）
-func (r ProductRepository) ListProducts(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]models.Product, error) {
+func (r *ProductRepository) ListProducts(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]models.Product, error) {
 	var products []models.Product
 	db := r.applyQueryConditions(ctx, q)
 	db = r.applyOrder(db, q)
@@ -134,7 +134,7 @@ func (r ProductRepository) ListProducts(ctx context.Context, q dto.ProductListQu
 }
 
 // CountProducts 统计产品数量
-func (r ProductRepository) CountProducts(ctx context.Context, q dto.ProductListQuery) (int64, error) {
+func (r *ProductRepository) CountProducts(ctx context.Context, q dto.ProductListQuery) (int64, error) {
 	var total int64
 	db := r.applyQueryConditions(ctx, q)
 
@@ -147,7 +147,7 @@ func (r ProductRepository) CountProducts(ctx context.Context, q dto.ProductListQ
 }
 
 // applyQueryConditions 应用查询条件（不包含排序）
-func (r ProductRepository) applyQueryConditions(ctx context.Context, q dto.ProductListQuery) *gorm.DB {
+func (r *ProductRepository) applyQueryConditions(ctx context.Context, q dto.ProductListQuery) *gorm.DB {
 	db := r.db.WithContext(ctx).Model(&models.Product{})
 	if q.Name != "" {
 		db = db.Where("name LIKE ?", "%"+q.Name+"%")
@@ -159,6 +159,6 @@ func (r ProductRepository) applyQueryConditions(ctx context.Context, q dto.Produ
 }
 
 // applyOrder 应用排序
-func (r ProductRepository) applyOrder(db *gorm.DB, q dto.ProductListQuery) *gorm.DB {
+func (r *ProductRepository) applyOrder(db *gorm.DB, q dto.ProductListQuery) *gorm.DB {
 	return query.ApplyOrder(db, q.SortBy, q.Order, "id asc")
 }
