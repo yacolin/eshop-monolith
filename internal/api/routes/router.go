@@ -3,8 +3,10 @@ package routes
 import (
 	invRoutes "eshop-monolith/internal/inventory/api/routes"
 	orderRoutes "eshop-monolith/internal/order/api/routes"
+	payRoutes "eshop-monolith/internal/payment/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
 
+	"eshop-monolith/internal/eventbus"
 	"eshop-monolith/internal/pkg/config"
 	"eshop-monolith/internal/pkg/middleware"
 	"eshop-monolith/internal/pkg/response"
@@ -17,6 +19,9 @@ import (
 // SetupRouter 设置路由
 func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB) *gin.Engine {
 	router := gin.Default()
+
+	// 创建事件总线实例
+	bus := eventbus.NewBus()
 
 	// 添加全局错误处理中间件
 	router.Use(middleware.ErrorHandler())
@@ -45,8 +50,8 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		invRoutes.RegisterInventoryRoutes(v1, repos)
 
 		orderRoutes.RegisterOrderRoutes(v1, repos)
-
 		userRoutes.RegisterUserRoutes(v1, repos)
+		payRoutes.RegisterPaymentRoutes(v1, repos, bus, db)
 		userRoutes.RegisterAuthRoutes(v1, repos, db)
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
 		userRoutes.RegisterRoleRoutes(v1, repos, db)

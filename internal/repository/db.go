@@ -12,6 +12,8 @@ import (
 	orderModels "eshop-monolith/internal/order/domain/models"
 	orderRepos "eshop-monolith/internal/order/domain/repositories"
 
+	payModels "eshop-monolith/internal/payment/domain/models"
+
 	"eshop-monolith/internal/pkg/config"
 	"fmt"
 	"time"
@@ -83,6 +85,11 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&userModels.UserIdentity{},
 		&userModels.AuthToken{},
 		&userModels.LoginHistory{},
+
+		&payModels.Payment{},
+		&payModels.PaymentMethod{},
+		&payModels.PaymentTransaction{},
+		&payModels.Refund{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
