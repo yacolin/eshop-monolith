@@ -59,13 +59,13 @@ func (r OrderRepository) FindByUserID(ctx context.Context, userID int64, page, p
 	var total int64
 
 	// 计算总数
-	if err := r.db.WithContext(ctx).Model(&models.Order{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.Order{}).Where("customer_id = ?", userID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// 查询数据
 	offset := (page - 1) * pageSize
-	err := r.db.WithContext(ctx).Preload("Items").Where("user_id = ?", userID).Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&orders).Error
+	err := r.db.WithContext(ctx).Preload("Items").Where("customer_id = ?", userID).Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&orders).Error
 	if err != nil {
 		return nil, 0, err
 	}
