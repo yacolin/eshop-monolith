@@ -5,6 +5,7 @@ import (
 
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
+	"eshop-monolith/internal/pkg/query"
 
 	"gorm.io/gorm"
 )
@@ -159,5 +160,5 @@ func (r ProductRepository) applyQueryConditions(ctx context.Context, q dto.Produ
 
 // applyOrder 应用排序
 func (r ProductRepository) applyOrder(db *gorm.DB, q dto.ProductListQuery) *gorm.DB {
-	return applyOrder(db, q.SortBy, q.Order, "id asc")
+	return query.ApplyOrder(db, q.SortBy, q.Order, "id asc")
 }

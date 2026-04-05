@@ -1,6 +1,10 @@
 package query
 
-import "eshop-monolith/internal/pkg/config"
+import (
+	"eshop-monolith/internal/pkg/config"
+
+	"gorm.io/gorm"
+)
 
 // 通用列表结果，使用 Go 泛型以适配不同实体类型
 type ListResult[T any] struct {
@@ -37,4 +41,21 @@ func (p *Pagination) Normalize() {
 	if p.Size > max {
 		p.Size = max
 	}
+}
+
+// ApplyOrder 应用排序到 GORM 查询
+// sortBy: 排序字段（如 "id", "created_at"）
+// order: 排序方向（"asc" 或 "desc"）
+// defaultOrder: 默认排序（如 "id asc"）
+func ApplyOrder(db *gorm.DB, sortBy, order, defaultOrder string) *gorm.DB {
+	ord := order
+	if ord != "asc" && ord != "desc" {
+		ord = "asc"
+	}
+
+	o := defaultOrder
+	if sortBy != "" {
+		o = sortBy + " " + ord
+	}
+	return db.Order(o)
 }

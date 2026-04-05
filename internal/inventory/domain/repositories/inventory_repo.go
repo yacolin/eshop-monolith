@@ -6,6 +6,7 @@ import (
 	"eshop-monolith/internal/domain/shared"
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
+	"eshop-monolith/internal/pkg/query"
 
 	"gorm.io/gorm"
 )
@@ -20,6 +21,8 @@ type IinventoryRepository interface {
 	ReserveInventory(ctx context.Context, productID int64, quantity int) error
 	// ReleaseInventory 释放库存
 	ReleaseInventory(ctx context.Context, productID int64, quantity int) error
+	// DeductInventory 扣减库存
+	DeductInventory(ctx context.Context, productID int64, quantity int) error
 	// UpdateInventory 更新库存
 	UpdateInventory(ctx context.Context, models *models.Inventory) error
 	// ListInventories 列出所有库存
@@ -224,18 +227,5 @@ func (r InventoryRepository) applyQueryConditions(ctx context.Context, q dto.Inv
 
 // applyOrder 应用排序
 func (r InventoryRepository) applyOrder(db *gorm.DB, q dto.InventoryListQuery) *gorm.DB {
-	return applyOrder(db, q.SortBy, q.Order, "id asc")
-}
-
-func applyOrder(db *gorm.DB, sortBy, order, defaultOrder string) *gorm.DB {
-	ord := order
-	if ord != "asc" && ord != "desc" {
-		ord = "asc"
-	}
-
-	o := defaultOrder
-	if sortBy != "" {
-		o = sortBy + " " + ord
-	}
-	return db.Order(o)
+	return query.ApplyOrder(db, q.SortBy, q.Order, "id asc")
 }
