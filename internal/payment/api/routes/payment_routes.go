@@ -33,23 +33,23 @@ func RegisterPaymentRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 	// 支付相关路由
 	payments := v1.Group("/payments")
 	{
-		payments.POST("", paymentHandler.CreatePayment)           // 创建支付
-		payments.GET("", paymentHandler.ListPayments)           // 获取支付列表
-		payments.GET("/:id", paymentHandler.GetPayment)         // 获取支付详情
+		payments.POST("", paymentHandler.CreatePayment)                   // 创建支付
+		payments.GET("", paymentHandler.ListPayments)                     // 获取支付列表
+		payments.GET("/:id", paymentHandler.GetPayment)                   // 获取支付详情
 		payments.PATCH("/:id/status", paymentHandler.UpdatePaymentStatus) // 更新支付状态
 	}
 
 	// 订单支付路由
 	orders := v1.Group("/orders")
 	{
-		orders.GET("/:order_id/payment", paymentHandler.GetPaymentByOrderID) // 根据订单ID获取支付
+		orders.GET("/payment/:order_id", paymentHandler.GetPaymentByOrderID) // 根据订单ID获取支付
 	}
 
 	// 退款相关路由
 	refunds := v1.Group("/refunds")
 	{
-		refunds.POST("", paymentHandler.CreateRefund)           // 创建退款
-		refunds.GET("", paymentHandler.ListRefunds)           // 获取退款列表
+		refunds.POST("", paymentHandler.CreateRefund)                   // 创建退款
+		refunds.GET("", paymentHandler.ListRefunds)                     // 获取退款列表
 		refunds.PATCH("/:id/status", paymentHandler.UpdateRefundStatus) // 更新退款状态
 	}
 

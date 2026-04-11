@@ -114,7 +114,7 @@ func (h *PaymentHandler) GetPayment(c *gin.Context) {
 // @Failure 400 {object} response.Response "请求参数错误"
 // @Failure 404 {object} response.Response "支付记录不存在"
 // @Failure 500 {object} response.Response "服务器内部错误"
-// @Router /api/v1/orders/{order_id}/payment [get]
+// @Router /api/v1/orders/payment/{order_id} [get]
 func (h *PaymentHandler) GetPaymentByOrderID(c *gin.Context) {
 	orderID, err := utils.ParseIntParam(c, "order_id")
 	if err != nil {
