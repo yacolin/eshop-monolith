@@ -83,61 +83,150 @@ eshop-monolith/
 │   └── server/
 │       └── main.go                    # 应用入口
 ├── internal/
-│   ├── domain/                        # 领域层
-│   │   ├── order/
-│   │   │   ├── models.go              # 订单领域模型
-│   │   │   ├── repository.go          # 订单仓储接口
-│   │   │   └── events.go              # 订单领域事件
-│   │   ├── inventory/
-│   │   │   ├── models.go              # 库存领域模型
-│   │   │   ├── repository.go          # 库存仓储接口
-│   │   │   └── events.go              # 库存领域事件
-│   │   ├── user/
-│   │   │   ├── models.go              # 用户领域模型
-│   │   │   ├── repository.go          # 用户仓储接口
-│   │   │   └── events.go              # 用户领域事件
-│   │   └── shared/                    # 共享领域
-│   │       ├── value_objects.go       # 值对象
-│   │       └── errors.go              # 领域错误
-│   ├── service/                       # 应用服务层
-│   │   ├── order_service.go
-│   │   ├── inventory_service.go
-│   │   ├── user_service.go
-│   │   └── auth_service.go
 │   ├── api/                           # API 层
-│   │   ├── handlers/
-│   │   │   ├── order_handler.go
-│   │   │   ├── inventory_handler.go
-│   │   │   ├── user_handler.go
-│   │   │   └── auth_handler.go
-│   │   ├── dto/
-│   │   │   ├── order_dto.go
-│   │   │   ├── inventory_dto.go
-│   │   │   └── user_dto.go
 │   │   └── routes/
 │   │       └── router.go              # 统一路由注册
-│   ├── repository/                    # 仓储实现层
-│   │   ├── order_repo.go
-│   │   ├── inventory_repo.go
-│   │   ├── user_repo.go
-│   │   └── db.go                      # 数据库连接
+│   ├── domain/                        # 领域层
+│   │   └── shared/                    # 共享领域
+│   │       ├── errors.go              # 领域错误
+│   │       ├── models.go              # 共享模型
+│   │       └── value_objects.go       # 值对象
 │   ├── eventbus/                      # 内部事件总线
-│   │   ├── bus.go
-│   │   └── handlers.go
-│   └── pkg/                           # 内部公共包
-│       ├── config/                    # 配置管理
-│       ├── middleware/                # 中间件
-│       │   ├── auth.go                # JWT 认证
-│       │   ├── rbac.go                # RBAC 权限
-│       │   ├── idempotency.go         # 幂等性
-│       │   ├── logger.go              # 日志
-│       │   ├── recovery.go            # 恢复
-│       │   └── cors.go                # 跨域
-│       ├── response/                  # 统一响应
-│       ├── errcode/                   # 错误码
-│       ├── logger/                    # 日志工具
-│       ├── utils/                     # 工具函数
-│       └── validator/                 # 参数验证
+│   │   ├── bus.go                     # 事件总线实现
+│   │   ├── handlers.go                # 事件处理器聚合
+│   │   ├── inventory_handlers.go      # 库存事件处理器
+│   │   ├── order_handlers.go          # 订单事件处理器
+│   │   ├── payment_handlers.go        # 支付事件处理器
+│   │   └── user_handlers.go           # 用户事件处理器
+│   ├── inventory/                     # 库存模块
+│   │   ├── api/
+│   │   │   ├── dto/
+│   │   │   │   ├── category_dto.go    # 分类DTO
+│   │   │   │   ├── inventory_dto.go   # 库存DTO
+│   │   │   │   └── product_dto.go     # 产品DTO
+│   │   │   ├── handlers/
+│   │   │   │   ├── category_handler.go # 分类处理器
+│   │   │   │   ├── inventory_handler.go # 库存处理器
+│   │   │   │   └── product_handler.go   # 产品处理器
+│   │   │   └── routes/
+│   │   │       ├── category_routes.go  # 分类路由
+│   │   │       ├── inventory_routes.go # 库存路由
+│   │   │       └── product_routes.go   # 产品路由
+│   │   ├── domain/
+│   │   │   ├── models/
+│   │   │   │   ├── category.go        # 分类模型
+│   │   │   │   ├── inventory.go       # 库存模型
+│   │   │   │   └── product.go         # 产品模型
+│   │   │   └── repositories/
+│   │   │       ├── category_repo.go    # 分类仓储
+│   │   │       ├── inventory_repo.go   # 库存仓储
+│   │   │       └── product_repo.go     # 产品仓储
+│   │   ├── events/
+│   │   │   ├── category_event.go       # 分类事件
+│   │   │   ├── inventory_event.go      # 库存事件
+│   │   │   └── product_event.go        # 产品事件
+│   │   └── service/
+│   │       ├── category_service.go     # 分类服务
+│   │       ├── inventory_service.go    # 库存服务
+│   │       └── product_service.go      # 产品服务
+│   ├── order/                         # 订单模块
+│   │   ├── api/
+│   │   │   ├── dto/
+│   │   │   │   └── order_dto.go       # 订单DTO
+│   │   │   ├── handlers/
+│   │   │   │   └── order_handler.go   # 订单处理器
+│   │   │   └── routes/
+│   │   │       └── order_routes.go     # 订单路由
+│   │   ├── domain/
+│   │   │   ├── models/
+│   │   │   │   └── order.go           # 订单模型
+│   │   │   └── repositories/
+│   │   │       └── order_repo.go       # 订单仓储
+│   │   ├── events/
+│   │   │   └── order_event.go          # 订单事件
+│   │   └── service/
+│   │       └── order_service.go        # 订单服务
+│   ├── payment/                       # 支付模块
+│   │   ├── api/
+│   │   │   ├── dto/
+│   │   │   │   └── payment_dto.go      # 支付DTO
+│   │   │   ├── handlers/
+│   │   │   │   └── payment_handler.go # 支付处理器
+│   │   │   └── routes/
+│   │   │       └── payment_routes.go   # 支付路由
+│   │   ├── domain/
+│   │   │   ├── models/
+│   │   │   │   └── payment.go         # 支付模型
+│   │   │   └── repositories/
+│   │   │       ├── payment_method_repo.go # 支付方式仓储
+│   │   │       ├── payment_repo.go     # 支付仓储
+│   │   │       └── refund_repo.go      # 退款仓储
+│   │   ├── events/
+│   │   │   └── payment_event.go        # 支付事件
+│   │   └── service/
+│   │       └── payment_service.go      # 支付服务
+│   ├── pkg/                           # 内部公共包
+│   │   ├── config/                    # 配置管理
+│   │   │   └── config.go              # 配置实现
+│   │   ├── errcode/                   # 错误码
+│   │   │   └── errcode.go             # 错误码定义
+│   │   ├── logger/                    # 日志工具
+│   │   │   └── logger.go              # 日志实现
+│   │   ├── middleware/                # 中间件
+│   │   │   ├── errorhandler.go        # 错误处理中间件
+│   │   │   ├── jwtauth.go             # JWT 认证中间件
+│   │   │   └── rbac.go                # RBAC 权限中间件
+│   │   ├── query/                     # 查询工具
+│   │   │   └── query.go               # 查询实现
+│   │   ├── response/                  # 统一响应
+│   │   │   └── response.go            # 响应实现
+│   │   └── utils/                     # 工具函数
+│   │       ├── cryptopwd.go           # 密码加密
+│   │       ├── parseIntParam.go       # 参数解析
+│   │       └── timestamp.go           # 时间戳工具
+│   ├── repository/                    # 仓储实现层
+│   │   └── db.go                      # 数据库连接
+│   └── user/                          # 用户模块
+│       ├── api/
+│       │   ├── dto/
+│       │   │   ├── permission_dto.go  # 权限DTO
+│       │   │   ├── userIdentity_dto.go # 用户身份DTO
+│       │   │   ├── userInfo_dto.go     # 用户信息DTO
+│       │   │   └── user_dto.go         # 用户DTO
+│       │   ├── handlers/
+│       │   │   ├── auth_handler.go     # 认证处理器
+│       │   │   ├── permission_handler.go # 权限处理器
+│       │   │   ├── role_handler.go     # 角色处理器
+│       │   │   └── user_handler.go     # 用户处理器
+│       │   └── routes/
+│       │       ├── auth_routes.go      # 认证路由
+│       │       ├── permission_routes.go # 权限路由
+│       │       ├── role_routes.go      # 角色路由
+│       │       └── user_routes.go      # 用户路由
+│       ├── domain/
+│       │   ├── auth/
+│       │   │   └── provider.go        # 认证提供商
+│       │   ├── models/
+│       │   │   ├── auth_token.go      # 认证令牌模型
+│       │   │   ├── permission.go       # 权限模型
+│       │   │   ├── role.go             # 角色模型
+│       │   │   ├── user.go             # 用户模型
+│       │   │   ├── user_identity.go    # 用户身份模型
+│       │   │   └── user_info.go        # 用户信息模型
+│       │   └── repositories/
+│       │       ├── authToken_repo.go   # 认证令牌仓储
+│       │       ├── permission_repo.go  # 权限仓储
+│       │       ├── role_repo.go        # 角色仓储
+│       │       ├── userIdentity_repo.go # 用户身份仓储
+│       │       ├── userInfo_repo.go    # 用户信息仓储
+│       │       └── user_repo.go        # 用户仓储
+│       ├── events/
+│       │   └── user_event.go           # 用户事件
+│       └── service/
+│           ├── auth_service.go         # 认证服务
+│           ├── permission_service.go   # 权限服务
+│           ├── token_service.go        # 令牌服务
+│           └── user_service.go         # 用户服务
 ├── configs/
 │   └── config.yaml                    # 统一配置文件
 ├── docs/
@@ -148,7 +237,7 @@ eshop-monolith/
 │   ├── init.sql                       # 数据库初始化
 │   ├── seed.sql                       # 测试数据
 │   └── permissions.sql                # 权限数据
-├── test/                              # 测试
+├── test/
 │   ├── unit/                          # 单元测试
 │   ├── integration/                   # 集成测试
 │   └── e2e/                           # 端到端测试
@@ -162,13 +251,13 @@ eshop-monolith/
 
 ### 分层职责
 
-| 层级          | 目录          | 职责                                | 依赖                     |
-| ------------- | ------------- | ----------------------------------- | ------------------------ |
-| API 层        | `api/`        | HTTP 请求处理、参数验证、响应格式化 | Service 层               |
-| Service 层    | `service/`    | 业务逻辑编排、事务管理、事件发布    | Domain 层、Repository 层 |
-| Domain 层     | `domain/`     | 领域模型定义、业务规则、仓储接口    | 无（核心层）             |
-| Repository 层 | `repository/` | 数据持久化、SQL 操作                | Domain 层                |
-| EventBus      | `eventbus/`   | 模块间事件通信                      | Service 层               |
+| 层级          | 目录            | 职责                                | 依赖                     |
+| ------------- | --------------- | ----------------------------------- | ------------------------ |
+| API 层        | `*/api/`        | HTTP 请求处理、参数验证、响应格式化 | Service 层               |
+| Service 层    | `*/service/`    | 业务逻辑编排、事务管理、事件发布    | Domain 层、Repository 层 |
+| Domain 层     | `*/domain/`     | 领域模型定义、业务规则、仓储接口    | 无（核心层）             |
+| Repository 层 | `*/repository/` | 数据持久化、SQL 操作                | Domain 层                |
+| EventBus      | `eventbus/`     | 模块间事件通信                      | Service 层               |
 
 ### 依赖方向
 
@@ -189,6 +278,8 @@ API 层 → Service 层 → Domain 层 ← Repository 层
 - `GET /api/v1/orders/:id` 订单详情
 - `PUT /api/v1/orders/:id` 更新订单状态
 - `DELETE /api/v1/orders/:id` 取消订单
+- `POST /api/v1/orders/:id/cancel` 取消订单
+- `PATCH /api/v1/orders/:id/status` 更新订单状态
 
 **核心功能**:
 
@@ -210,6 +301,11 @@ API 层 → Service 层 → Domain 层 ← Repository 层
 - `GET /api/v1/inventories` 库存列表
 - `POST /api/v1/inventories/reserve` 预占库存
 - `POST /api/v1/inventories/release` 释放库存
+- `POST /api/v1/categories` 创建分类
+- `GET /api/v1/categories` 分类列表
+- `GET /api/v1/categories/:id` 分类详情
+- `PUT /api/v1/categories/:id` 更新分类
+- `DELETE /api/v1/categories/:id` 删除分类
 
 **核心功能**:
 
@@ -217,8 +313,57 @@ API 层 → Service 层 → Domain 层 ← Repository 层
 - ✅ 库存管理（预占、释放、调整）
 - ✅ 库存检查
 - ✅ 库存预警
+- ✅ 分类管理（CRUD）
 
 ### 3. 用户模块
+
+**API 端点**:
+
+- `POST /api/v1/users/register` 用户注册
+- `POST /api/v1/users/login` 用户登录
+- `GET /api/v1/users/profile` 获取用户资料
+- `PUT /api/v1/users/profile` 更新用户资料
+- `POST /api/v1/auth/refresh` 刷新 Token
+- `GET /api/v1/roles` 角色管理
+- `GET /api/v1/permissions` 权限管理
+- `POST /api/v1/permissions/check` 权限检查
+- `GET /api/v1/users` 用户列表
+- `GET /api/v1/users/:user_id` 获取用户详情
+- `GET /api/v1/users/:user_id/roles` 获取用户角色
+- `POST /api/v1/users/:user_id/roles` 分配角色给用户
+- `DELETE /api/v1/users/:user_id/roles/:role_id` 从用户移除角色
+
+**核心功能**:
+
+- ✅ 用户注册与登录
+- ✅ JWT 认证
+- ✅ 密码加密（bcrypt）
+- ✅ Token 刷新机制
+- ✅ RBAC 权限控制
+- ✅ 用户信息管理
+
+### 4. 支付模块
+
+**API 端点**:
+
+- `POST /api/v1/payments` 创建支付
+- `GET /api/v1/payments` 支付列表（支持分页、筛选）
+- `GET /api/v1/payments/:id` 支付详情
+- `PATCH /api/v1/payments/:id/status` 更新支付状态
+- `GET /api/v1/orders/payment/:order_id` 根据订单ID获取支付
+- `POST /api/v1/refunds` 创建退款
+- `GET /api/v1/refunds` 退款列表（支持分页、筛选）
+- `PATCH /api/v1/refunds/:id/status` 更新退款状态
+- `GET /api/v1/payment-methods` 获取支付方式列表
+
+**核心功能**:
+
+- ✅ 支付管理（创建、查询、更新状态）
+- ✅ 退款管理（创建、查询、更新状态）
+- ✅ 支付方式管理
+- ✅ 与订单系统集成
+- ✅ 支付状态变更触发订单状态更新
+- ✅ 领域事件发布
 
 **API 端点**:
 
