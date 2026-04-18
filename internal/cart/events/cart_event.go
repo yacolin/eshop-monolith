@@ -1,0 +1,37 @@
+package events
+
+// CartItemAddedEvent 购物车项添加事件
+type CartItemAddedEvent struct {
+	CartID    int64 `json:"cart_id"`
+	UserID    int64 `json:"user_id"`
+	ProductID int64 `json:"product_id"`
+	Quantity  int   `json:"quantity"`
+	Price     int64 `json:"price"`
+}
+
+// CartItemUpdatedEvent 购物车项更新事件
+type CartItemUpdatedEvent struct {
+	CartID    int64 `json:"cart_id"`
+	UserID    int64 `json:"user_id"`
+	ItemID    int64 `json:"item_id"`
+	ProductID int64 `json:"product_id"`
+	OldQuantity int `json:"old_quantity"`
+	NewQuantity int `json:"new_quantity"`
+	Price     int64 `json:"price"`
+}
+
+// CartItemRemovedEvent 购物车项移除事件
+type CartItemRemovedEvent struct {
+	CartID    int64 `json:"cart_id"`
+	UserID    int64 `json:"user_id"`
+	ItemID    int64 `json:"item_id"`
+	ProductID int64 `json:"product_id"`
+	Quantity  int   `json:"quantity"`
+	Price     int64 `json:"price"`
+}
+
+// CartClearedEvent 购物车清空事件
+type CartClearedEvent struct {
+	CartID int64 `json:"cart_id"`
+	UserID int64 `json:"user_id"`
+}

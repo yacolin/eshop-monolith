@@ -13,4 +13,7 @@ func RegisterHandlers(bus *Bus) {
 
 	// 注册支付事件处理器
 	RegisterPaymentHandlers(bus)
+
+	// 注册购物车事件处理器
+	RegisterCartHandlers(bus)
 }

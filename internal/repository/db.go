@@ -14,6 +14,9 @@ import (
 
 	payModels "eshop-monolith/internal/payment/domain/models"
 
+	cartModels "eshop-monolith/internal/cart/domain/models"
+	cartRepos "eshop-monolith/internal/cart/domain/repositories"
+
 	"eshop-monolith/internal/pkg/config"
 	"fmt"
 	"time"
@@ -90,6 +93,9 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&payModels.PaymentMethod{},
 		&payModels.PaymentTransaction{},
 		&payModels.Refund{},
+
+		&cartModels.Cart{},
+		&cartModels.CartItem{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
@@ -122,6 +128,7 @@ type Repositories struct {
 	LoginHistory userRepos.IloginHistoryRepository
 	Role         userRepos.IroleRepository
 	Permission   userRepos.IpermissionRepository
+	Cart         cartRepos.CartRepository
 }
 
 // // NewRepositories 创建仓储集合
@@ -138,5 +145,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		LoginHistory: userRepos.NewLoginHistoryRepository(db),
 		Role:         userRepos.NewRoleRepository(db),
 		Permission:   userRepos.NewPermissionRepository(db),
+		Cart:         cartRepos.NewCartRepository(db),
 	}
 }
