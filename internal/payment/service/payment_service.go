@@ -180,12 +180,12 @@ func (s *PaymentService) ListPayments(ctx context.Context, q dto.PaymentListQuer
 
 	payments, err := s.paymentRepo.ListByQuery(ctx, q, offset, q.Size)
 	if err != nil {
-		return nil, fmt.Errorf("list payments failed: %w", err)
+		return nil, err
 	}
 
 	total, err := s.paymentRepo.CountByQuery(ctx, q)
 	if err != nil {
-		return nil, fmt.Errorf("count payments failed: %w", err)
+		return nil, err
 	}
 
 	paymentResponses := make([]dto.PaymentResponse, len(payments))
@@ -347,17 +347,17 @@ func (s *PaymentService) UpdateRefundStatus(ctx context.Context, id int64, statu
 }
 
 // ListRefunds 获取退款列表
-func (s *PaymentService) ListRefunds(ctx context.Context, q dto.RefundListQuery) (*dto.RefundListResponse, error) {
+func (s *PaymentService) ListRefunds(ctx context.Context, q dto.RefundListQuery) (*dto.RefundListResult, error) {
 	offset := (q.Page - 1) * q.PageSize
 
 	refunds, err := s.refundRepo.ListByQuery(ctx, q, offset, q.PageSize)
 	if err != nil {
-		return nil, fmt.Errorf("list refunds failed: %w", err)
+		return nil, err
 	}
 
 	total, err := s.refundRepo.CountByQuery(ctx, q)
 	if err != nil {
-		return nil, fmt.Errorf("count refunds failed: %w", err)
+		return nil, err
 	}
 
 	refundResponses := make([]dto.RefundResponse, len(refunds))
@@ -374,11 +374,9 @@ func (s *PaymentService) ListRefunds(ctx context.Context, q dto.RefundListQuery)
 		}
 	}
 
-	return &dto.RefundListResponse{
-		Refunds:  refundResponses,
-		Total:    total,
-		Page:     q.Page,
-		PageSize: q.PageSize,
+	return &dto.RefundListResult{
+		List:  refundResponses,
+		Total: total,
 	}, nil
 }
 

@@ -309,7 +309,7 @@ func (h *PaymentHandler) UpdateRefundStatus(c *gin.Context) {
 // @Param page_size query int false "每页数量，默认20"
 // @Param sort_by query string false "排序字段，默认created_at"
 // @Param order query string false "排序方向，默认desc"
-// @Success 200 {object} response.Response{data=dto.RefundListResponse} "成功"
+// @Success 200 {object} response.Response{data=dto.RefundListResult} "成功"
 // @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/refunds [get]
 func (h *PaymentHandler) ListRefunds(c *gin.Context) {

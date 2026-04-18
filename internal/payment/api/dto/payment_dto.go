@@ -92,13 +92,8 @@ type RefundListQuery struct {
 	Order     string `form:"order,default=desc"`
 }
 
-// RefundListResponse 退款列表响应
-type RefundListResponse struct {
-	Refunds  []RefundResponse `json:"refunds"`
-	Total    int64            `json:"total"`
-	Page     int              `json:"page"`
-	PageSize int              `json:"page_size"`
-}
+// RefundListResult 退款列表结果
+type RefundListResult = query.ListResult[RefundResponse]
 
 // PaymentMethodResponse 支付方式响应
 type PaymentMethodResponse struct {

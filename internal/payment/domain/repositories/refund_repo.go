@@ -4,6 +4,7 @@ import (
 	"context"
 	"eshop-monolith/internal/payment/api/dto"
 	"eshop-monolith/internal/payment/domain/models"
+	"eshop-monolith/internal/pkg/query"
 
 	"gorm.io/gorm"
 )
@@ -89,7 +90,9 @@ func (r *refundRepository) UpdateStatus(ctx context.Context, id int64, status st
 func (r *refundRepository) ListByQuery(ctx context.Context, q dto.RefundListQuery, offset, limit int) ([]models.Refund, error) {
 	var refunds []models.Refund
 	db := r.applyQueryConditions(ctx, q)
-	err := db.Offset(offset).Limit(limit).Order(q.SortBy + " " + q.Order).Find(&refunds).Error
+	db = r.applyOrder(db, q)
+
+	err := db.Offset(offset).Limit(limit).Find(&refunds).Error
 	if err != nil {
 		return nil, err
 	}
@@ -131,4 +134,9 @@ func (r *refundRepository) applyQueryConditions(ctx context.Context, q dto.Refun
 		db = db.Where("created_at <= ?", q.EndDate)
 	}
 	return db
+}
+
+// applyOrder 应用排序条件
+func (r *refundRepository) applyOrder(db *gorm.DB, q dto.RefundListQuery) *gorm.DB {
+	return query.ApplyOrder(db, q.SortBy, q.Order, "id asc")
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"eshop-monolith/internal/payment/api/dto"
 	"eshop-monolith/internal/payment/domain/models"
+	"eshop-monolith/internal/pkg/query"
 
 	"gorm.io/gorm"
 )
@@ -94,7 +95,8 @@ func (r *paymentRepository) UpdateStatus(ctx context.Context, id int64, status s
 func (r *paymentRepository) ListByQuery(ctx context.Context, q dto.PaymentListQuery, offset, limit int) ([]models.Payment, error) {
 	var payments []models.Payment
 	db := r.applyQueryConditions(ctx, q)
-	err := db.Preload("Transactions").Offset(offset).Limit(limit).Order(q.SortBy + " " + q.Order).Find(&payments).Error
+	db = r.applyOrder(db, q)
+	err := db.Preload("Transactions").Offset(offset).Limit(limit).Find(&payments).Error
 	if err != nil {
 		return nil, err
 	}
@@ -151,4 +153,8 @@ func (r *paymentRepository) applyQueryConditions(ctx context.Context, q dto.Paym
 		db = db.Where("created_at <= ?", q.EndDate)
 	}
 	return db
+}
+
+func (r *paymentRepository) applyOrder(db *gorm.DB, q dto.PaymentListQuery) *gorm.DB {
+	return query.ApplyOrder(db, q.SortBy, q.Order, "id asc")
 }
