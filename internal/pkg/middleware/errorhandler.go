@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
 )
 
 // genTraceID 生成唯一的跟踪ID
@@ -74,6 +75,12 @@ func handleErrors(c *gin.Context, err error, traceID string) {
 	// 业务错误
 	if bizErr, ok := err.(*errcode.BizError); ok {
 		handleBusinessError(c, bizErr, traceID)
+		return
+	}
+
+	// GORM 记录未找到 → 404 业务错误
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		handleBusinessError(c, errcode.ErrNotFound, traceID)
 		return
 	}
 

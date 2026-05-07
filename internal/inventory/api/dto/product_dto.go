@@ -20,17 +20,17 @@ type ProductListResult = query.ListResult[models.Product]
 
 // CreateProductDTO 创建商品请求
 type CreateProductDTO struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       int64   `json:"price"`
-	SKU         string  `json:"sku"`
-	CategoryIDs []int64 `json:"category_ids"`
+	Name        string  `json:"name" binding:"required,max=255"`
+	Description string  `json:"description" binding:"max=65535"`
+	Price       int64   `json:"price" binding:"required,gt=0"`
+	SKU         string  `json:"sku" binding:"required,max=100"`
+	CategoryIDs []int64 `json:"category_ids" binding:"omitempty,dive,gt=0"`
 }
 
 // UpdateProductDTO 更新商品请求
 type UpdateProductDTO struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       int64   `json:"price"`
-	CategoryIDs []int64 `json:"category_ids"`
+	Name        string  `json:"name" binding:"omitempty,max=255"`
+	Description string  `json:"description" binding:"omitempty,max=65535"`
+	Price       int64   `json:"price" binding:"omitempty,gt=0"`
+	CategoryIDs []int64 `json:"category_ids" binding:"omitempty,dive,gt=0"`
 }

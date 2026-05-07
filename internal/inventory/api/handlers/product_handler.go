@@ -70,7 +70,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 	}
 	product, err := h.productService.GetProductByID(c, id)
 	if err != nil {
-		response.SysError(c, err)
+		c.Error(err)
 		return
 	}
 
@@ -101,7 +101,7 @@ func (h *ProductHandler) ListProductsByCategory(c *gin.Context) {
 
 	products, total, err := h.productService.ListProductsByCategory(c, categoryID, page, pageSize)
 	if err != nil {
-		response.SysError(c, err)
+		c.Error(err)
 		return
 	}
 
