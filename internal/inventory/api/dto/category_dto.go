@@ -19,14 +19,14 @@ type CategoryListResult = query.ListResult[models.Category]
 
 // CreateCategoryDTO 创建分类请求
 type CreateCategoryDTO struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string `json:"name" binding:"required,max=100"`
+	Description string `json:"description" binding:"max=65535"`
 	ParentID    *int64 `json:"parent_id"`
 }
 
 // UpdateCategoryDTO 更新分类请求
 type UpdateCategoryDTO struct {
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
+	Name        *string `json:"name" binding:"omitempty,max=100"`
+	Description *string `json:"description" binding:"omitempty,max=65535"`
 	ParentID    *int64  `json:"parent_id"`
 }

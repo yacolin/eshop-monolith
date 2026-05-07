@@ -28,9 +28,9 @@ type CreateInventoryDTO struct {
 
 // UpdateInventoryDTO 更新库存请求
 type UpdateInventoryDTO struct {
-	Quantity  *int `json:"quantity"`
-	Threshold *int `json:"threshold"`
-	Reserved  *int `json:"reserved"`
+	Quantity  *int `json:"quantity" binding:"omitempty,min=0"`
+	Threshold *int `json:"threshold" binding:"omitempty,min=0"`
+	Reserved  *int `json:"reserved" binding:"omitempty,min=0"`
 }
 
 // ReserveInventoryDTO 预订库存请求
