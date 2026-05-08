@@ -85,6 +85,10 @@ func (h *InventoryHandler) CreateInventory(c *gin.Context) {
 // @Router /dto/api/v1/inventories/{id} [put]
 func (h *InventoryHandler) UpdateInventory(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
 	var req dto.UpdateInventoryDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)

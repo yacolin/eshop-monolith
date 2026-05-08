@@ -146,7 +146,10 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 // @Router /inventory/api/v1/products/{id} [put]
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
-
+	if err != nil {
+		c.Error(err)
+		return
+	}
 	var req dto.UpdateProductDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)

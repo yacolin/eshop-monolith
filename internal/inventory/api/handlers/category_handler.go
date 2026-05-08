@@ -130,6 +130,10 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 // @Router /inventory/api/v1/categories/{id} [get]
 func (h *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
 	models, err := h.categoryService.GetCategoryByID(c, id)
 	if err != nil {
 		c.Error(err)

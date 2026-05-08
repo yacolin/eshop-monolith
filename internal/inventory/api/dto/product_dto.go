@@ -29,8 +29,8 @@ type CreateProductDTO struct {
 
 // UpdateProductDTO 更新商品请求
 type UpdateProductDTO struct {
-	Name        string  `json:"name" binding:"omitempty,max=255"`
-	Description string  `json:"description" binding:"omitempty,max=65535"`
-	Price       int64   `json:"price" binding:"omitempty,gt=0"`
+	Name        *string `json:"name" binding:"omitempty,max=255"`
+	Description *string `json:"description" binding:"omitempty,max=65535"`
+	Price       *int64  `json:"price" binding:"omitempty,gt=0"`
 	CategoryIDs []int64 `json:"category_ids" binding:"omitempty,dive,gt=0"`
 }

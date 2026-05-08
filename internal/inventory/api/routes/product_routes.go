@@ -5,6 +5,7 @@ import (
 	"eshop-monolith/internal/inventory/api/handlers"
 	"eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/internal/inventory/service"
+	"eshop-monolith/internal/pkg/middleware"
 	"eshop-monolith/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,14 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 		products.GET("", productHandler.ListProducts)
 		products.GET("/:id", productHandler.GetProduct)
 		products.GET("/category/:category_id", productHandler.ListProductsByCategory)
-		products.POST("", productHandler.CreateProduct)
+	}
+
+	// 需要认证的产品写操作
+	auth := v1.Group("/products")
+	auth.Use(middleware.JWTAuth())
+	{
+		auth.POST("", productHandler.CreateProduct)
+		auth.PUT("/:id", productHandler.UpdateProduct)
+		auth.DELETE("/:id", productHandler.DeleteProduct)
 	}
 }

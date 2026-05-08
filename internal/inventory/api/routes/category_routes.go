@@ -1,15 +1,17 @@
 package routes
 
 import (
+	"eshop-monolith/internal/eventbus"
 	"eshop-monolith/internal/inventory/api/handlers"
 	"eshop-monolith/internal/inventory/service"
+	"eshop-monolith/internal/pkg/middleware"
 	"eshop-monolith/internal/repository"
 
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories) {
-	categoryService := service.NewCategoryService(repos.Category, nil)
+func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, bus *eventbus.Bus) {
+	categoryService := service.NewCategoryService(repos.Category, bus)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
 	categories := v1.Group("/categories")
@@ -18,8 +20,14 @@ func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories)
 		categories.GET("/root", categoryHandler.ListRootCategories)
 		categories.GET("/:id/children", categoryHandler.ListSubCategories)
 		categories.GET("/:id", categoryHandler.GetCategoryByID)
-		categories.POST("", categoryHandler.CreateCategory)
-		categories.PUT("/:id", categoryHandler.UpdateCategory)
-		categories.DELETE("/:id", categoryHandler.DeleteCategory)
+	}
+
+	// 需要认证的分类写操作
+	auth := v1.Group("/categories")
+	auth.Use(middleware.JWTAuth())
+	{
+		auth.POST("", categoryHandler.CreateCategory)
+		auth.PUT("/:id", categoryHandler.UpdateCategory)
+		auth.DELETE("/:id", categoryHandler.DeleteCategory)
 	}
 }

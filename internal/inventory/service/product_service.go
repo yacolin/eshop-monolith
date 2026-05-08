@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"eshop-monolith/internal/domain/shared"
 	"eshop-monolith/internal/eventbus"
@@ -9,6 +10,7 @@ import (
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/internal/inventory/events"
+	"eshop-monolith/internal/pkg/errcode"
 
 	"gorm.io/gorm"
 )
@@ -31,7 +33,6 @@ func NewProductService(repo repositories.IproductRepository, bus *eventbus.Bus, 
 
 // CreateProduct 创建产品
 func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProductDTO) (*models.Product, error) {
-	// 创建产品
 	newProduct := &models.Product{
 		Name:        req.Name,
 		Description: req.Description,
@@ -39,26 +40,34 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 		SKU:         req.SKU,
 	}
 
-	// 保存产品
-	if err := s.repo.Create(ctx, newProduct); err != nil {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 保存产品
+		if err := tx.Create(newProduct).Error; err != nil {
+			if strings.Contains(err.Error(), "Duplicate entry") {
+				return errcode.ErrDuplicateSKU
+			}
+			return err
+		}
+		// 关联分类
+		for _, categoryID := range req.CategoryIDs {
+			pc := &shared.ProductCategory{
+				ProductID:  newProduct.ID,
+				CategoryID: categoryID,
+			}
+			if err := tx.Create(pc).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	// 关联分类（通过中间表）
-	for _, categoryID := range req.CategoryIDs {
-		pc := &shared.ProductCategory{
-			ProductID:  newProduct.ID,
-			CategoryID: categoryID,
-		}
-		if err := s.db.WithContext(ctx).Create(pc).Error; err != nil {
-			return nil, err
-		}
-	}
-
-	// 发布产品创建事件
+	// 发布产品创建事件（事务外）
 	categoryIDValue := int64(0)
 	if len(req.CategoryIDs) > 0 {
-		categoryIDValue = req.CategoryIDs[0] // 选择第一个分类ID作为事件中的CategoryID
+		categoryIDValue = req.CategoryIDs[0]
 	}
 	s.bus.Publish(events.ProductCreatedEvent{
 		ProductID:  newProduct.ID,
@@ -107,42 +116,52 @@ func (s *ProductService) ListProductsByCategory(ctx context.Context, categoryID 
 
 // UpdateProduct 更新产品
 func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.UpdateProductDTO) (*models.Product, error) {
-	// 获取产品
+	// 获取产品（事务外查询）
 	existingProduct, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	// 更新产品信息
-	existingProduct.Name = req.Name
-	existingProduct.Description = req.Description
-	existingProduct.Price = req.Price
+	if req.Name != nil {
+		existingProduct.Name = *req.Name
+	}
+	if req.Description != nil {
+		existingProduct.Description = *req.Description
+	}
+	if req.Price != nil {
+		existingProduct.Price = *req.Price
+	}
 
-	// 保存产品
-	if err := s.repo.Update(ctx, existingProduct); err != nil {
+	// 事务内保存产品和分类关联
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(existingProduct).Error; err != nil {
+			return err
+		}
+		if req.CategoryIDs != nil {
+			if err := tx.Where("product_id = ?", id).Delete(&shared.ProductCategory{}).Error; err != nil {
+				return err
+			}
+			for _, categoryID := range req.CategoryIDs {
+				pc := &shared.ProductCategory{
+					ProductID:  existingProduct.ID,
+					CategoryID: categoryID,
+				}
+				if err := tx.Create(pc).Error; err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	// 删除现有的分类关联
-	if err := s.db.Where("product_id = ?", id).Delete(&shared.ProductCategory{}).Error; err != nil {
-		return nil, err
-	}
-
-	// 重新关联分类（通过中间表）
-	for _, categoryID := range req.CategoryIDs {
-		pc := &shared.ProductCategory{
-			ProductID:  existingProduct.ID,
-			CategoryID: categoryID,
-		}
-		if err := s.db.WithContext(ctx).Create(pc).Error; err != nil {
-			return nil, err
-		}
-	}
-
-	// 发布产品更新事件
+	// 发布产品更新事件（事务外）
 	categoryIDValue := int64(0)
 	if len(req.CategoryIDs) > 0 {
-		categoryIDValue = req.CategoryIDs[0] // 选择第一个分类ID作为事件中的CategoryID
+		categoryIDValue = req.CategoryIDs[0]
 	}
 	s.bus.Publish(events.ProductUpdatedEvent{
 		ProductID:  existingProduct.ID,
@@ -156,24 +175,27 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 
 // DeleteProduct 删除产品
 func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
-	// 获取产品
+	// 获取产品（事务外查询）
 	existingProduct, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	// 删除产品的分类关联
-	if err := s.db.WithContext(ctx).Where("product_id = ?", id).Delete(&shared.ProductCategory{}).Error; err != nil {
+	// 事务内删除分类关联和产品
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("product_id = ?", id).Delete(&shared.ProductCategory{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&models.Product{}, "id = ?", id).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 
-	// 删除产品
-	if err := s.repo.Delete(ctx, id); err != nil {
-		return err
-	}
-
-	// 发布产品删除事件
-	// 由于产品已删除，我们无法获取其分类关联，所以设置CategoryID为0
+	// 发布产品删除事件（事务外）
 	s.bus.Publish(events.ProductDeletedEvent{
 		ProductID:  existingProduct.ID,
 		Name:       existingProduct.Name,

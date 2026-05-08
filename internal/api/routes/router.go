@@ -46,9 +46,9 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		})
 
 		// 公开路由（按领域拆分注册）
-		invRoutes.RegisterCategoryRoutes(v1, repos)
+		invRoutes.RegisterCategoryRoutes(v1, repos, bus)
 		invRoutes.RegisterProductRoutes(v1, repos, db, bus)
-		invRoutes.RegisterInventoryRoutes(v1, repos)
+		invRoutes.RegisterInventoryRoutes(v1, repos, bus)
 
 		orderRoutes.RegisterOrderRoutes(v1, repos)
 		userRoutes.RegisterUserRoutes(v1, repos)

@@ -155,6 +155,8 @@ func mapBizErrorToStatus(e *errcode.BizError) int {
 		return http.StatusNotFound
 	case errcode.ErrDuplicateOrder:
 		return http.StatusConflict
+	case errcode.ErrDuplicateSKU:
+		return http.StatusConflict
 	case errcode.ErrPaymentFailed:
 		// payment gateway failure — treat as bad gateway
 		return http.StatusBadGateway
