@@ -5,7 +5,7 @@ import (
 
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
-	"eshop-monolith/internal/pkg/query"
+	"eshop-monolith/pkg/query"
 
 	"gorm.io/gorm"
 )

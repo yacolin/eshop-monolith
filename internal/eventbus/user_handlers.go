@@ -1,7 +1,7 @@
 package eventbus
 
 import (
-	"eshop-monolith/internal/pkg/logger"
+	"eshop-monolith/pkg/logger"
 	"eshop-monolith/internal/user/events"
 )
 

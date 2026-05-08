@@ -12,8 +12,8 @@ import (
 	"eshop-monolith/internal/payment/domain/models"
 	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
 	"eshop-monolith/internal/payment/events"
-	"eshop-monolith/internal/pkg/logger"
-	"eshop-monolith/internal/pkg/utils"
+	"eshop-monolith/pkg/logger"
+	"eshop-monolith/pkg/utils"
 )
 
 // PaymentService 支付服务

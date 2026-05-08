@@ -8,7 +8,7 @@ import (
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/internal/inventory/events"
-	"eshop-monolith/internal/pkg/errcode"
+	"eshop-monolith/pkg/errcode"
 )
 
 // CategoryService 分类服务

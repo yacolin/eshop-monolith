@@ -4,7 +4,7 @@ import (
 	"eshop-monolith/internal/eventbus"
 	"eshop-monolith/internal/inventory/api/handlers"
 	"eshop-monolith/internal/inventory/service"
-	"eshop-monolith/internal/pkg/middleware"
+	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/internal/repository"
 
 	"github.com/gin-gonic/gin"

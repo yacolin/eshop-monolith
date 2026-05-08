@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"eshop-monolith/internal/pkg/errcode"
-	"eshop-monolith/internal/pkg/utils"
+	"eshop-monolith/pkg/errcode"
+	"eshop-monolith/pkg/utils"
 	"strings"
 
 	"github.com/gin-gonic/gin"

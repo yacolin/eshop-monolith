@@ -7,7 +7,7 @@ import (
 
 	"eshop-monolith/internal/eventbus"
 	inventoryRepo "eshop-monolith/internal/inventory/domain/repositories"
-	"eshop-monolith/internal/pkg/errcode"
+	"eshop-monolith/pkg/errcode"
 
 	"eshop-monolith/internal/order/api/dto"
 	"eshop-monolith/internal/order/domain/models"

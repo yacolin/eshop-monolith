@@ -9,7 +9,7 @@ import (
 	"eshop-monolith/internal/user/domain/repositories"
 	"time"
 
-	"eshop-monolith/internal/pkg/errcode"
+	"eshop-monolith/pkg/errcode"
 
 	"github.com/golang-jwt/jwt/v5"
 )

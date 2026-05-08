@@ -5,8 +5,8 @@ import (
 
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/service"
-	"eshop-monolith/internal/pkg/response"
-	"eshop-monolith/internal/pkg/utils"
+	"eshop-monolith/pkg/response"
+	"eshop-monolith/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

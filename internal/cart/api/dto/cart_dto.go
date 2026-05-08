@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"eshop-monolith/internal/pkg/query"
+	"eshop-monolith/pkg/query"
 )
 
 // AddToCartDTO 添加商品到购物车请求

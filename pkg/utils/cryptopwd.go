@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"time"
 
-	"eshop-monolith/internal/pkg/config"
+	"eshop-monolith/pkg/config"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"

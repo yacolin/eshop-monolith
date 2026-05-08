@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"eshop-monolith/internal/pkg/errcode"
+	"eshop-monolith/pkg/errcode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"

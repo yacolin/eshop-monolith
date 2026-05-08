@@ -1,4 +1,4 @@
-package routes
+package router
 
 import (
 	cartRoutes "eshop-monolith/internal/cart/api/routes"
@@ -8,9 +8,9 @@ import (
 	userRoutes "eshop-monolith/internal/user/api/routes"
 
 	"eshop-monolith/internal/eventbus"
-	"eshop-monolith/internal/pkg/config"
-	"eshop-monolith/internal/pkg/middleware"
-	"eshop-monolith/internal/pkg/response"
+	"eshop-monolith/pkg/config"
+	"eshop-monolith/pkg/middleware"
+	"eshop-monolith/pkg/response"
 	"eshop-monolith/internal/repository"
 
 	"github.com/gin-gonic/gin"

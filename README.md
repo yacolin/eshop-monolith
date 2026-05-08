@@ -83,62 +83,53 @@ eshop-monolith/
 │   └── server/
 │       └── main.go                    # 应用入口
 ├── internal/
-│   ├── api/                           # API 层
-│   │   └── routes/
-│   │       └── router.go              # 统一路由注册
-│   ├── domain/                        # 领域层
-│   │   └── shared/                    # 共享领域
-│   │       ├── errors.go              # 领域错误
-│   │       ├── models.go              # 共享模型
-│   │       └── value_objects.go       # 值对象
+│   ├── cart/                          # 购物车模块
+│   ├── inventory/                     # 库存模块（产品、分类、库存管理）
+│   ├── order/                         # 订单模块（订单管理、状态流转、事件发布）
+│   ├── payment/                       # 支付模块（支付管理、退款管理、支付方式管理）
+│   ├── user/                          # 用户模块（用户管理、JWT认证、RBAC权限控制）
+│   │   └── middleware/
+│   │       └── rbac.go                # RBAC 权限中间件
+│   ├── router/                        # 统一路由注册
+│   │   └── router.go
+│   ├── repository/                    # 仓储实现层 + DB 初始化
+│   │   └── db.go
 │   ├── eventbus/                      # 内部事件总线
-│   │   ├── bus.go                     # 事件总线实现
-│   │   ├── handlers.go                # 事件处理器聚合
-│   │   ├── inventory_handlers.go      # 库存事件处理器
-│   │   ├── order_handlers.go          # 订单事件处理器
-│   │   ├── payment_handlers.go        # 支付事件处理器
-│   │   ├── cart_handlers.go           # 购物车事件处理器
-│   │   └── user_handlers.go           # 用户事件处理器
-│   ├── inventory/                     # 库存模块（包含产品、分类、库存管理）
-│   ├── order/                         # 订单模块（包含订单管理、状态流转、事件发布）
-│   ├── payment/                       # 支付模块（包含支付管理、退款管理、支付方式管理）
-│   ├── cart/                          # 购物车模块（包含购物车管理、商品管理、数量管理）
-│   ├── user/                          # 用户模块（包含用户管理、JWT认证、RBAC权限控制）
-│   ├── pkg/                           # 内部公共包
-│   │   ├── config/                    # 配置管理
-│   │   │   └── config.go              # 配置实现
-│   │   ├── errcode/                   # 错误码
-│   │   │   └── errcode.go             # 错误码定义
-│   │   ├── logger/                    # 日志工具
-│   │   │   └── logger.go              # 日志实现
-│   │   ├── middleware/                # 中间件
-│   │   │   ├── errorhandler.go        # 错误处理中间件
-│   │   │   ├── jwtauth.go             # JWT 认证中间件
-│   │   │   └── rbac.go                # RBAC 权限中间件
-│   │   ├── query/                     # 查询工具
-│   │   │   └── query.go               # 查询实现
-│   │   ├── response/                  # 统一响应
-│   │   │   └── response.go            # 响应实现
-│   │   └── utils/                     # 工具函数
-│   │       ├── cryptopwd.go           # 密码加密
-│   │       ├── parseIntParam.go       # 参数解析
-│   │       └── timestamp.go           # 时间戳工具
-│   ├── repository/                    # 仓储实现层
-│   │   └── db.go                      # 数据库连接
+│   │   ├── bus.go
+│   │   ├── handlers.go
+│   │   ├── inventory_handlers.go
+│   │   ├── order_handlers.go
+│   │   ├── payment_handlers.go
+│   │   ├── cart_handlers.go
+│   │   └── user_handlers.go
+│   └── domain/
+│       └── shared/                    # 跨模块共享领域模型
+│           ├── errors.go
+│           ├── models.go
+│           └── value_objects.go
+├── pkg/                               # 通用工具包
+│   ├── config/                        # 配置管理（Viper）
+│   ├── errcode/                       # 业务错误码
+│   ├── logger/                        # 结构化日志（Zap）
+│   ├── middleware/                     # HTTP 中间件
+│   │   ├── errorhandler.go            # 全局错误处理
+│   │   └── jwtauth.go                 # JWT 认证
+│   ├── query/                         # 分页/排序查询
+│   ├── response/                      # 统一 JSON 响应
+│   └── utils/                         # 工具函数
+│       ├── cryptopwd.go
+│       ├── parseIntParam.go
+│       └── timestamp.go
 ├── configs/
-│   └── config.yaml                    # 统一配置文件
+│   └── config.yaml                    # 配置文件
 ├── docs/
-│   ├── API.md                         # API 文档
-│   ├── DEPLOYMENT.md                  # 部署指南
-│   └── DEVELOPMENT.md                 # 开发指南
+│   ├── API.md
+│   ├── DEPLOYMENT.md
+│   └── DEVELOPMENT.md
 ├── scripts/
-│   ├── init.sql                       # 数据库初始化
-│   ├── seed.sql                       # 测试数据
-│   └── permissions.sql                # 权限数据
-├── test/
-│   ├── unit/                          # 单元测试
-│   ├── integration/                   # 集成测试
-│   └── e2e/                           # 端到端测试
+│   ├── init.sql
+│   ├── seed.sql
+│   └── permissions.sql
 ├── .gitignore
 ├── go.mod
 ├── go.sum

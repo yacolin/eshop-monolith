@@ -8,9 +8,9 @@ import (
 	"runtime/debug"
 	"time"
 
-	"eshop-monolith/internal/pkg/errcode"
-	"eshop-monolith/internal/pkg/logger"
-	"eshop-monolith/internal/pkg/response"
+	"eshop-monolith/pkg/errcode"
+	"eshop-monolith/pkg/logger"
+	"eshop-monolith/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"

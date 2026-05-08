@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"errors"
-	"eshop-monolith/internal/pkg/response"
+	"eshop-monolith/pkg/response"
 	"eshop-monolith/internal/user/api/dto"
 	"eshop-monolith/internal/user/domain/auth"
 	"eshop-monolith/internal/user/service"

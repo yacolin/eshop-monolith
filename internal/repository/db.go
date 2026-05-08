@@ -17,7 +17,7 @@ import (
 	cartModels "eshop-monolith/internal/cart/domain/models"
 	cartRepos "eshop-monolith/internal/cart/domain/repositories"
 
-	"eshop-monolith/internal/pkg/config"
+	"eshop-monolith/pkg/config"
 	"fmt"
 	"time"
 

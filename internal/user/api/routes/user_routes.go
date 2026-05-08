@@ -1,10 +1,11 @@
 package routes
 
 import (
-	"eshop-monolith/internal/pkg/middleware"
 	"eshop-monolith/internal/repository"
 	"eshop-monolith/internal/user/api/handlers"
+	usermw "eshop-monolith/internal/user/middleware"
 	"eshop-monolith/internal/user/service"
+	"eshop-monolith/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,8 +27,8 @@ func RegisterUserRoutes(v1 *gin.RouterGroup, repos *repository.Repositories) {
 			protected.GET("/:user_id/roles", roleHandler.GetUserRoles)
 		}
 
-		roleConfig := middleware.NewRequireRoleConfig(repos.Role)
-		admin := users.Group("").Use(middleware.JWTAuth(), middleware.RequireMerchant(roleConfig))
+		roleConfig := usermw.NewRequireRoleConfig(repos.Role)
+		admin := users.Group("").Use(middleware.JWTAuth(), usermw.RequireMerchant(roleConfig))
 		{
 			admin.POST("/:user_id/roles", roleHandler.AssignRoleToUser)
 			admin.DELETE("/:user_id/roles/:role_id", roleHandler.RemoveRoleFromUser)

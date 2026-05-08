@@ -2,7 +2,7 @@ package eventbus
 
 import (
 	"eshop-monolith/internal/cart/events"
-	"eshop-monolith/internal/pkg/logger"
+	"eshop-monolith/pkg/logger"
 )
 
 // RegisterCartHandlers 注册购物车事件处理器

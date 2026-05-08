@@ -1,7 +1,7 @@
 package models
 
 import (
-	"eshop-monolith/internal/pkg/utils"
+	"eshop-monolith/pkg/utils"
 	"time"
 
 	"gorm.io/gorm"

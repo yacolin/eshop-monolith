@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"eshop-monolith/internal/api/routes"
-	"eshop-monolith/internal/pkg/config"
-	"eshop-monolith/internal/pkg/logger"
+	"eshop-monolith/internal/router"
+	"eshop-monolith/pkg/config"
+	"eshop-monolith/pkg/logger"
 	"eshop-monolith/internal/repository"
 )
 
@@ -50,7 +50,7 @@ func main() {
 	repos := repository.NewRepositories(db, redisClient)
 
 	// 初始化路由
-	router := routes.SetupRouter(cfg, repos, db)
+	router := router.SetupRouter(cfg, repos, db)
 
 	// 创建HTTP服务器
 	server := &http.Server{

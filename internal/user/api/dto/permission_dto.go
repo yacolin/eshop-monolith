@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"eshop-monolith/internal/pkg/query"
+	"eshop-monolith/pkg/query"
 	"eshop-monolith/internal/user/domain/models"
 )
 

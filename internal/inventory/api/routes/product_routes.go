@@ -5,7 +5,7 @@ import (
 	"eshop-monolith/internal/inventory/api/handlers"
 	"eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/internal/inventory/service"
-	"eshop-monolith/internal/pkg/middleware"
+	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/internal/repository"
 
 	"github.com/gin-gonic/gin"

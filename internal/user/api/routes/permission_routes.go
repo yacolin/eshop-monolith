@@ -3,9 +3,9 @@ package routes
 import (
 	"eshop-monolith/internal/repository"
 	"eshop-monolith/internal/user/api/handlers"
+	usermw "eshop-monolith/internal/user/middleware"
 	"eshop-monolith/internal/user/service"
-
-	"eshop-monolith/internal/pkg/middleware"
+	"eshop-monolith/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -25,8 +25,8 @@ func RegisterPermissionRoutes(v1 *gin.RouterGroup, repos *repository.Repositorie
 			permissions.POST("/check", permissionHandler.CheckPermissions)
 		}
 
-		roleConfig := middleware.NewRequireRoleConfig(repos.Role)
-		admin := permissions.Group("").Use(middleware.JWTAuth(), middleware.RequireAdmin(roleConfig))
+		roleConfig := usermw.NewRequireRoleConfig(repos.Role)
+		admin := permissions.Group("").Use(middleware.JWTAuth(), usermw.RequireAdmin(roleConfig))
 		{
 			admin.POST("", permissionHandler.CreatePermission)
 			admin.PUT("/:id", permissionHandler.UpdatePermission)

@@ -3,8 +3,8 @@ package handlers
 import (
 	"strconv"
 
-	"eshop-monolith/internal/pkg/response"
-	"eshop-monolith/internal/pkg/utils"
+	"eshop-monolith/pkg/response"
+	"eshop-monolith/pkg/utils"
 	"eshop-monolith/internal/user/api/dto"
 	"eshop-monolith/internal/user/service"
 

@@ -5,9 +5,9 @@ import (
 
 	"eshop-monolith/internal/cart/api/dto"
 	"eshop-monolith/internal/cart/service"
-	"eshop-monolith/internal/pkg/errcode"
-	"eshop-monolith/internal/pkg/response"
-	"eshop-monolith/internal/pkg/utils"
+	"eshop-monolith/pkg/errcode"
+	"eshop-monolith/pkg/response"
+	"eshop-monolith/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

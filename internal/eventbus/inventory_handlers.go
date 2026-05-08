@@ -2,7 +2,7 @@ package eventbus
 
 import (
 	"eshop-monolith/internal/inventory/events"
-	"eshop-monolith/internal/pkg/logger"
+	"eshop-monolith/pkg/logger"
 )
 
 // RegisterInventoryHandlers 注册库存事件处理器

@@ -1,7 +1,7 @@
 package query
 
 import (
-	"eshop-monolith/internal/pkg/config"
+	"eshop-monolith/pkg/config"
 
 	"gorm.io/gorm"
 )

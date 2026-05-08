@@ -2,7 +2,7 @@ package dto
 
 import (
 	"eshop-monolith/internal/order/domain/models"
-	"eshop-monolith/internal/pkg/query"
+	"eshop-monolith/pkg/query"
 )
 
 // OrderListQuery 支持通过 query string 进行过滤、排序和分页

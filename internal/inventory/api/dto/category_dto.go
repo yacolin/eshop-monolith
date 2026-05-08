@@ -2,7 +2,7 @@ package dto
 
 import (
 	"eshop-monolith/internal/inventory/domain/models"
-	"eshop-monolith/internal/pkg/query"
+	"eshop-monolith/pkg/query"
 )
 
 // CategoryListQuery 分类列表查询参数

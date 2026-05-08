@@ -1,7 +1,7 @@
 package models
 
 import (
-	"eshop-monolith/internal/pkg/utils"
+	"eshop-monolith/pkg/utils"
 )
 
 // Cart 购物车模型
