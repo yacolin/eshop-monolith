@@ -144,19 +144,3 @@ func SysError(c *gin.Context, err error) {
 	})
 }
 
-func mapBizErrorToStatus(e *errcode.BizError) int {
-	switch e {
-	case errcode.ErrInvalidParams, errcode.ErrPaginationQuery:
-		return http.StatusBadRequest
-	case errcode.ErrUnauthorized:
-		return http.StatusUnauthorized
-	case errcode.ErrProductNotFound, errcode.ErrUserNotFound, errcode.ErrOrderNotFound, errcode.ErrNotFound:
-		return http.StatusNotFound
-	case errcode.ErrDuplicateOrder, errcode.ErrDuplicateSKU:
-		return http.StatusConflict
-	case errcode.ErrPaymentFailed:
-		return http.StatusBadGateway
-	default:
-		return http.StatusBadRequest
-	}
-}

@@ -110,21 +110,20 @@ func handleBusinessError(c *gin.Context, bizErr *errcode.BizError, traceID strin
 	response.BizError(c, bizErr, httpStatus)
 }
 
+// bizErrorStatusMap 业务错误 → HTTP 状态映射表
 // mapBizErrorToStatus 将业务错误码映射为 HTTP 状态码（middleware 层职责）
 func mapBizErrorToStatus(e *errcode.BizError) int {
 	switch e {
-	case errcode.ErrInvalidParams, errcode.ErrPaginationQuery:
-		return http.StatusBadRequest
 	case errcode.ErrUnauthorized:
 		return http.StatusUnauthorized
-	case errcode.ErrProductNotFound, errcode.ErrUserNotFound, errcode.ErrOrderNotFound, errcode.ErrNotFound:
-		return http.StatusNotFound
-	case errcode.ErrDuplicateOrder:
-		return http.StatusConflict
-	case errcode.ErrDuplicateSKU:
-		return http.StatusConflict
+	case errcode.ErrInsufficientPermissions:
+		return http.StatusForbidden
 	case errcode.ErrPaymentFailed:
 		return http.StatusBadGateway
+	case errcode.ErrNotFound, errcode.ErrProductNotFound, errcode.ErrUserNotFound, errcode.ErrOrderNotFound, errcode.ErrPermissionNotFound:
+		return http.StatusNotFound
+	case errcode.ErrDuplicateOrder, errcode.ErrDuplicateSKU:
+		return http.StatusConflict
 	default:
 		return http.StatusBadRequest
 	}
