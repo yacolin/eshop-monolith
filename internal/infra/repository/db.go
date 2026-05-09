@@ -1,20 +1,14 @@
 package repository
 
 import (
-	"eshop-monolith/internal/infra/domain/shared"
+	repoModels "eshop-monolith/internal/infra/repository/models"
 
-	invModels "eshop-monolith/internal/inventory/domain/models"
 	invRepos "eshop-monolith/internal/inventory/domain/repositories"
 
-	userModels "eshop-monolith/internal/user/domain/models"
 	userRepos "eshop-monolith/internal/user/domain/repositories"
 
-	orderModels "eshop-monolith/internal/order/domain/models"
 	orderRepos "eshop-monolith/internal/order/domain/repositories"
 
-	payModels "eshop-monolith/internal/payment/domain/models"
-
-	cartModels "eshop-monolith/internal/cart/domain/models"
 	cartRepos "eshop-monolith/internal/cart/domain/repositories"
 
 	"eshop-monolith/pkg/config"
@@ -72,30 +66,30 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 
 	// 自动迁移表结构
 	if err := db.AutoMigrate(
-		&invModels.Category{},
-		&invModels.Product{},
-		&invModels.Inventory{},
+		&repoModels.CategoryPO{},
+		&repoModels.ProductPO{},
+		&repoModels.InventoryPO{},
 
-		&shared.ProductCategory{},
+		&repoModels.ProductCategoryPO{},
 
-		&orderModels.Order{},
-		&orderModels.OrderItem{},
+		&repoModels.OrderPO{},
+		&repoModels.OrderItemPO{},
 
-		&userModels.User{},
-		&userModels.UserInfo{},
-		&userModels.Permission{},
-		&userModels.Role{},
-		&userModels.UserIdentity{},
-		&userModels.AuthToken{},
-		&userModels.LoginHistory{},
+		&repoModels.UserPO{},
+		&repoModels.UserInfoPO{},
+		&repoModels.PermissionPO{},
+		&repoModels.RolePO{},
+		&repoModels.UserIdentityPO{},
+		&repoModels.AuthTokenPO{},
+		&repoModels.LoginHistoryPO{},
 
-		&payModels.Payment{},
-		&payModels.PaymentMethod{},
-		&payModels.PaymentTransaction{},
-		&payModels.Refund{},
+		&repoModels.PaymentPO{},
+		&repoModels.PaymentMethodPO{},
+		&repoModels.PaymentTransactionPO{},
+		&repoModels.RefundPO{},
 
-		&cartModels.Cart{},
-		&cartModels.CartItem{},
+		&repoModels.CartPO{},
+		&repoModels.CartItemPO{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}

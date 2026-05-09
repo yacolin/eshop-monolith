@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"eshop-monolith/internal/infra/eventbus"
-	inventoryRepo "eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/pkg/errcode"
 
 	"eshop-monolith/internal/order/api/dto"
@@ -17,12 +16,12 @@ import (
 
 type OrderService struct {
 	orderRepo     repositories.IorderRepository
-	inventoryRepo inventoryRepo.IinventoryRepository
+	inventoryRepo repositories.InventoryForOrder
 	bus           *eventbus.Bus
 }
 
 // NewOrderService 创建订单服务
-func NewOrderService(orderRepo repositories.IorderRepository, inventoryRepo inventoryRepo.IinventoryRepository, bus *eventbus.Bus) *OrderService {
+func NewOrderService(orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, bus *eventbus.Bus) *OrderService {
 	return &OrderService{
 		orderRepo:     orderRepo,
 		inventoryRepo: inventoryRepo,

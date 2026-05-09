@@ -1,25 +1,20 @@
 package models
 
-import (
-	"eshop-monolith/pkg/utils"
-
-	"gorm.io/gorm"
-)
+import "eshop-monolith/pkg/utils"
 
 type Role struct {
-	ID          int64  `gorm:"type:int;primaryKey" json:"id"`
-	Name        string `gorm:"type:varchar(50);not null;uniqueIndex" json:"name"`
-	DisplayName string `gorm:"type:varchar(100);not null" json:"display_name"`
-	Description string `gorm:"type:text" json:"description"`
-	Status      int    `gorm:"type:tinyint;default:1" json:"status"`
-	Sort        int    `gorm:"type:int;default:0" json:"sort"`
-	IsSystem    bool   `gorm:"type:tinyint(1);default:0" json:"is_system"`
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	Description string `json:"description"`
+	Status      int    `json:"status"`
+	Sort        int    `json:"sort"`
+	IsSystem    bool   `json:"is_system"`
 
-	CreatedAt utils.Timestamp `json:"created_at" gorm:"type:timestamp;default:CURRENT_TIMESTAMP()"`
-	UpdatedAt utils.Timestamp `json:"updated_at" gorm:"type:timestamp;default:CURRENT_TIMESTAMP();onUpdate:CURRENT_TIMESTAMP()"`
-	DeletedAt gorm.DeletedAt  `gorm:"index" json:"-"`
+	CreatedAt utils.Timestamp `json:"created_at"`
+	UpdatedAt utils.Timestamp `json:"updated_at"`
 
-	Permissions []Permission `gorm:"many2many:role_permissions;foreignKey:ID;joinForeignKey:RoleID;References:ID;joinReferences:PermissionID" json:"permissions,omitempty"`
+	Permissions []Permission `json:"permissions,omitempty"`
 }
 
 func (Role) TableName() string {
@@ -27,14 +22,13 @@ func (Role) TableName() string {
 }
 
 type UserRole struct {
-	ID     int64 `gorm:"type:int;primaryKey" json:"id"`
-	UserID int64 `gorm:"type:int;not null;index:idx_user_role" json:"user_id"`
-	RoleID int64 `gorm:"type:int;not null;index:idx_user_role" json:"role_id"`
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+	RoleID int64 `json:"role_id"`
 
-	CreatedAt utils.Timestamp `json:"created_at" gorm:"type:timestamp;default:CURRENT_TIMESTAMP()"`
-	DeletedAt gorm.DeletedAt  `gorm:"index" json:"-"`
+	CreatedAt utils.Timestamp `json:"created_at"`
 
-	Role *Role `gorm:"foreignKey:RoleID" json:"role,omitempty"`
+	Role *Role `json:"role,omitempty"`
 }
 
 func (UserRole) TableName() string {

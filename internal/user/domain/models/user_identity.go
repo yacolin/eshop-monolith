@@ -1,27 +1,22 @@
 package models
 
-import (
-	"eshop-monolith/pkg/utils"
-
-	"gorm.io/gorm"
-)
+import "eshop-monolith/pkg/utils"
 
 // UserIdentity 用户身份凭证表，支持多种登录方式（密码、微信、手机、邮箱等）
 type UserIdentity struct {
-	ID         int64  `json:"id" gorm:"primaryKey;autoIncrement"`
-	UserID     int64  `gorm:"not null;index" json:"user_id"`
-	Provider   string `gorm:"type:varchar(50);not null;index:idx_provider_identifier,unique" json:"provider"`    // 登录方式：password, wechat, phone, email, github等
-	Identifier string `gorm:"type:varchar(255);not null;index:idx_provider_identifier,unique" json:"identifier"` // 唯一标识：用户名、openid、手机号、邮箱等
-	Credential string `gorm:"type:text" json:"-"`                                                                // 凭证：bcrypt密码hash、加密的session_key等
-	Verified   bool   `gorm:"default:false" json:"verified"`                                                     // 是否已验证（手机/邮箱）
-	Meta       string `gorm:"type:json" json:"meta,omitempty"`                                                   // 额外元数据：unionid、session_key_iv、source等（JSON格式）
+	ID         int64  `json:"id"`
+	UserID     int64  `json:"user_id"`
+	Provider   string `json:"provider"`    // 登录方式：password, wechat, phone, email, github等
+	Identifier string `json:"identifier"` // 唯一标识：用户名、openid、手机号、邮箱等
+	Credential string `json:"-"`                                                                // 凭证：bcrypt密码hash、加密的session_key等
+	Verified   bool   `json:"verified"`      // 是否已验证（手机/邮箱）
+	Meta       string `json:"meta,omitempty"` // 额外元数据：unionid、session_key_iv、source等（JSON格式）
 
-	CreatedAt utils.Timestamp `json:"created_at" gorm:"type:timestamp;default:CURRENT_TIMESTAMP()"`
-	UpdatedAt utils.Timestamp `json:"updated_at" gorm:"type:timestamp;default:CURRENT_TIMESTAMP();onUpdate:CURRENT_TIMESTAMP()"`
-	DeletedAt gorm.DeletedAt  `gorm:"index" json:"-"`
+	CreatedAt utils.Timestamp `json:"created_at"`
+	UpdatedAt utils.Timestamp `json:"updated_at"`
 
 	// 关联
-	User *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	User *User `json:"user,omitempty"`
 }
 
 func (UserIdentity) TableName() string {

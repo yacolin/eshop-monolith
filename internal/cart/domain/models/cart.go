@@ -1,17 +1,15 @@
 package models
 
-import (
-	"eshop-monolith/pkg/utils"
-)
+import "eshop-monolith/pkg/utils"
 
 // Cart 购物车模型
 type Cart struct {
-	ID        int64     `json:"id" gorm:"primaryKey;autoIncrement"`
-	UserID    int64     `json:"user_id" gorm:"index;not null"`
-	SessionID string    `json:"session_id" gorm:"type:varchar(255);index"`
-	Items     []CartItem `json:"items" gorm:"foreignKey:CartID"`
-	CreatedAt utils.Timestamp `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt utils.Timestamp `json:"updated_at" gorm:"autoUpdateTime"`
+	ID        int64      `json:"id"`
+	UserID    int64      `json:"user_id"`
+	SessionID string     `json:"session_id"`
+	Items     []CartItem `json:"items"`
+	CreatedAt utils.Timestamp `json:"created_at"`
+	UpdatedAt utils.Timestamp `json:"updated_at"`
 }
 
 func (Cart) TableName() string {
@@ -20,14 +18,14 @@ func (Cart) TableName() string {
 
 // CartItem 购物车项模型
 type CartItem struct {
-	ID        int64     `json:"id" gorm:"primaryKey;autoIncrement"`
-	CartID    int64     `json:"cart_id" gorm:"index;not null"`
-	ProductID int64     `json:"product_id" gorm:"index;not null"`
-	Quantity  int       `json:"quantity" gorm:"not null;default:1"`
-	Price     int64     `json:"price" gorm:"not null"` // 商品单价，单位：分
-	SKU       string    `json:"sku" gorm:"type:varchar(100)"` // 商品SKU
-	CreatedAt utils.Timestamp `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt utils.Timestamp `json:"updated_at" gorm:"autoUpdateTime"`
+	ID        int64     `json:"id"`
+	CartID    int64     `json:"cart_id"`
+	ProductID int64     `json:"product_id"`
+	Quantity  int       `json:"quantity"`
+	Price     int64     `json:"price"` // 商品单价，单位：分
+	SKU       string    `json:"sku"`   // 商品SKU
+	CreatedAt utils.Timestamp `json:"created_at"`
+	UpdatedAt utils.Timestamp `json:"updated_at"`
 }
 
 func (CartItem) TableName() string {

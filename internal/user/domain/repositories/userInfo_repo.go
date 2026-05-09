@@ -2,15 +2,16 @@ package repositories
 
 import (
 	"context"
-	"eshop-monolith/internal/user/domain/models"
+	userModels "eshop-monolith/internal/user/domain/models"
+	"eshop-monolith/internal/infra/repository/models"
 
 	"gorm.io/gorm"
 )
 
 type IuserInfoRepository interface {
-	CreateUserInfo(ctx context.Context, userInfo *models.UserInfo) error
-	GetUserInfoByUserID(ctx context.Context, userID int64) (*models.UserInfo, error)
-	UpdateUserInfo(ctx context.Context, userInfo *models.UserInfo) error
+	CreateUserInfo(ctx context.Context, userInfo *userModels.UserInfo) error
+	GetUserInfoByUserID(ctx context.Context, userID int64) (*userModels.UserInfo, error)
+	UpdateUserInfo(ctx context.Context, userInfo *userModels.UserInfo) error
 }
 
 type userInfoRepository struct {
@@ -21,19 +22,25 @@ func NewUserInfoRepository(db *gorm.DB) IuserInfoRepository {
 	return &userInfoRepository{db: db}
 }
 
-func (r *userInfoRepository) CreateUserInfo(ctx context.Context, userInfo *models.UserInfo) error {
-	return r.db.WithContext(ctx).Create(userInfo).Error
+func (r *userInfoRepository) CreateUserInfo(ctx context.Context, userInfo *userModels.UserInfo) error {
+	po := models.UserInfoFromDomain(userInfo)
+	if err := r.db.WithContext(ctx).Create(po).Error; err != nil {
+		return err
+	}
+	userInfo.ID = po.ID
+	return nil
 }
 
-func (r *userInfoRepository) GetUserInfoByUserID(ctx context.Context, userID int64) (*models.UserInfo, error) {
-	var userInfo models.UserInfo
-	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&userInfo).Error
+func (r *userInfoRepository) GetUserInfoByUserID(ctx context.Context, userID int64) (*userModels.UserInfo, error) {
+	var po models.UserInfoPO
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&po).Error
 	if err != nil {
 		return nil, err
 	}
-	return &userInfo, nil
+	return po.ToDomain(), nil
 }
 
-func (r *userInfoRepository) UpdateUserInfo(ctx context.Context, userInfo *models.UserInfo) error {
-	return r.db.WithContext(ctx).Save(userInfo).Error
+func (r *userInfoRepository) UpdateUserInfo(ctx context.Context, userInfo *userModels.UserInfo) error {
+	po := models.UserInfoFromDomain(userInfo)
+	return r.db.WithContext(ctx).Save(po).Error
 }

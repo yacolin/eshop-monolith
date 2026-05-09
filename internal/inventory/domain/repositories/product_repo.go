@@ -3,8 +3,9 @@ package repositories
 import (
 	"context"
 
+	"eshop-monolith/internal/infra/repository/models"
 	"eshop-monolith/internal/inventory/api/dto"
-	"eshop-monolith/internal/inventory/domain/models"
+	invModels "eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/pkg/query"
 
 	"gorm.io/gorm"
@@ -13,22 +14,22 @@ import (
 // Repository 产品仓储接口
 type IproductRepository interface {
 	// Create 创建产品
-	Create(ctx context.Context, product *models.Product) error
+	Create(ctx context.Context, product *invModels.Product) error
 	// FindByID 根据ID查询产品
-	FindByID(ctx context.Context, id int64) (*models.Product, error)
+	FindByID(ctx context.Context, id int64) (*invModels.Product, error)
 	// FindBySKU 根据SKU查询产品
-	FindBySKU(ctx context.Context, sku string) (*models.Product, error)
+	FindBySKU(ctx context.Context, sku string) (*invModels.Product, error)
 	// ListByCategory 根据分类查询产品
-	ListByCategory(ctx context.Context, categoryID int64, page, pageSize int) ([]models.Product, int64, error)
+	ListByCategory(ctx context.Context, categoryID int64, page, pageSize int) ([]invModels.Product, int64, error)
 	// ListAll 列出所有产品
-	ListAll(ctx context.Context, page, pageSize int) ([]models.Product, int64, error)
+	ListAll(ctx context.Context, page, pageSize int) ([]invModels.Product, int64, error)
 	// Update 更新产品
-	Update(ctx context.Context, product *models.Product) error
+	Update(ctx context.Context, product *invModels.Product) error
 	// Delete 删除产品
 	Delete(ctx context.Context, id int64) error
 
 	// ListProducts 列出产品
-	ListProducts(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]models.Product, error)
+	ListProducts(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]invModels.Product, error)
 	// CountProducts 统计产品数量
 	CountProducts(ctx context.Context, q dto.ProductListQuery) (int64, error)
 }
@@ -44,92 +45,110 @@ func NewProductRepository(db *gorm.DB) IproductRepository {
 }
 
 // Create 创建产品
-func (r *ProductRepository) Create(ctx context.Context, product *models.Product) error {
-	return r.db.WithContext(ctx).Create(product).Error
+func (r *ProductRepository) Create(ctx context.Context, product *invModels.Product) error {
+	po := models.ProductFromDomain(product)
+	if err := r.db.WithContext(ctx).Create(po).Error; err != nil {
+		return err
+	}
+	product.ID = po.ID
+	return nil
 }
 
 // FindByID 根据ID查询产品
-func (r *ProductRepository) FindByID(ctx context.Context, id int64) (*models.Product, error) {
-	var p models.Product
-	err := r.db.WithContext(ctx).First(&p, "id = ?", id).Error
+func (r *ProductRepository) FindByID(ctx context.Context, id int64) (*invModels.Product, error) {
+	var po models.ProductPO
+	err := r.db.WithContext(ctx).First(&po, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
-	return &p, nil
+	return po.ToDomain(), nil
 }
 
 // FindBySKU 根据SKU查询产品
-func (r *ProductRepository) FindBySKU(ctx context.Context, sku string) (*models.Product, error) {
-	var p models.Product
-	err := r.db.WithContext(ctx).First(&p, "sku = ?", sku).Error
+func (r *ProductRepository) FindBySKU(ctx context.Context, sku string) (*invModels.Product, error) {
+	var po models.ProductPO
+	err := r.db.WithContext(ctx).First(&po, "sku = ?", sku).Error
 	if err != nil {
 		return nil, err
 	}
-	return &p, nil
+	return po.ToDomain(), nil
 }
 
 // ListByCategory 根据分类查询产品
-func (r *ProductRepository) ListByCategory(ctx context.Context, categoryID int64, page, pageSize int) ([]models.Product, int64, error) {
-	var products []models.Product
+func (r *ProductRepository) ListByCategory(ctx context.Context, categoryID int64, page, pageSize int) ([]invModels.Product, int64, error) {
+	var pos []models.ProductPO
 	var total int64
 
 	// 计算总数
-	if err := r.db.WithContext(ctx).Model(&models.Product{}).Where("category_id = ?", categoryID).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.ProductPO{}).Where("category_id = ?", categoryID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// 查询数据
 	offset := (page - 1) * pageSize
-	err := r.db.WithContext(ctx).Where("category_id = ?", categoryID).Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&products).Error
+	err := r.db.WithContext(ctx).Where("category_id = ?", categoryID).Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&pos).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
+	products := make([]invModels.Product, len(pos))
+	for i, po := range pos {
+		products[i] = *po.ToDomain()
+	}
 	return products, total, nil
 }
 
 // ListAll 列出所有产品
-func (r *ProductRepository) ListAll(ctx context.Context, page, pageSize int) ([]models.Product, int64, error) {
-	var products []models.Product
+func (r *ProductRepository) ListAll(ctx context.Context, page, pageSize int) ([]invModels.Product, int64, error) {
+	var pos []models.ProductPO
 	var total int64
 
 	// 计算总数
-	if err := r.db.WithContext(ctx).Model(&models.Product{}).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.ProductPO{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// 查询数据
 	offset := (page - 1) * pageSize
-	err := r.db.WithContext(ctx).Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&products).Error
+	err := r.db.WithContext(ctx).Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&pos).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
+	products := make([]invModels.Product, len(pos))
+	for i, po := range pos {
+		products[i] = *po.ToDomain()
+	}
 	return products, total, nil
 }
 
 // Update 更新产品
-func (r *ProductRepository) Update(ctx context.Context, product *models.Product) error {
-	return r.db.WithContext(ctx).Save(product).Error
+func (r *ProductRepository) Update(ctx context.Context, product *invModels.Product) error {
+	po := models.ProductFromDomain(product)
+	return r.db.WithContext(ctx).Save(po).Error
 }
 
 // Delete 删除产品
 func (r *ProductRepository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Delete(&models.Product{}, "id = ?", id).Error
+	return r.db.WithContext(ctx).Delete(&models.ProductPO{}, "id = ?", id).Error
 }
 
 // ListProducts 列出产品（支持查询条件）
-func (r *ProductRepository) ListProducts(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]models.Product, error) {
-	var products []models.Product
+func (r *ProductRepository) ListProducts(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]invModels.Product, error) {
+	var pos []models.ProductPO
 	db := r.applyQueryConditions(ctx, q)
 	db = r.applyOrder(db, q)
 
 	// 执行查询
-	err := db.Offset(offset).Limit(limit).Find(&products).Error
+	err := db.Offset(offset).Limit(limit).Find(&pos).Error
 	if err != nil {
 		return nil, err
 	}
 
+	products := make([]invModels.Product, len(pos))
+	for i, po := range pos {
+		products[i] = *po.ToDomain()
+	}
 	return products, nil
 }
 
@@ -148,7 +167,7 @@ func (r *ProductRepository) CountProducts(ctx context.Context, q dto.ProductList
 
 // applyQueryConditions 应用查询条件（不包含排序）
 func (r *ProductRepository) applyQueryConditions(ctx context.Context, q dto.ProductListQuery) *gorm.DB {
-	db := r.db.WithContext(ctx).Model(&models.Product{})
+	db := r.db.WithContext(ctx).Model(&models.ProductPO{})
 	if q.Name != "" {
 		db = db.Where("name LIKE ?", "%"+q.Name+"%")
 	}

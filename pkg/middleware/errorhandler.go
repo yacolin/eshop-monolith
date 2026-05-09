@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
 	"runtime/debug"
 	"time"
 
@@ -29,16 +30,13 @@ func genTraceID() string {
 // ErrorHandler 全局错误处理中间件
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 生成跟踪ID并设置到上下文和响应头
 		traceID := genTraceID()
 		c.Set("trace_id", traceID)
 		c.Writer.Header().Set("X-Trace-Id", traceID)
-		c.Writer.Header().Set("X-Request-Id", traceID) // 增加Request-ID头
+		c.Writer.Header().Set("X-Request-Id", traceID)
 
-		// 捕获panic
 		defer func() {
 			if rec := recover(); rec != nil {
-				// 构造错误并记录详细日志
 				err := fmt.Errorf("panic recovered: %v", rec)
 				logger.WithRequest(c, "panic recovered",
 					"trace_id", traceID,
@@ -46,17 +44,13 @@ func ErrorHandler() gin.HandlerFunc {
 					"stack", string(debug.Stack()),
 					"method", c.Request.Method,
 					"path", c.Request.URL.Path)
-				// 返回系统错误响应
 				response.SysError(c, err)
-				// 确保请求被中止
 				c.Abort()
 			}
 		}()
 
-		// 继续处理请求
 		c.Next()
 
-		// 处理记录的错误
 		if len(c.Errors) > 0 {
 			handleErrors(c, c.Errors.Last().Err, traceID)
 		}
@@ -65,32 +59,27 @@ func ErrorHandler() gin.HandlerFunc {
 
 // handleErrors 处理不同类型的错误
 func handleErrors(c *gin.Context, err error, traceID string) {
-	// 验证错误
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
 		handleValidationError(c, err, traceID)
 		return
 	}
 
-	// 业务错误
 	if bizErr, ok := err.(*errcode.BizError); ok {
 		handleBusinessError(c, bizErr, traceID)
 		return
 	}
 
-	// GORM 记录未找到 → 404 业务错误
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		handleBusinessError(c, errcode.ErrNotFound, traceID)
 		return
 	}
 
-	// 系统错误
 	handleSystemError(c, err, traceID)
 }
 
 // handleValidationError 处理验证错误
 func handleValidationError(c *gin.Context, err error, traceID string) {
-	// 在开发环境中记录验证错误
 	if gin.Mode() != gin.ReleaseMode {
 		logger.WithRequestWarn(c, "validation error",
 			"trace_id", traceID,
@@ -98,16 +87,13 @@ func handleValidationError(c *gin.Context, err error, traceID string) {
 			"method", c.Request.Method,
 			"path", c.Request.URL.Path)
 	}
-	// 返回422错误
 	response.BindError(c, err)
 }
 
 // handleBusinessError 处理业务错误
 func handleBusinessError(c *gin.Context, bizErr *errcode.BizError, traceID string) {
-	// 根据错误类型记录不同级别的日志
 	logFunc := logger.WithRequest
 	logMsg := "business error"
-
 	if bizErr.Code == errcode.ErrUnauthorized.Code {
 		logMsg = "authentication error"
 	}
@@ -119,19 +105,38 @@ func handleBusinessError(c *gin.Context, bizErr *errcode.BizError, traceID strin
 		"method", c.Request.Method,
 		"path", c.Request.URL.Path)
 
-	// 返回业务错误响应
-	response.BizError(c, bizErr)
+	// middleware 层负责映射 HTTP 状态，业务层不感知 HTTP
+	httpStatus := mapBizErrorToStatus(bizErr)
+	response.BizError(c, bizErr, httpStatus)
+}
+
+// mapBizErrorToStatus 将业务错误码映射为 HTTP 状态码（middleware 层职责）
+func mapBizErrorToStatus(e *errcode.BizError) int {
+	switch e {
+	case errcode.ErrInvalidParams, errcode.ErrPaginationQuery:
+		return http.StatusBadRequest
+	case errcode.ErrUnauthorized:
+		return http.StatusUnauthorized
+	case errcode.ErrProductNotFound, errcode.ErrUserNotFound, errcode.ErrOrderNotFound, errcode.ErrNotFound:
+		return http.StatusNotFound
+	case errcode.ErrDuplicateOrder:
+		return http.StatusConflict
+	case errcode.ErrDuplicateSKU:
+		return http.StatusConflict
+	case errcode.ErrPaymentFailed:
+		return http.StatusBadGateway
+	default:
+		return http.StatusBadRequest
+	}
 }
 
 // handleSystemError 处理系统错误
 func handleSystemError(c *gin.Context, err error, traceID string) {
-	// 记录详细的系统错误日志
 	logger.WithRequest(c, "system error",
 		"trace_id", traceID,
 		"error", err,
 		"method", c.Request.Method,
 		"path", c.Request.URL.Path)
 
-	// 返回500错误
 	response.SysError(c, err)
 }

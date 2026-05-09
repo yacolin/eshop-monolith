@@ -46,15 +46,14 @@ func Success(c *gin.Context, data interface{}) {
 }
 
 // 业务错误响应
-func BizError(c *gin.Context, err *errcode.BizError) {
-	status := mapBizErrorToStatus(err)
+func BizError(c *gin.Context, err *errcode.BizError, httpStatus int) {
 	tid := ""
 	if v, ok := c.Get("trace_id"); ok {
 		if s, sok := v.(string); sok {
 			tid = s
 		}
 	}
-	c.JSON(status, APIResponse{
+	c.JSON(httpStatus, APIResponse{
 		Code:    err.Code,
 		Message: err.Message,
 		TraceID: tid,
@@ -153,12 +152,9 @@ func mapBizErrorToStatus(e *errcode.BizError) int {
 		return http.StatusUnauthorized
 	case errcode.ErrProductNotFound, errcode.ErrUserNotFound, errcode.ErrOrderNotFound, errcode.ErrNotFound:
 		return http.StatusNotFound
-	case errcode.ErrDuplicateOrder:
-		return http.StatusConflict
-	case errcode.ErrDuplicateSKU:
+	case errcode.ErrDuplicateOrder, errcode.ErrDuplicateSKU:
 		return http.StatusConflict
 	case errcode.ErrPaymentFailed:
-		// payment gateway failure — treat as bad gateway
 		return http.StatusBadGateway
 	default:
 		return http.StatusBadRequest

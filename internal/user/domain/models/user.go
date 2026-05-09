@@ -1,20 +1,15 @@
 package models
 
-import (
-	"eshop-monolith/pkg/utils"
-
-	"gorm.io/gorm"
-)
+import "eshop-monolith/pkg/utils"
 
 type User struct {
-	ID     int64 `json:"id" gorm:"primaryKey;autoIncrement"`
-	Status int   `gorm:"type:tinyint;default:1" json:"status"`
+	ID     int64 `json:"id"`
+	Status int   `json:"status"`
 
-	CreatedAt utils.Timestamp `json:"created_at" gorm:"type:timestamp;default:CURRENT_TIMESTAMP()"`
-	UpdatedAt utils.Timestamp `json:"updated_at" gorm:"type:timestamp;default:CURRENT_TIMESTAMP();onUpdate:CURRENT_TIMESTAMP()"`
-	DeletedAt gorm.DeletedAt  `gorm:"index" json:"-"`
+	CreatedAt utils.Timestamp `json:"created_at"`
+	UpdatedAt utils.Timestamp `json:"updated_at"`
 
-	UserInfo *UserInfo `gorm:"foreignKey:UserID" json:"user_info,omitempty"`
+	UserInfo *UserInfo `json:"user_info,omitempty"`
 }
 
 func (User) TableName() string {
