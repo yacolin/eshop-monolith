@@ -29,9 +29,12 @@ func NewProductHandler(productService *service.ProductService) *ProductHandler {
 // @Tags 产品管理
 // @Accept json
 // @Produce json
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页条数" default(10)
+// @Param name query string false "产品名称模糊搜索"
+// @Param sku query string false "SKU精确搜索"
 // @Success 200 {object} response.Response{data=dto.ProductListResult}
-// @Failure 500 {object} response.Response{error=string}
-// @Router /api/products [get]
+// @Router /api/v1/products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
 	var q dto.ProductListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
@@ -39,7 +42,6 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 		return
 	}
 
-	// normalize pagination values (ensure page>=1, 1<=size<=100)
 	(&q).Normalize()
 
 	result, err := h.productService.ListProducts(c, q)
@@ -52,16 +54,14 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 }
 
 // GetProduct 根据ID获取产品
-// @Summary 根据ID获取产品
+// @Summary 获取产品详情
 // @Description 根据产品ID获取产品详情
 // @Tags 产品管理
 // @Accept json
 // @Produce json
 // @Param id path int true "产品ID"
-// @Success 200 {object} response.Response{data=product.Product}
-// @Failure 400 {object} response.Response{error=string}
-// @Failure 500 {object} response.Response{error=string}
-// @Router /api/products/{id} [get]
+// @Success 200 {object} response.Response{data=dto.ProductListResult}
+// @Router /api/v1/products/{id} [get]
 func (h *ProductHandler) GetProduct(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -78,16 +78,16 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 }
 
 // ListProductsByCategory 根据分类获取产品
-// @Summary 根据分类获取产品
+// @Summary 根据分类获取产品列表
 // @Description 根据分类ID获取产品列表
 // @Tags 产品管理
 // @Accept json
 // @Produce json
 // @Param category_id path int true "分类ID"
-// @Success 200 {object} response.Response{data=[]product.Product}
-// @Failure 400 {object} response.Response{error=string}
-// @Failure 500 {object} response.Response{error=string}
-// @Router /api/products/category/{category_id} [get]
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页条数" default(10)
+// @Success 200 {object} response.Response{data=[]models.Product}
+// @Router /api/v1/products/category/{category_id} [get]
 func (h *ProductHandler) ListProductsByCategory(c *gin.Context) {
 	categoryID, err := utils.ParseIntParam(c, "category_id")
 	if err != nil {
@@ -95,7 +95,6 @@ func (h *ProductHandler) ListProductsByCategory(c *gin.Context) {
 		return
 	}
 
-	// 解析分页参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 
@@ -114,12 +113,12 @@ func (h *ProductHandler) ListProductsByCategory(c *gin.Context) {
 // CreateProduct 创建产品
 // @Summary 创建产品
 // @Description 创建一个新的产品
-// @Tags 产品
+// @Tags 产品管理
 // @Accept json
 // @Produce json
 // @Param product body dto.CreateProductDTO true "产品信息"
-// @Success 200 {object} models.Product "成功"
-// @Router /inventory/api/v1/products [post]
+// @Success 200 {object} response.Response{data=models.Product}
+// @Router /api/v1/products [post]
 func (h *ProductHandler) CreateProduct(c *gin.Context) {
 	var req dto.CreateProductDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -137,13 +136,13 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 // UpdateProduct 更新产品
 // @Summary 更新产品
 // @Description 根据ID更新产品信息
-// @Tags 产品
+// @Tags 产品管理
 // @Accept json
 // @Produce json
-// @Param id path string true "产品ID"
+// @Param id path int true "产品ID"
 // @Param product body dto.UpdateProductDTO true "产品信息"
-// @Success 200 {object} models.Product "成功"
-// @Router /inventory/api/v1/products/{id} [put]
+// @Success 200 {object} response.Response{data=models.Product}
+// @Router /api/v1/products/{id} [put]
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -166,11 +165,11 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 // DeleteProduct 删除产品
 // @Summary 删除产品
 // @Description 根据ID删除产品
-// @Tags 产品
+// @Tags 产品管理
 // @Produce json
-// @Param id path string true "产品ID"
-// @Success 200 {object} map[string]string "成功"
-// @Router /inventory/api/v1/products/{id} [delete]
+// @Param id path int true "产品ID"
+// @Success 200 {object} response.Response{data=map[string]string}
+// @Router /api/v1/products/{id} [delete]
 func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {

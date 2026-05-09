@@ -23,13 +23,16 @@ func NewInventoryHandler(inventoryService *service.InventoryService) *InventoryH
 
 // ListInventories 列出所有库存
 // @Summary 列出所有库存
-// @Description 获取所有库存的列表
+// @Description 获取所有库存的列表，支持分页筛选
 // @Tags 库存管理
 // @Accept json
 // @Produce json
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页条数" default(10)
+// @Param product_name query string false "产品名称模糊搜索"
+// @Param sku query string false "SKU精确搜索"
 // @Success 200 {object} response.Response{data=dto.InventoryListResult}
-// @Failure 500 {object} response.Response{error=string}
-// @Router /api/inventories [get]
+// @Router /api/v1/inventories [get]
 func (h *InventoryHandler) ListInventories(c *gin.Context) {
 	var q dto.InventoryListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
@@ -37,7 +40,6 @@ func (h *InventoryHandler) ListInventories(c *gin.Context) {
 		return
 	}
 
-	// normalize pagination values (ensure page>=1, 1<=size<=100)
 	(&q).Normalize()
 
 	result, err := h.inventoryService.ListInventories(c, q)
@@ -52,12 +54,12 @@ func (h *InventoryHandler) ListInventories(c *gin.Context) {
 // CreateInventory 创建库存
 // @Summary 创建库存
 // @Description 创建一个新的库存记录
-// @Tags 库存
+// @Tags 库存管理
 // @Accept json
 // @Produce json
-// @Param dto body dto.CreateInventoryDTO true "库存信息"
-// @Success 200 {object} models.Inventory "成功"
-// @Router /dto/api/v1/inventories [post]
+// @Param inventory body dto.CreateInventoryDTO true "库存信息"
+// @Success 200 {object} response.Response{data=models.Inventory}
+// @Router /api/v1/inventories [post]
 func (h *InventoryHandler) CreateInventory(c *gin.Context) {
 	var req dto.CreateInventoryDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -76,13 +78,13 @@ func (h *InventoryHandler) CreateInventory(c *gin.Context) {
 // UpdateInventory 更新库存
 // @Summary 更新库存
 // @Description 根据ID更新库存信息
-// @Tags 库存
+// @Tags 库存管理
 // @Accept json
 // @Produce json
-// @Param id path string true "库存ID"
-// @Param dto body dto.UpdateInventoryDTO true "库存信息"
-// @Success 200 {object} models.Inventory "成功"
-// @Router /dto/api/v1/inventories/{id} [put]
+// @Param id path int true "库存ID"
+// @Param inventory body dto.UpdateInventoryDTO true "库存信息"
+// @Success 200 {object} response.Response{data=models.Inventory}
+// @Router /api/v1/inventories/{id} [put]
 func (h *InventoryHandler) UpdateInventory(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -106,11 +108,11 @@ func (h *InventoryHandler) UpdateInventory(c *gin.Context) {
 // GetInventoryByProductID 根据产品ID获取库存
 // @Summary 根据产品ID获取库存
 // @Description 根据产品ID获取库存信息
-// @Tags 库存
+// @Tags 库存管理
 // @Produce json
-// @Param productId path string true "产品ID"
-// @Success 200 {object} models.Inventory "成功"
-// @Router /dto/api/v1/inventories/product/{productId} [get]
+// @Param productId path int true "产品ID"
+// @Success 200 {object} response.Response{data=models.Inventory}
+// @Router /api/v1/inventories/product/{productId} [get]
 func (h *InventoryHandler) GetInventoryByProductID(c *gin.Context) {
 	productId, err := utils.ParseIntParam(c, "productId")
 	if err != nil {
@@ -129,12 +131,12 @@ func (h *InventoryHandler) GetInventoryByProductID(c *gin.Context) {
 // ReserveInventory 预订库存
 // @Summary 预订库存
 // @Description 预订指定产品的库存
-// @Tags 库存操作
+// @Tags 库存管理
 // @Accept json
 // @Produce json
 // @Param reserve body dto.ReserveInventoryDTO true "预订信息"
-// @Success 200 {object} map[string]string "成功"
-// @Router /dto/api/v1/inventories/reserve [post]
+// @Success 200 {object} response.Response{data=map[string]string}
+// @Router /api/v1/inventories/reserve [post]
 func (h *InventoryHandler) ReserveInventory(c *gin.Context) {
 	var req dto.ReserveInventoryDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -151,12 +153,12 @@ func (h *InventoryHandler) ReserveInventory(c *gin.Context) {
 // ReleaseInventory 释放库存
 // @Summary 释放库存
 // @Description 释放之前预订的库存
-// @Tags 库存操作
+// @Tags 库存管理
 // @Accept json
 // @Produce json
 // @Param release body dto.ReleaseInventoryDTO true "释放信息"
-// @Success 200 {object} map[string]string "成功"
-// @Router /dto/api/v1/inventories/release [post]
+// @Success 200 {object} response.Response{data=map[string]string}
+// @Router /api/v1/inventories/release [post]
 func (h *InventoryHandler) ReleaseInventory(c *gin.Context) {
 	var req dto.ReleaseInventoryDTO
 	if err := c.ShouldBindJSON(&req); err != nil {

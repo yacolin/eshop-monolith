@@ -33,6 +33,11 @@ type UpdateOrderDTO struct {
 	Status     string   `form:"status"`
 }
 
+// UpdateOrderStatusDTO 更新订单状态请求
+type UpdateOrderStatusDTO struct {
+	Status string `json:"status" binding:"required"`
+}
+
 // CreateOrderItemReq 订单项
 type CreateOrderItemDTO struct {
 	ProductID string `json:"product_id" binding:"required"`
