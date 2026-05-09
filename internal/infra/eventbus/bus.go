@@ -1,7 +1,10 @@
 package eventbus
 
 import (
+	"fmt"
+	"log"
 	"reflect"
+	"runtime/debug"
 	"sync"
 )
 
@@ -28,7 +31,7 @@ func (b *Bus) Subscribe(eventType string, handler EventHandler) {
 	b.handlers[eventType] = append(b.handlers[eventType], handler)
 }
 
-// Publish 发布事件
+// Publish 发布事件（同步执行，每个 handler 独立 recover，单个失败不影响其他 handler）
 func (b *Bus) Publish(event interface{}) {
 	eventType := getEventType(event)
 	b.mu.RLock()
@@ -40,11 +43,47 @@ func (b *Bus) Publish(event interface{}) {
 	}
 
 	for _, handler := range handlers {
-		go handler(event)
+		func(h EventHandler) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("[eventbus] panic in handler for %s: %v\n%s",
+						eventType, r, debug.Stack())
+				}
+			}()
+			h(event)
+		}(handler)
+	}
+}
+
+// PublishAsync 异步发布事件（fire-and-forget，不保证投递）
+func (b *Bus) PublishAsync(event interface{}) {
+	eventType := getEventType(event)
+	b.mu.RLock()
+	handlers, ok := b.handlers[eventType]
+	b.mu.RUnlock()
+
+	if !ok {
+		return
+	}
+
+	for _, handler := range handlers {
+		go func(h EventHandler) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("[eventbus] async panic in handler for %s: %v\n%s",
+						eventType, r, debug.Stack())
+				}
+			}()
+			h(event)
+		}(handler)
 	}
 }
 
 // getEventType 获取事件类型
 func getEventType(event interface{}) string {
-	return reflect.TypeOf(event).String()
+	t := reflect.TypeOf(event)
+	if t == nil {
+		return fmt.Sprintf("%T", event)
+	}
+	return t.String()
 }

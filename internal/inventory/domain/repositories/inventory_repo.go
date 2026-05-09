@@ -111,6 +111,53 @@ func (r *InventoryRepository) ReleaseInventory(ctx context.Context, productID in
 	})
 }
 
+// ReserveWithTx 在已有事务内预占库存（不自行提交/回滚）
+func (r *InventoryRepository) ReserveWithTx(tx *gorm.DB, productID int64, quantity int) error {
+	var po models.InventoryPO
+	if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
+		return err
+	}
+	if po.Quantity-po.Reserved < quantity {
+		return shared.ErrInsufficientInventory
+	}
+	po.Reserved += quantity
+	return tx.Save(&po).Error
+}
+
+// DeductWithTx 在已有事务内扣减库存（不自行提交/回滚）
+func (r *InventoryRepository) DeductWithTx(tx *gorm.DB, productID int64, quantity int) error {
+	var po models.InventoryPO
+	if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
+		return err
+	}
+	if po.Reserved < quantity {
+		return shared.ErrInsufficientInventory
+	}
+	po.Quantity -= quantity
+	po.Reserved -= quantity
+	if po.Quantity <= 0 {
+		po.Status = string(invModels.InventoryStatusOutOfStock)
+	} else if po.Quantity <= po.Threshold {
+		po.Status = string(invModels.InventoryStatusLowStock)
+	} else {
+		po.Status = string(invModels.InventoryStatusInStock)
+	}
+	return tx.Save(&po).Error
+}
+
+// ReleaseWithTx 在已有事务内释放库存（不自行提交/回滚）
+func (r *InventoryRepository) ReleaseWithTx(tx *gorm.DB, productID int64, quantity int) error {
+	var po models.InventoryPO
+	if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
+		return err
+	}
+	if po.Reserved < quantity {
+		return shared.ErrInsufficientInventory
+	}
+	po.Reserved -= quantity
+	return tx.Save(&po).Error
+}
+
 // UpdateInventory 更新库存
 func (r *InventoryRepository) UpdateInventory(ctx context.Context, inv *invModels.Inventory) error {
 	// 更新库存状态

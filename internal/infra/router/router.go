@@ -23,6 +23,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 
 	// 创建事件总线实例
 	bus := eventbus.NewBus()
+	eventbus.RegisterHandlers(bus)
 
 	// 添加全局错误处理中间件
 	router.Use(middleware.ErrorHandler())
@@ -50,7 +51,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		invRoutes.RegisterProductRoutes(v1, repos, db, bus)
 		invRoutes.RegisterInventoryRoutes(v1, repos, bus)
 
-		orderRoutes.RegisterOrderRoutes(v1, repos)
+		orderRoutes.RegisterOrderRoutes(v1, repos, db, bus)
 		userRoutes.RegisterUserRoutes(v1, repos)
 		payRoutes.RegisterPaymentRoutes(v1, repos, bus, db)
 		cartRoutes.RegisterCartRoutes(v1, repos)

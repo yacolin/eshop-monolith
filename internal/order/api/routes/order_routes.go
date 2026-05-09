@@ -1,15 +1,25 @@
 package routes
 
 import (
+	"log"
+
+	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/internal/order/api/handlers"
+	orderRepos "eshop-monolith/internal/order/domain/repositories"
 	"eshop-monolith/internal/order/service"
 	"eshop-monolith/internal/infra/repository"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories) {
-	orderService := service.NewOrderService(repos.Order, repos.Inventory, nil)
+func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) {
+	// InventoryRepository 同时实现了 IinventoryRepository 和 InventoryForOrder
+	invForOrder, ok := repos.Inventory.(orderRepos.InventoryForOrder)
+	if !ok {
+		log.Fatal("Inventory repository does not implement InventoryForOrder interface")
+	}
+	orderService := service.NewOrderService(db, repos.Order, invForOrder, bus)
 	orderHandler := handlers.NewOrderHandler(orderService)
 
 	orders := v1.Group("/orders")

@@ -26,6 +26,11 @@ type IorderRepository interface {
 	// Delete 删除订单
 	Delete(ctx context.Context, id int64) error
 
+	// CreateWithTx 在已有事务内创建订单
+	CreateWithTx(tx *gorm.DB, order *orderModels.Order) error
+	// UpdateStatusWithTx 在已有事务内更新订单状态
+	UpdateStatusWithTx(tx *gorm.DB, id int64, status string) error
+
 	ListByQuery(ctx context.Context, q dto.OrderListQuery, offset, limit int) ([]orderModels.Order, error)
 	CountByQuery(ctx context.Context, q dto.OrderListQuery) (int64, error)
 }
@@ -92,6 +97,21 @@ func (r *OrderRepository) Update(ctx context.Context, order *orderModels.Order) 
 // UpdateStatus 更新订单状态
 func (r *OrderRepository) UpdateStatus(ctx context.Context, id int64, status string) error {
 	return r.db.WithContext(ctx).Model(&models.OrderPO{}).Where("id = ?", id).Update("status", status).Error
+}
+
+// CreateWithTx 在已有事务内创建订单
+func (r *OrderRepository) CreateWithTx(tx *gorm.DB, order *orderModels.Order) error {
+	po := models.OrderFromDomain(order)
+	if err := tx.Create(po).Error; err != nil {
+		return err
+	}
+	order.ID = po.ID
+	return nil
+}
+
+// UpdateStatusWithTx 在已有事务内更新订单状态
+func (r *OrderRepository) UpdateStatusWithTx(tx *gorm.DB, id int64, status string) error {
+	return tx.Model(&models.OrderPO{}).Where("id = ?", id).Update("status", status).Error
 }
 
 // Delete 删除订单

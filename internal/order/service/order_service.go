@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"eshop-monolith/internal/infra/eventbus"
@@ -12,76 +13,78 @@ import (
 	"eshop-monolith/internal/order/domain/models"
 	"eshop-monolith/internal/order/domain/repositories"
 	"eshop-monolith/internal/order/events"
+
+	"gorm.io/gorm"
 )
 
 type OrderService struct {
+	db            *gorm.DB
 	orderRepo     repositories.IorderRepository
 	inventoryRepo repositories.InventoryForOrder
 	bus           *eventbus.Bus
 }
 
 // NewOrderService 创建订单服务
-func NewOrderService(orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, bus *eventbus.Bus) *OrderService {
+func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, bus *eventbus.Bus) *OrderService {
 	return &OrderService{
+		db:            db,
 		orderRepo:     orderRepo,
 		inventoryRepo: inventoryRepo,
 		bus:           bus,
 	}
 }
 
-// CreateOrder 创建订单
+// CreateOrder 创建订单（事务内完成库存预占 + 订单写入）
 func (s *OrderService) CreateOrder(ctx context.Context, req *dto.CreateOrderDTO) (*models.Order, error) {
-	// 计算订单总金额
-	totalAmount := int64(0)
-	var orderItems []models.OrderItem
+	var order *models.Order
 
-	// 预占库存并创建订单项
-	for _, item := range req.Items {
-		// 预占库存
-		if err := s.inventoryRepo.ReserveInventory(ctx, 0, item.Quantity); err != nil {
-			return nil, err
-		}
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		totalAmount := int64(0)
+		var orderItems []models.OrderItem
 
-		// 计算单项金额
-		amount := item.UnitPrice * int64(item.Quantity)
-		totalAmount += amount
-
-		// 创建订单项
-		orderItems = append(orderItems, models.OrderItem{
-			ProductID: item.ProductID,
-			Quantity:  item.Quantity,
-			UnitPrice: item.UnitPrice,
-			Amount:    amount,
-		})
-	}
-
-	// 创建订单
-	order := &models.Order{
-		CustomerID:  req.CustomerID,
-		TotalAmount: totalAmount,
-		Currency:    req.Currency,
-		Status:      models.OrderStatusPending,
-		Items:       orderItems,
-	}
-
-	// 保存订单
-	if err := s.orderRepo.Create(ctx, order); err != nil {
-		// 释放已预占的库存
 		for _, item := range req.Items {
-			s.inventoryRepo.ReleaseInventory(ctx, 0, item.Quantity)
+			pid, err := strconv.ParseInt(item.ProductID, 10, 64)
+			if err != nil {
+				return errcode.ErrInvalidParams
+			}
+			if err := s.inventoryRepo.ReserveWithTx(tx, pid, item.Quantity); err != nil {
+				return err
+			}
+			amount := item.UnitPrice * int64(item.Quantity)
+			totalAmount += amount
+			orderItems = append(orderItems, models.OrderItem{
+				ProductID: item.ProductID,
+				Quantity:  item.Quantity,
+				UnitPrice: item.UnitPrice,
+				Amount:    amount,
+			})
 		}
+
+		order = &models.Order{
+			CustomerID:  req.CustomerID,
+			TotalAmount: totalAmount,
+			Currency:    req.Currency,
+			Status:      models.OrderStatusPending,
+			Items:       orderItems,
+		}
+
+		return s.orderRepo.CreateWithTx(tx, order)
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	// 发布订单创建事件
-	s.bus.Publish(events.OrderCreatedEvent{
-		OrderID:     order.ID,
-		CustomerID:  order.CustomerID,
-		TotalAmount: order.TotalAmount,
-		Currency:    order.Currency,
-		Status:      order.Status,
-		CreatedAt:   order.CreatedAt.ToTime(),
-	})
+	// 事务外发布事件
+	if s.bus != nil {
+		s.bus.Publish(events.OrderCreatedEvent{
+			OrderID:     order.ID,
+			CustomerID:  order.CustomerID,
+			TotalAmount: order.TotalAmount,
+			Currency:    order.Currency,
+			Status:      order.Status,
+			CreatedAt:   order.CreatedAt.ToTime(),
+		})
+	}
 
 	return order, nil
 }
@@ -97,13 +100,11 @@ func (s *OrderService) GetOrder(ctx context.Context, orderID int64) (*models.Ord
 
 // UpdateOrder 更新订单
 func (s *OrderService) UpdateOrder(ctx context.Context, orderID int64, req *dto.UpdateOrderDTO) (*models.Order, error) {
-	// 获取订单
 	order, err := s.orderRepo.FindByID(ctx, orderID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 更新订单信息
 	if req.Status != "" {
 		if err := s.orderRepo.UpdateStatus(ctx, orderID, req.Status); err != nil {
 			return nil, err
@@ -114,45 +115,47 @@ func (s *OrderService) UpdateOrder(ctx context.Context, orderID int64, req *dto.
 	return order, nil
 }
 
-// CancelOrder 取消订单
+// CancelOrder 取消订单（事务内释放库存 + 更新状态）
 func (s *OrderService) CancelOrder(ctx context.Context, orderID int64) error {
-	// 获取订单
 	order, err := s.orderRepo.FindByID(ctx, orderID)
 	if err != nil {
 		return err
 	}
 
-	// 检查订单状态
 	if order.Status != models.OrderStatusPending {
 		return errors.New("only pending orders can be cancelled")
 	}
 
-	// 释放库存
-	for _, item := range order.Items {
-		if err := s.inventoryRepo.ReleaseInventory(ctx, 0, item.Quantity); err != nil {
-			return err
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, item := range order.Items {
+			pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
+			if parseErr != nil {
+				return errcode.ErrInvalidParams
+			}
+			if releaseErr := s.inventoryRepo.ReleaseWithTx(tx, pid, item.Quantity); releaseErr != nil {
+				return releaseErr
+			}
 		}
-	}
-
-	// 更新订单状态
-	if err := s.orderRepo.UpdateStatus(ctx, orderID, models.OrderStatusCancelled); err != nil {
+		return s.orderRepo.UpdateStatusWithTx(tx, orderID, models.OrderStatusCancelled)
+	})
+	if err != nil {
 		return err
 	}
 
-	// 发布订单取消事件
-	s.bus.Publish(events.OrderCancelledEvent{
-		OrderID:     order.ID,
-		CustomerID:  order.CustomerID,
-		TotalAmount: order.TotalAmount,
-		CancelledAt: time.Now(),
-	})
+	if s.bus != nil {
+		s.bus.Publish(events.OrderCancelledEvent{
+			OrderID:     order.ID,
+			CustomerID:  order.CustomerID,
+			TotalAmount: order.TotalAmount,
+			CancelledAt: time.Now(),
+		})
+	}
 
 	return nil
 }
 
-// UpdateOrderStatus 更新订单状态
+// UpdateOrderStatus 更新订单状态（事务内完成库存扣减/释放 + 状态更新）
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, orderID int64, status string) error {
-	// 检查状态是否有效
 	validStatuses := map[string]bool{
 		models.OrderStatusPending:   true,
 		models.OrderStatusPaid:      true,
@@ -160,36 +163,41 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, orderID int64, sta
 		models.OrderStatusDelivered: true,
 		models.OrderStatusCancelled: true,
 	}
-
 	if !validStatuses[status] {
 		return errors.New("invalid order status")
 	}
 
-	// 获取订单
 	order, err := s.orderRepo.FindByID(ctx, orderID)
 	if err != nil {
 		return err
 	}
 
-	// 处理状态转换逻辑
-	if status == models.OrderStatusPaid && order.Status == models.OrderStatusPending {
-		// 支付成功，扣减库存
-		for _, item := range order.Items {
-			if err := s.inventoryRepo.DeductInventory(ctx, 0, item.Quantity); err != nil {
-				return err
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if status == models.OrderStatusPaid && order.Status == models.OrderStatusPending {
+			for _, item := range order.Items {
+				pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
+				if parseErr != nil {
+					return errcode.ErrInvalidParams
+				}
+				if deductErr := s.inventoryRepo.DeductWithTx(tx, pid, item.Quantity); deductErr != nil {
+					return deductErr
+				}
+			}
+		} else if status == models.OrderStatusCancelled && order.Status == models.OrderStatusPending {
+			for _, item := range order.Items {
+				pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
+				if parseErr != nil {
+					return errcode.ErrInvalidParams
+				}
+				if releaseErr := s.inventoryRepo.ReleaseWithTx(tx, pid, item.Quantity); releaseErr != nil {
+					return releaseErr
+				}
 			}
 		}
-	} else if status == models.OrderStatusCancelled && order.Status == models.OrderStatusPending {
-		// 取消订单，释放库存
-		for _, item := range order.Items {
-			if err := s.inventoryRepo.ReleaseInventory(ctx, 0, item.Quantity); err != nil {
-				return err
-			}
-		}
-	}
+		return s.orderRepo.UpdateStatusWithTx(tx, orderID, status)
+	})
 
-	// 更新状态
-	return s.orderRepo.UpdateStatus(ctx, orderID, status)
+	return err
 }
 
 // ListOrders 列出订单
@@ -213,18 +221,15 @@ func (s *OrderService) ListOrders(ctx context.Context, q dto.OrderListQuery) (*d
 
 // DeleteOrder 删除订单
 func (s *OrderService) DeleteOrder(ctx context.Context, orderID int64) error {
-	// 获取订单
 	order, err := s.orderRepo.FindByID(ctx, orderID)
 	if err != nil {
 		return err
 	}
 
-	// 检查订单状态（只有已取消或已完成的订单可以删除）
 	if order.Status != models.OrderStatusCancelled && order.Status != models.OrderStatusDelivered {
 		return errors.New("only cancelled or delivered orders can be deleted")
 	}
 
-	// 删除订单
 	return s.orderRepo.Delete(ctx, orderID)
 }
 
