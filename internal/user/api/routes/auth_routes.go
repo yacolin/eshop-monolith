@@ -10,8 +10,8 @@ import (
 )
 
 func RegisterAuthRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB) {
-	tokenService := service.NewTokenService("your-secret-key", repos.AuthToken, repos.Role)
-	authService := service.NewAuthService(db, repos.User, repos.UserIdentity, repos.AuthToken, repos.LoginHistory, tokenService)
+	tokenService := service.NewTokenService("your-secret-key-change-in-production", repos.AuthToken, repos.Role)
+	authService := service.NewAuthService(db, repos.User, repos.UserIdentity, repos.AuthToken, repos.LoginHistory, repos.Role, tokenService)
 	userService := service.NewUserService(repos.User, repos.UserInfo, repos.AuthToken, repos.LoginHistory, nil)
 	authHandler := handlers.NewAuthHandler(authService, tokenService, userService)
 

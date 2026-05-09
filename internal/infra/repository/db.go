@@ -80,6 +80,8 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&repoModels.PermissionPO{},
 		&repoModels.RolePO{},
 		&repoModels.UserIdentityPO{},
+		&repoModels.UserRolePO{},
+		&repoModels.RolePermissionPO{},
 		&repoModels.AuthTokenPO{},
 		&repoModels.LoginHistoryPO{},
 
