@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"runtime/debug"
 	"sync"
+	"time"
 )
 
 // Bus 事件总线
@@ -31,7 +32,13 @@ func (b *Bus) Subscribe(eventType string, handler EventHandler) {
 	b.handlers[eventType] = append(b.handlers[eventType], handler)
 }
 
-// Publish 发布事件（同步执行，每个 handler 独立 recover，单个失败不影响其他 handler）
+// maxRetries 同步 handler 失败重试次数
+const maxRetries = 2
+
+// retryDelay 重试间隔（指数退避基值）
+const retryDelay = 100 * time.Millisecond
+
+// Publish 发布事件（同步执行，失败自动重试，单个 handler 不影响其他）
 func (b *Bus) Publish(event interface{}) {
 	eventType := getEventType(event)
 	b.mu.RLock()
@@ -43,19 +50,39 @@ func (b *Bus) Publish(event interface{}) {
 	}
 
 	for _, handler := range handlers {
-		func(h EventHandler) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("[eventbus] panic in handler for %s: %v\n%s",
-						eventType, r, debug.Stack())
-				}
-			}()
-			h(event)
-		}(handler)
+		b.publishWithRetry(eventType, handler, event)
 	}
 }
 
-// PublishAsync 异步发布事件（fire-and-forget，不保证投递）
+// publishWithRetry 同步执行 handler，失败时重试
+func (b *Bus) publishWithRetry(eventType string, handler EventHandler, event interface{}) {
+	for i := 0; ; i++ {
+		success := func() bool {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("[eventbus] panic in handler for %s (attempt %d): %v\n%s",
+						eventType, i+1, r, debug.Stack())
+				}
+			}()
+			handler(event)
+			return true
+		}()
+
+		if success {
+			return
+		}
+
+		if i >= maxRetries {
+			log.Printf("[eventbus] handler for %s failed after %d attempts, giving up",
+				eventType, i+1)
+			return
+		}
+
+		time.Sleep(retryDelay * (1 << i))
+	}
+}
+
+// PublishAsync 异步发布事件（goroutine 中执行，含重试）
 func (b *Bus) PublishAsync(event interface{}) {
 	eventType := getEventType(event)
 	b.mu.RLock()
@@ -67,15 +94,7 @@ func (b *Bus) PublishAsync(event interface{}) {
 	}
 
 	for _, handler := range handlers {
-		go func(h EventHandler) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("[eventbus] async panic in handler for %s: %v\n%s",
-						eventType, r, debug.Stack())
-				}
-			}()
-			h(event)
-		}(handler)
+		go b.publishWithRetry(eventType, handler, event)
 	}
 }
 
