@@ -15,7 +15,7 @@
 ## 核心特性
 
 - ✅ **清晰分层架构**: API → Service → Domain → Repository 四层架构
-- ✅ **模块化设计**: 订单、库存、用户三大模块低耦合高内聚
+- ✅ **模块化设计**: 购物车、库存、订单、支付、用户五大模块低耦合高内聚
 - ✅ **统一认证授权**: JWT 认证 + RBAC 权限控制
 - ✅ **本地事务保证**: 基于 MySQL 的 ACID 事务
 - ✅ **幂等性控制**: 基于 Redis 的请求幂等性保证
@@ -38,8 +38,10 @@ Repository 层 → 数据持久化
 
 ### 2. 模块化设计
 
+- **购物车模块**: 购物车管理、商品项增删改查、库存检查
+- **库存模块**: 产品管理、分类管理、库存管理、预占/释放
 - **订单模块**: 订单管理、状态流转、事件发布
-- **库存模块**: 产品管理、库存管理、预占/释放
+- **支付模块**: 支付管理、退款管理、支付方式管理
 - **用户模块**: 用户管理、JWT 认证、RBAC 权限
 
 ### 3. 本地事务保证
@@ -88,26 +90,11 @@ eshop-monolith/
 │   ├── order/                         # 订单模块（订单管理、状态流转、事件发布）
 │   ├── payment/                       # 支付模块（支付管理、退款管理、支付方式管理）
 │   ├── user/                          # 用户模块（用户管理、JWT认证、RBAC权限控制）
-│   │   └── middleware/
-│   │       └── rbac.go                # RBAC 权限中间件
 │   └── infra/                         # 基础设施（非业务模块）
-│       ├── router/                    # 统一路由注册
-│       │   └── router.go
-│       ├── repository/                # 仓储实现层 + DB 初始化
-│       │   └── db.go
+│       ├── domain/
 │       ├── eventbus/                  # 内部事件总线
-│       │   ├── bus.go
-│       │   ├── handlers.go
-│       │   ├── inventory_handlers.go
-│       │   ├── order_handlers.go
-│       │   ├── payment_handlers.go
-│       │   ├── cart_handlers.go
-│       │   └── user_handlers.go
-│       └── domain/
-│           └── shared/                # 跨模块共享领域模型
-│           ├── errors.go
-│           ├── models.go
-│           └── value_objects.go
+│       ├── repository/                # 数据库初始化 + 仓储集合
+│       └── router/                    # 统一路由注册
 ├── pkg/                               # 通用工具包
 │   ├── config/                        # 配置管理（Viper）
 │   ├── errcode/                       # 业务错误码
@@ -687,7 +674,7 @@ go build -ldflags="-s -w" -o app ./cmd/server
 
 1. 创建领域模型：
    ```go
-   // internal/domain/payment/models.go
+   // internal/{module}/domain/models/{model}.go
    type Payment struct {
        ID     string
        Amount int64
@@ -696,7 +683,7 @@ go build -ldflags="-s -w" -o app ./cmd/server
    ```
 2. 定义仓储接口：
    ```go
-   // internal/domain/payment/repository.go
+   // internal/{module}/domain/repositories/{repo}.go
    type PaymentRepository interface {
        Create(ctx context.Context, payment *Payment) error
        FindByID(ctx context.Context, id string) (*Payment, error)
@@ -704,33 +691,34 @@ go build -ldflags="-s -w" -o app ./cmd/server
    ```
 3. 实现仓储：
    ```go
-   // internal/repository/payment_repo.go
+   // internal/{module}/domain/repositories/{repo}.go
    type paymentRepo struct {
        db *gorm.DB
    }
    ```
 4. 创建服务：
    ```go
-   // internal/service/payment_service.go
+   // internal/{module}/service/{service}.go
    type PaymentService struct {
        repo PaymentRepository
    }
    ```
 5. 添加处理器：
    ```go
-   // internal/api/handlers/payment_handler.go
+   // internal/{module}/api/handlers/{handler}.go
    func (h *PaymentHandler) CreatePayment(c *gin.Context) {
        // 处理请求
    }
    ```
 6. 注册路由：
    ```go
-   // internal/api/routes/router.go
-   func SetupRoutes(r *gin.Engine, handlers *Handlers) {
-       paymentGroup := r.Group("/api/v1/payments")
+   // internal/{module}/api/routes/{routes}.go
+   func RegisterPaymentRoutes(r *gin.RouterGroup, repos *repository.Repositories) {
+       paymentGroup := r.Group("/payments")
        paymentGroup.POST("/", handlers.Payment.CreatePayment)
    }
    ```
+7. 在 `internal/infra/router/router.go` 中调用路由注册函数
 
 ### 代码规范
 
@@ -812,14 +800,3 @@ Closes #123
 ## 致谢
 
 感谢所有贡献者的支持！
-
-```
-
-这个 README 完整描述了单体项目的架构、使用方法、API 示例、部署指南等，相比原微服务版本：
-
-1. **简化了架构说明** - 突出分层架构和模块化设计
-2. **移除了分布式特性** - 强调本地事务和内部事件总线
-3. **统一了配置管理** - 单一配置文件
-4. **提供了迁移对比** - 帮助理解两种架构的差异
-5. **增加了更多实用内容** - 性能优化、故障排查、开发指南等
-```
