@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"eshop-monolith/internal/repository"
+	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/internal/user/api/handlers"
 	usermw "eshop-monolith/internal/user/middleware"
 	"eshop-monolith/internal/user/service"

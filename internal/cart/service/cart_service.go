@@ -8,7 +8,7 @@ import (
 	"eshop-monolith/internal/cart/domain/models"
 	"eshop-monolith/internal/cart/domain/repositories"
 	"eshop-monolith/internal/cart/events"
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/eventbus"
 	invService "eshop-monolith/internal/inventory/service"
 
 	"github.com/gin-gonic/gin"

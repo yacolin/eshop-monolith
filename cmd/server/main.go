@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"eshop-monolith/internal/router"
+	"eshop-monolith/internal/infra/router"
 	"eshop-monolith/pkg/config"
 	"eshop-monolith/pkg/logger"
-	"eshop-monolith/internal/repository"
+	"eshop-monolith/internal/infra/repository"
 )
 
 func main() {

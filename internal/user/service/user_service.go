@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/internal/user/api/dto"
 	"eshop-monolith/internal/user/domain/models"

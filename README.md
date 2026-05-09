@@ -90,20 +90,21 @@ eshop-monolith/
 │   ├── user/                          # 用户模块（用户管理、JWT认证、RBAC权限控制）
 │   │   └── middleware/
 │   │       └── rbac.go                # RBAC 权限中间件
-│   ├── router/                        # 统一路由注册
-│   │   └── router.go
-│   ├── repository/                    # 仓储实现层 + DB 初始化
-│   │   └── db.go
-│   ├── eventbus/                      # 内部事件总线
-│   │   ├── bus.go
-│   │   ├── handlers.go
-│   │   ├── inventory_handlers.go
-│   │   ├── order_handlers.go
-│   │   ├── payment_handlers.go
-│   │   ├── cart_handlers.go
-│   │   └── user_handlers.go
-│   └── domain/
-│       └── shared/                    # 跨模块共享领域模型
+│   └── infra/                         # 基础设施（非业务模块）
+│       ├── router/                    # 统一路由注册
+│       │   └── router.go
+│       ├── repository/                # 仓储实现层 + DB 初始化
+│       │   └── db.go
+│       ├── eventbus/                  # 内部事件总线
+│       │   ├── bus.go
+│       │   ├── handlers.go
+│       │   ├── inventory_handlers.go
+│       │   ├── order_handlers.go
+│       │   ├── payment_handlers.go
+│       │   ├── cart_handlers.go
+│       │   └── user_handlers.go
+│       └── domain/
+│           └── shared/                # 跨模块共享领域模型
 │           ├── errors.go
 │           ├── models.go
 │           └── value_objects.go

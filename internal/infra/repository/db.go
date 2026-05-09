@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"eshop-monolith/internal/domain/shared"
+	"eshop-monolith/internal/infra/domain/shared"
 
 	invModels "eshop-monolith/internal/inventory/domain/models"
 	invRepos "eshop-monolith/internal/inventory/domain/repositories"

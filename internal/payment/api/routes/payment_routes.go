@@ -1,11 +1,11 @@
 package routes
 
 import (
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/internal/payment/api/handlers"
 	"eshop-monolith/internal/payment/domain/repositories"
 	"eshop-monolith/internal/payment/service"
-	"eshop-monolith/internal/repository"
+	"eshop-monolith/internal/infra/repository"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

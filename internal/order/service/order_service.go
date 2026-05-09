@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/eventbus"
 	inventoryRepo "eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/pkg/errcode"
 

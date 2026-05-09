@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/domain/repositories"

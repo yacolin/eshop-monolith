@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 
-	"eshop-monolith/internal/domain/shared"
+	"eshop-monolith/internal/infra/domain/shared"
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/pkg/query"

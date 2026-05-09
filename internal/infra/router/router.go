@@ -7,11 +7,11 @@ import (
 	payRoutes "eshop-monolith/internal/payment/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
 
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/pkg/config"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
-	"eshop-monolith/internal/repository"
+	"eshop-monolith/internal/infra/repository"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

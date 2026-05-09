@@ -3,7 +3,7 @@ package routes
 import (
 	"eshop-monolith/internal/order/api/handlers"
 	"eshop-monolith/internal/order/service"
-	"eshop-monolith/internal/repository"
+	"eshop-monolith/internal/infra/repository"
 
 	"github.com/gin-gonic/gin"
 )

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/internal/order/domain/repositories"
 	"eshop-monolith/internal/payment/api/dto"
 	"eshop-monolith/internal/payment/domain/models"

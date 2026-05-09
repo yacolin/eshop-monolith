@@ -3,9 +3,9 @@ package routes
 import (
 	"eshop-monolith/internal/cart/api/handlers"
 	"eshop-monolith/internal/cart/service"
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/eventbus"
 	invService "eshop-monolith/internal/inventory/service"
-	"eshop-monolith/internal/repository"
+	"eshop-monolith/internal/infra/repository"
 
 	"github.com/gin-gonic/gin"
 )

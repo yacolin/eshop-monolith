@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"eshop-monolith/internal/domain/shared"
-	"eshop-monolith/internal/eventbus"
+	"eshop-monolith/internal/infra/domain/shared"
+	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/domain/repositories"
