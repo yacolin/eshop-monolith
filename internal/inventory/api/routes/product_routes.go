@@ -14,13 +14,14 @@ import (
 
 func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) {
 	productRepo := repositories.NewProductRepository(db)
-	productService := service.NewProductService(productRepo, bus, db)
+	productService := service.NewProductService(productRepo, repos.Inventory, bus, db)
 	productHandler := handlers.NewProductHandler(productService)
 
 	products := v1.Group("/products")
 	{
 		products.GET("", productHandler.ListProducts)
 		products.GET("/:id", productHandler.GetProduct)
+		products.GET("/:id/detail", productHandler.GetProductDetail)
 		products.GET("/category/:category_id", productHandler.ListProductsByCategory)
 	}
 

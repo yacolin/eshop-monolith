@@ -3,6 +3,7 @@ package dto
 import (
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/pkg/query"
+	"eshop-monolith/pkg/utils"
 )
 
 // ProductListQuery 商品列表查询参数
@@ -33,4 +34,19 @@ type UpdateProductDTO struct {
 	Description *string `json:"description" binding:"omitempty,max=65535"`
 	Price       *int64  `json:"price" binding:"omitempty,gt=0"`
 	CategoryIDs []int64 `json:"category_ids" binding:"omitempty,dive,gt=0"`
+}
+
+// ProductDetailDTO 产品详情（聚合产品和库存信息，字段平摊）
+type ProductDetailDTO struct {
+	ID          int64           `json:"id"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Price       int64           `json:"price"`
+	SKU         string          `json:"sku"`
+	Quantity    int             `json:"quantity"`
+	Status      string          `json:"status"`
+	Reserved    int             `json:"reserved"`
+	Threshold   int             `json:"threshold"`
+	CreatedAt   utils.Timestamp `json:"created_at"`
+	UpdatedAt   utils.Timestamp `json:"updated_at"`
 }

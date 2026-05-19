@@ -60,7 +60,7 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "产品ID"
-// @Success 200 {object} response.Response{data=dto.ProductListResult}
+// @Success 200 {object} response.Response{data=models.Product}
 // @Router /api/v1/products/{id} [get]
 func (h *ProductHandler) GetProduct(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
@@ -75,6 +75,31 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 	}
 
 	response.Success(c, product)
+}
+
+// GetProductDetail 获取产品详情（聚合库存信息）
+// @Summary 获取产品详情（含库存）
+// @Description 根据产品ID获取产品详情，包含产品信息和库存信息
+// @Tags 产品管理
+// @Accept json
+// @Produce json
+// @Param id path int true "产品ID"
+// @Success 200 {object} response.Response{data=dto.ProductDetailDTO}
+// @Router /api/v1/products/{id}/detail [get]
+func (h *ProductHandler) GetProductDetail(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	detail, err := h.productService.GetProductWithInventory(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, detail)
 }
 
 // ListProductsByCategory 根据分类获取产品

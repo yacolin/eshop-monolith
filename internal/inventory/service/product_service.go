@@ -17,18 +17,78 @@ import (
 
 // ProductService 产品服务
 type ProductService struct {
-	repo repositories.IproductRepository
-	bus  *eventbus.Bus
-	db   *gorm.DB
+	repo          repositories.IproductRepository
+	inventoryRepo repositories.IinventoryRepository
+	bus           *eventbus.Bus
+	db            *gorm.DB
 }
 
 // NewProductService 创建产品服务
-func NewProductService(repo repositories.IproductRepository, bus *eventbus.Bus, db *gorm.DB) *ProductService {
+func NewProductService(
+	repo repositories.IproductRepository,
+	inventoryRepo repositories.IinventoryRepository,
+	bus *eventbus.Bus,
+	db *gorm.DB,
+) *ProductService {
 	return &ProductService{
-		repo: repo,
-		bus:  bus,
-		db:   db,
+		repo:          repo,
+		inventoryRepo: inventoryRepo,
+		bus:           bus,
+		db:            db,
 	}
+}
+
+// GetProductWithInventory 获取产品详情（聚合库存信息），使用 goroutine + channel 并发查询以降低延迟
+func (s *ProductService) GetProductWithInventory(ctx context.Context, id int64) (*dto.ProductDetailDTO, error) {
+	type prodResult struct {
+		product *models.Product
+		err     error
+	}
+	type invResult struct {
+		inventory *models.Inventory
+		err       error
+	}
+
+	prodCh := make(chan prodResult, 1)
+	invCh := make(chan invResult, 1)
+
+	// 并发查询产品信息
+	go func() {
+		p, err := s.repo.FindByID(ctx, id)
+		prodCh <- prodResult{product: p, err: err}
+	}()
+
+	// 并发查询库存信息
+	go func() {
+		inv, err := s.inventoryRepo.FindInventoryByProductID(ctx, id)
+		invCh <- invResult{inventory: inv, err: err}
+	}()
+
+	// 收集产品结果
+	pr := <-prodCh
+	if pr.err != nil {
+		return nil, pr.err
+	}
+
+	// 收集库存结果（库存不存在时不阻塞流程，库存字段使用零值）
+	ir := <-invCh
+	detail := &dto.ProductDetailDTO{
+		ID:          pr.product.ID,
+		Name:        pr.product.Name,
+		Description: pr.product.Description,
+		Price:       pr.product.Price,
+		SKU:         pr.product.SKU,
+		CreatedAt:   pr.product.CreatedAt,
+		UpdatedAt:   pr.product.UpdatedAt,
+	}
+	if ir.err == nil && ir.inventory != nil {
+		detail.Quantity = ir.inventory.Quantity
+		detail.Status = ir.inventory.Status
+		detail.Reserved = ir.inventory.Reserved
+		detail.Threshold = ir.inventory.Threshold
+	}
+
+	return detail, nil
 }
 
 // CreateProduct 创建产品
