@@ -27,7 +27,7 @@ func NewCartHandler(cartService *service.CartService) *CartHandler {
 // GetCart 获取购物车
 // @Summary 获取购物车
 // @Description 根据用户ID或会话ID获取购物车详情
-// @Tags 购物车
+// @Tags carts
 // @Accept json
 // @Produce json
 // @Param user_id query int64 false "用户ID"
@@ -58,7 +58,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 // AddToCart 添加商品到购物车
 // @Summary 添加商品到购物车
 // @Description 将商品添加到购物车，支持指定数量和SKU
-// @Tags 购物车
+// @Tags carts
 // @Accept json
 // @Produce json
 // @Param user_id query int64 false "用户ID"
@@ -96,7 +96,7 @@ func (h *CartHandler) AddToCart(c *gin.Context) {
 // UpdateCartItem 更新购物车项
 // @Summary 更新购物车项
 // @Description 更新购物车项的数量
-// @Tags 购物车
+// @Tags carts
 // @Accept json
 // @Produce json
 // @Param user_id query int64 false "用户ID"
@@ -141,7 +141,7 @@ func (h *CartHandler) UpdateCartItem(c *gin.Context) {
 // RemoveCartItem 删除购物车项
 // @Summary 删除购物车项
 // @Description 从购物车中删除指定的商品
-// @Tags 购物车
+// @Tags carts
 // @Accept json
 // @Produce json
 // @Param user_id query int64 false "用户ID"
@@ -179,7 +179,7 @@ func (h *CartHandler) RemoveCartItem(c *gin.Context) {
 // ClearCart 清空购物车
 // @Summary 清空购物车
 // @Description 清空购物车中的所有商品
-// @Tags 购物车
+// @Tags carts
 // @Accept json
 // @Produce json
 // @Param user_id query int64 false "用户ID"

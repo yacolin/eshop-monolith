@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"errors"
-	"eshop-monolith/pkg/response"
 	"eshop-monolith/internal/user/api/dto"
 	"eshop-monolith/internal/user/domain/auth"
 	"eshop-monolith/internal/user/service"
+	"eshop-monolith/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,7 +28,7 @@ func NewAuthHandler(authService *service.AuthService, tokenService *service.Toke
 
 // @Summary 密码登录
 // @Description 使用用户名和密码登录
-// @Tags 认证
+// @Tags auths
 // @Accept json
 // @Produce json
 // @Param request body dto.PasswordLoginRequest true "登录参数"
@@ -79,7 +79,7 @@ func (h *AuthHandler) LoginByPassword(c *gin.Context) {
 
 // @Summary 微信登录
 // @Description 使用微信code登录
-// @Tags 认证
+// @Tags auths
 // @Accept json
 // @Produce json
 // @Param request body dto.WechatLoginRequest true "登录参数"
@@ -142,7 +142,7 @@ func (h *AuthHandler) LoginByWechat(c *gin.Context) {
 
 // @Summary 手机号登录
 // @Description 使用手机号和验证码登录
-// @Tags 认证
+// @Tags auths
 // @Accept json
 // @Produce json
 // @Param request body dto.PhoneLoginRequest true "登录参数"
@@ -202,7 +202,7 @@ func (h *AuthHandler) LoginByPhone(c *gin.Context) {
 
 // @Summary 用户注册
 // @Description 用户注册
-// @Tags 认证
+// @Tags auths
 // @Accept json
 // @Produce json
 // @Param request body dto.RegisterRequest true "注册参数"
@@ -252,7 +252,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 // @Summary 刷新Token
 // @Description 使用refresh token获取新的access token
-// @Tags 认证
+// @Tags auths
 // @Accept json
 // @Produce json
 // @Param request body dto.RefreshTokenRequest true "刷新参数"
@@ -284,7 +284,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 // @Summary 登出
 // @Description 用户登出，撤销token
-// @Tags 认证
+// @Tags auths
 // @Accept json
 // @Produce json
 // @Success 200 {object} response.Response
@@ -309,7 +309,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 // @Summary 获取当前用户信息
 // @Description 获取当前登录用户信息
-// @Tags 认证
+// @Tags auths
 // @Accept json
 // @Produce json
 // @Success 200 {object} response.Response

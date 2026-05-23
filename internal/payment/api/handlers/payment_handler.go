@@ -26,7 +26,7 @@ func NewPaymentHandler(paymentService *service.PaymentService) *PaymentHandler {
 // CreatePayment 创建支付
 // @Summary 创建支付
 // @Description 创建新的支付记录
-// @Tags 支付
+// @Tags payments
 // @Accept json
 // @Produce json
 // @Param request body dto.CreatePaymentRequest true "创建支付请求"
@@ -63,7 +63,7 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 // GetPayment 获取支付详情
 // @Summary 获取支付详情
 // @Description 根据ID获取支付记录详情
-// @Tags 支付
+// @Tags payments
 // @Accept json
 // @Produce json
 // @Param id path int true "支付ID"
@@ -106,7 +106,7 @@ func (h *PaymentHandler) GetPayment(c *gin.Context) {
 // GetPaymentByOrderID 根据订单ID获取支付
 // @Summary 根据订单ID获取支付
 // @Description 根据订单ID获取支付记录
-// @Tags 支付
+// @Tags payments
 // @Accept json
 // @Produce json
 // @Param order_id path int true "订单ID"
@@ -149,7 +149,7 @@ func (h *PaymentHandler) GetPaymentByOrderID(c *gin.Context) {
 // UpdatePaymentStatus 更新支付状态
 // @Summary 更新支付状态
 // @Description 更新支付记录的状态
-// @Tags 支付
+// @Tags payments
 // @Accept json
 // @Produce json
 // @Param id path int true "支付ID"
@@ -183,7 +183,7 @@ func (h *PaymentHandler) UpdatePaymentStatus(c *gin.Context) {
 // ListPayments 获取支付列表
 // @Summary 获取支付列表
 // @Description 根据查询条件获取支付记录列表
-// @Tags 支付
+// @Tags payments
 // @Accept json
 // @Produce json
 // @Param order_id query int false "订单ID"

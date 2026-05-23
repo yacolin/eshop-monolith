@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"eshop-monolith/internal/user/api/dto"
+	"eshop-monolith/internal/user/service"
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
-	"eshop-monolith/internal/user/api/dto"
-	"eshop-monolith/internal/user/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,7 +28,7 @@ func NewPermissionHandler(
 // CreatePermission 创建权限
 // @Summary 创建权限
 // @Description 创建新权限（需要管理员权限）
-// @Tags 权限管理
+// @Tags permissions
 // @Accept json
 // @Produce json
 // @Param request body dto.CreatePermissionRequest true "权限信息"
@@ -61,7 +61,7 @@ func (h *PermissionHandler) CreatePermission(c *gin.Context) {
 // GetPermission 获取权限详情
 // @Summary 获取权限详情
 // @Description 根据ID获取权限详情
-// @Tags 权限管理
+// @Tags permissions
 // @Accept json
 // @Produce json
 // @Param id path string true "权限ID"
@@ -86,7 +86,7 @@ func (h *PermissionHandler) GetPermission(c *gin.Context) {
 // UpdatePermission 更新权限
 // @Summary 更新权限
 // @Description 更新权限信息（需要管理员权限）
-// @Tags 权限管理
+// @Tags permissions
 // @Accept json
 // @Produce json
 // @Param id path string true "权限ID"
@@ -124,7 +124,7 @@ func (h *PermissionHandler) UpdatePermission(c *gin.Context) {
 // DeletePermission 删除权限
 // @Summary 删除权限
 // @Description 删除权限（需要管理员权限）
-// @Tags 权限管理
+// @Tags permissions
 // @Accept json
 // @Produce json
 // @Param id path string true "权限ID"
@@ -148,7 +148,7 @@ func (h *PermissionHandler) DeletePermission(c *gin.Context) {
 // ListPermissions 获取权限列表
 // @Summary 获取权限列表
 // @Description 获取权限列表，支持分页和筛选
-// @Tags 权限管理
+// @Tags permissions
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)

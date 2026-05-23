@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"eshop-monolith/internal/user/api/dto"
+	"eshop-monolith/internal/user/service"
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
-	"eshop-monolith/internal/user/api/dto"
-	"eshop-monolith/internal/user/service"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +24,7 @@ func NewRoleHandler(permissionSvc service.PermissionService) *RoleHandler {
 // CreateRole 创建角色
 // @Summary 创建角色
 // @Description 创建新角色（需要管理员权限）
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -55,7 +55,7 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 // GetRole 获取角色详情
 // @Summary 获取角色详情
 // @Description 根据ID获取角色详情，包含角色的权限列表
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -85,7 +85,7 @@ func (h *RoleHandler) GetRole(c *gin.Context) {
 // GetRoleByName 根据名称获取角色
 // @Summary 根据名称获取角色
 // @Description 根据角色名称获取角色详情
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Param name path string true "角色名称"
@@ -105,7 +105,7 @@ func (h *RoleHandler) GetRoleByName(c *gin.Context) {
 // UpdateRole 更新角色
 // @Summary 更新角色
 // @Description 更新角色信息（需要管理员权限）。注意：系统内置角色（is_system=true）不能被修改。
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -145,7 +145,7 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 // DeleteRole 删除角色
 // @Summary 删除角色
 // @Description 删除角色（需要管理员权限）。注意：系统内置角色（is_system=true）不能被删除。
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -175,7 +175,7 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 // ListRoles 获取角色列表
 // @Summary 获取角色列表
 // @Description 分页获取角色列表，支持按页码和每页数量查询
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -204,7 +204,7 @@ func (h *RoleHandler) ListRoles(c *gin.Context) {
 // AssignRoleToUser 分配角色给用户
 // @Summary 分配角色给用户
 // @Description 为指定用户分配角色（需要管理员权限）
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -245,7 +245,7 @@ func (h *RoleHandler) AssignRoleToUser(c *gin.Context) {
 // RemoveRoleFromUser 移除用户的角色
 // @Summary 移除用户的角色
 // @Description 移除指定用户的角色（需要管理员权限）
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Param user_id path string true "用户ID"
@@ -276,7 +276,7 @@ func (h *RoleHandler) RemoveRoleFromUser(c *gin.Context) {
 // GetUserRoles 获取用户的角色列表
 // @Summary 获取用户的角色列表
 // @Description 获取指定用户的角色列表
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Param user_id path string true "用户ID"
@@ -301,7 +301,7 @@ func (h *RoleHandler) GetUserRoles(c *gin.Context) {
 // AssignPermissionsToRole 为角色分配权限
 // @Summary 为角色分配权限
 // @Description 为指定角色分配权限（需要管理员权限）
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Param id path string true "角色ID"
@@ -334,7 +334,7 @@ func (h *RoleHandler) AssignPermissionsToRole(c *gin.Context) {
 // RemovePermissionsFromRole 移除角色的权限
 // @Summary 移除角色的权限
 // @Description 移除指定角色的权限（需要管理员权限）
-// @Tags 角色管理
+// @Tags roles
 // @Accept json
 // @Produce json
 // @Param id path string true "角色ID"

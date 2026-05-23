@@ -3,10 +3,10 @@ package handlers
 import (
 	"strconv"
 
-	"eshop-monolith/pkg/response"
-	"eshop-monolith/pkg/utils"
 	"eshop-monolith/internal/user/api/dto"
 	"eshop-monolith/internal/user/service"
+	"eshop-monolith/pkg/response"
+	"eshop-monolith/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +19,14 @@ func NewUserHandler(userSvc *service.UserService) *UserHandler {
 	return &UserHandler{userSvc: userSvc}
 }
 
-// GetProfile 获取用户资料（包含 User 和 UserInfo）
+// GetProfile 获取用户资料
+// @Summary 获取用户资料
+// @Description 获取当前登录用户的完整资料（包含 User 和 UserInfo）
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=models.User}
+// @Router /api/v1/users/profile [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID, err := utils.ParseIntParam(c, "user_id")
 	if err != nil {
@@ -36,6 +43,13 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 }
 
 // GetUserInfo 获取用户详细信息
+// @Summary 获取用户详细信息
+// @Description 获取当前登录用户的详细信息
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=models.UserInfo}
+// @Router /api/v1/users/info [get]
 func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	userID, err := utils.ParseIntParam(c, "user_id")
 	if err != nil {
@@ -51,7 +65,15 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 	response.Success(c, userInfo)
 }
 
-// UpdateUserInfo 更新用户详细信息（Avatar、Nickname 等）
+// UpdateUserInfo 更新用户详细信息
+// @Summary 更新用户详细信息
+// @Description 更新当前登录用户的详细信息（Avatar、Nickname 等）
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body dto.UpdateUserInfoRequest true "用户信息"
+// @Success 200 {object} response.Response{data=models.UserInfo}
+// @Router /api/v1/users/info [put]
 func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	userID, err := utils.ParseIntParam(c, "user_id")
 	if err != nil {
@@ -73,7 +95,15 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 	response.Success(c, userInfo)
 }
 
-// GetByID 根据ID获取用户信息（管理员接口）
+// GetByID 根据ID获取用户信息
+// @Summary 根据ID获取用户
+// @Description 根据用户ID获取用户信息（管理员接口）
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user_id path int true "用户ID"
+// @Success 200 {object} response.Response{data=models.User}
+// @Router /api/v1/users/{user_id} [get]
 func (h *UserHandler) GetByID(c *gin.Context) {
 	userID, err := utils.ParseIntParam(c, "user_id")
 	if err != nil {

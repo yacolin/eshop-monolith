@@ -26,7 +26,7 @@ func NewOrderHandler(orderService *service.OrderService) *OrderHandler {
 // ListOrders 列出所有订单
 // @Summary 列出所有订单
 // @Description 获取所有订单的列表，支持分页筛选
-// @Tags 订单管理
+// @Tags orders
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
@@ -57,7 +57,7 @@ func (h *OrderHandler) ListOrders(c *gin.Context) {
 // GetOrder 根据ID获取订单
 // @Summary 获取订单详情
 // @Description 根据订单ID获取订单详情
-// @Tags 订单管理
+// @Tags orders
 // @Accept json
 // @Produce json
 // @Param id path int true "订单ID"
@@ -82,7 +82,7 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 // CreateOrder 创建订单
 // @Summary 创建订单
 // @Description 创建一个新的订单
-// @Tags 订单管理
+// @Tags orders
 // @Accept json
 // @Produce json
 // @Param order body dto.CreateOrderDTO true "订单信息"
@@ -107,7 +107,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 // UpdateOrder 更新订单
 // @Summary 更新订单
 // @Description 根据ID更新订单信息
-// @Tags 订单管理
+// @Tags orders
 // @Accept json
 // @Produce json
 // @Param id path int true "订单ID"
@@ -139,7 +139,7 @@ func (h *OrderHandler) UpdateOrder(c *gin.Context) {
 // CancelOrder 取消订单
 // @Summary 取消订单
 // @Description 取消指定订单
-// @Tags 订单管理
+// @Tags orders
 // @Produce json
 // @Param id path int true "订单ID"
 // @Success 200 {object} response.Response{data=map[string]string}
@@ -162,7 +162,7 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 // UpdateOrderStatus 更新订单状态
 // @Summary 更新订单状态
 // @Description 更新指定订单的状态
-// @Tags 订单管理
+// @Tags orders
 // @Accept json
 // @Produce json
 // @Param id path int true "订单ID"
@@ -193,7 +193,7 @@ func (h *OrderHandler) UpdateOrderStatus(c *gin.Context) {
 // DeleteOrder 删除订单
 // @Summary 删除订单
 // @Description 根据ID删除订单
-// @Tags 订单管理
+// @Tags orders
 // @Produce json
 // @Param id path int true "订单ID"
 // @Success 200 {object} response.Response{data=map[string]string}
@@ -216,7 +216,7 @@ func (h *OrderHandler) DeleteOrder(c *gin.Context) {
 // GetOrdersByUserID 根据用户ID获取订单列表
 // @Summary 根据用户ID获取订单列表
 // @Description 根据用户ID获取订单列表，支持分页
-// @Tags 订单管理
+// @Tags orders
 // @Accept json
 // @Produce json
 // @Param user_id path int true "用户ID"

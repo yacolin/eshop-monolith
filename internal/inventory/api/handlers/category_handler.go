@@ -24,7 +24,7 @@ func NewCategoryHandler(categoryService *service.CategoryService) *CategoryHandl
 // ListCategories 列出所有分类
 // @Summary 列出所有分类
 // @Description 获取所有分类的列表，支持分页
-// @Tags 分类管理
+// @Tags categories
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
@@ -53,7 +53,7 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 // ListRootCategories 列出根分类
 // @Summary 列出根分类
 // @Description 获取所有根分类的列表
-// @Tags 分类管理
+// @Tags categories
 // @Accept json
 // @Produce json
 // @Success 200 {object} response.Response{data=[]models.Category}
@@ -71,7 +71,7 @@ func (h *CategoryHandler) ListRootCategories(c *gin.Context) {
 // ListSubCategories 列出子分类
 // @Summary 列出子分类
 // @Description 根据父分类ID获取子分类列表
-// @Tags 分类管理
+// @Tags categories
 // @Accept json
 // @Produce json
 // @Param id path int true "父分类ID"
@@ -96,7 +96,7 @@ func (h *CategoryHandler) ListSubCategories(c *gin.Context) {
 // CreateCategory 创建分类
 // @Summary 创建分类
 // @Description 创建一个新的分类
-// @Tags 分类管理
+// @Tags categories
 // @Accept json
 // @Produce json
 // @Param category body dto.CreateCategoryDTO true "分类信息"
@@ -121,7 +121,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 // GetCategoryByID 获取分类详情
 // @Summary 获取分类详情
 // @Description 根据ID获取分类详细信息
-// @Tags 分类管理
+// @Tags categories
 // @Produce json
 // @Param id path int true "分类ID"
 // @Success 200 {object} response.Response{data=models.Category}
@@ -143,7 +143,7 @@ func (h *CategoryHandler) GetCategoryByID(c *gin.Context) {
 // UpdateCategory 更新分类
 // @Summary 更新分类
 // @Description 根据ID更新分类信息
-// @Tags 分类管理
+// @Tags categories
 // @Accept json
 // @Produce json
 // @Param id path int true "分类ID"
@@ -174,7 +174,7 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 // DeleteCategory 删除分类
 // @Summary 删除分类
 // @Description 根据ID删除分类
-// @Tags 分类管理
+// @Tags categories
 // @Produce json
 // @Param id path int true "分类ID"
 // @Success 200 {object} response.Response{data=map[string]string}

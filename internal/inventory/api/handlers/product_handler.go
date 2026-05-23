@@ -26,7 +26,7 @@ func NewProductHandler(productService *service.ProductService) *ProductHandler {
 // ListProducts 列出所有产品
 // @Summary 列出所有产品
 // @Description 获取所有产品的列表
-// @Tags 产品管理
+// @Tags products
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
@@ -56,7 +56,7 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 // GetProduct 根据ID获取产品
 // @Summary 获取产品详情
 // @Description 根据产品ID获取产品详情
-// @Tags 产品管理
+// @Tags products
 // @Accept json
 // @Produce json
 // @Param id path int true "产品ID"
@@ -80,7 +80,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 // GetProductDetail 获取产品详情（聚合库存信息）
 // @Summary 获取产品详情（含库存）
 // @Description 根据产品ID获取产品详情，包含产品信息和库存信息
-// @Tags 产品管理
+// @Tags products
 // @Accept json
 // @Produce json
 // @Param id path int true "产品ID"
@@ -105,7 +105,7 @@ func (h *ProductHandler) GetProductDetail(c *gin.Context) {
 // ListProductsByCategory 根据分类获取产品
 // @Summary 根据分类获取产品列表
 // @Description 根据分类ID获取产品列表
-// @Tags 产品管理
+// @Tags products
 // @Accept json
 // @Produce json
 // @Param category_id path int true "分类ID"
@@ -138,7 +138,7 @@ func (h *ProductHandler) ListProductsByCategory(c *gin.Context) {
 // CreateProduct 创建产品
 // @Summary 创建产品
 // @Description 创建一个新的产品
-// @Tags 产品管理
+// @Tags products
 // @Accept json
 // @Produce json
 // @Param product body dto.CreateProductDTO true "产品信息"
@@ -161,7 +161,7 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 // UpdateProduct 更新产品
 // @Summary 更新产品
 // @Description 根据ID更新产品信息
-// @Tags 产品管理
+// @Tags products
 // @Accept json
 // @Produce json
 // @Param id path int true "产品ID"
@@ -190,7 +190,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 // DeleteProduct 删除产品
 // @Summary 删除产品
 // @Description 根据ID删除产品
-// @Tags 产品管理
+// @Tags products
 // @Produce json
 // @Param id path int true "产品ID"
 // @Success 200 {object} response.Response{data=map[string]string}
