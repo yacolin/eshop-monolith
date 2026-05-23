@@ -84,14 +84,12 @@ func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		pipe.Set(ctxBg, productInfoPrefix+strconv.FormatInt(p.ID, 10), data, cachedProductListTTL)
+		pipe.Set(ctxBg, productInfoPrefix+strconv.FormatInt(p.ID, 10), data, 0)
 		pipe.ZAdd(ctxBg, productCacheZSet, redis.Z{
 			Score:  float64(p.ID),
 			Member: p.ID,
 		})
 	}
-
-	pipe.Expire(ctxBg, productCacheZSet, cachedProductListTTL)
 
 	_, err = pipe.Exec(ctxBg)
 	if err != nil {
