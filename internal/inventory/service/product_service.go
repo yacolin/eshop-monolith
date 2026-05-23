@@ -2,8 +2,7 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,12 +14,32 @@ import (
 	"eshop-monolith/internal/inventory/events"
 	"eshop-monolith/pkg/errcode"
 
+	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-const productCacheKey = "product:all"
-const cachedProductListTTL = time.Hour
+const (
+	productCacheZSet     = "product:zset"
+	productInfoPrefix    = "product:info:"
+	cachedProductListTTL = time.Hour
+)
+
+// zrangeMGetScript 一次网络往返完成 ZRANGE + MGET
+var zrangeMGetScript = redis.NewScript(`
+local ids
+if ARGV[3] == "desc" then
+	ids = redis.call("ZREVRANGE", KEYS[1], ARGV[1], ARGV[2])
+else
+	ids = redis.call("ZRANGE", KEYS[1], ARGV[1], ARGV[2])
+end
+if #ids == 0 then return {} end
+local keys = {}
+for i, id in ipairs(ids) do
+	keys[i] = ARGV[4] .. id
+end
+return redis.call("MGET", unpack(keys))
+`)
 
 // ProductService 产品服务
 type ProductService struct {
@@ -48,67 +67,94 @@ func NewProductService(
 	}
 }
 
-// WarmupProductCache 将全量商品缓存到 Redis
+// WarmupProductCache 将全量商品写入 Redis zset，每个商品独立 key 存储
 func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 	products, err := s.repo.FindAll(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	data, err := json.Marshal(products)
-	if err != nil {
-		return 0, err
+	pipe := s.rdb.Pipeline()
+	ctxBg := context.Background()
+
+	pipe.Del(ctxBg, productCacheZSet)
+
+	for _, p := range products {
+		data, err := sonic.Marshal(p)
+		if err != nil {
+			return 0, err
+		}
+		pipe.Set(ctxBg, productInfoPrefix+strconv.FormatInt(p.ID, 10), data, cachedProductListTTL)
+		pipe.ZAdd(ctxBg, productCacheZSet, redis.Z{
+			Score:  float64(p.ID),
+			Member: p.ID,
+		})
 	}
 
-	if err := s.rdb.Set(context.Background(), productCacheKey, data, cachedProductListTTL).Err(); err != nil {
+	pipe.Expire(ctxBg, productCacheZSet, cachedProductListTTL)
+
+	_, err = pipe.Exec(ctxBg)
+	if err != nil {
 		return 0, err
 	}
 
 	return len(products), nil
 }
 
-// ListCachedProducts 从 Redis 缓存中读取商品列表并分页返回
+// ListCachedProducts 从 Redis zset 中分页读取商品列表（Lua 脚本一次网络往返）
 func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductListQuery) (*dto.ProductListResult, error) {
-	data, err := s.rdb.Get(context.Background(), productCacheKey).Bytes()
+	ctxBg := context.Background()
+	offset := int64((q.Page - 1) * q.Size)
+	stop := offset + int64(q.Size) - 1
+
+	order := "asc"
+	if q.Order == "desc" {
+		order = "desc"
+	}
+
+	dataList, err := zrangeMGetScript.Run(ctxBg, s.rdb, []string{productCacheZSet}, offset, stop, order, productInfoPrefix).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	var products []models.Product
-	if err := json.Unmarshal(data, &products); err != nil {
+	items, ok := dataList.([]any)
+	if !ok {
+		items = nil
+	}
+
+	products := make([]models.Product, 0, len(items))
+	for _, data := range items {
+		if data == nil {
+			continue
+		}
+		var p models.Product
+		if err := sonic.Unmarshal([]byte(data.(string)), &p); err != nil {
+			continue
+		}
+		products = append(products, p)
+	}
+
+	total, err := s.rdb.ZCard(ctxBg, productCacheZSet).Result()
+	if err != nil {
 		return nil, err
 	}
 
-	// 内存排序
-	sorted := make([]models.Product, len(products))
-	copy(sorted, products)
-	less := func(i, j int) bool {
-		switch q.SortBy {
-		case "name":
-			return sorted[i].Name < sorted[j].Name
-		case "price":
-			return sorted[i].Price < sorted[j].Price
-		default:
-			return sorted[i].ID < sorted[j].ID
-		}
-	}
-	if q.Order == "desc" {
-		sort.Slice(sorted, func(i, j int) bool { return !less(i, j) })
-	} else {
-		sort.Slice(sorted, less)
+	return &dto.ProductListResult{List: products, Total: total}, nil
+}
+
+// GetCachedProductByID 从 Redis 缓存中查询单个商品
+func (s *ProductService) GetCachedProductByID(ctx context.Context, id int64) (*models.Product, error) {
+	data, err := s.rdb.Get(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10)).Bytes()
+	if err != nil {
+		return nil, err
 	}
 
-	total := int64(len(sorted))
-	offset := (q.Page - 1) * q.Size
-	end := offset + q.Size
-	if offset > int(total) {
-		return &dto.ProductListResult{List: []models.Product{}, Total: total}, nil
-	}
-	if end > int(total) {
-		end = int(total)
+	var product models.Product
+	if err := sonic.Unmarshal(data, &product); err != nil {
+		return nil, err
 	}
 
-	return &dto.ProductListResult{List: sorted[offset:end], Total: total}, nil
+	return &product, nil
 }
 
 // GetProductWithInventory 获取产品详情（聚合库存信息），使用 goroutine + channel 并发查询以降低延迟
@@ -125,25 +171,21 @@ func (s *ProductService) GetProductWithInventory(ctx context.Context, id int64) 
 	prodCh := make(chan prodResult, 1)
 	invCh := make(chan invResult, 1)
 
-	// 并发查询产品信息
 	go func() {
 		p, err := s.repo.FindByID(ctx, id)
 		prodCh <- prodResult{product: p, err: err}
 	}()
 
-	// 并发查询库存信息
 	go func() {
 		inv, err := s.inventoryRepo.FindInventoryByProductID(ctx, id)
 		invCh <- invResult{inventory: inv, err: err}
 	}()
 
-	// 收集产品结果
 	pr := <-prodCh
 	if pr.err != nil {
 		return nil, pr.err
 	}
 
-	// 收集库存结果（库存不存在时不阻塞流程，库存字段使用零值）
 	ir := <-invCh
 	detail := &dto.ProductDetailDTO{
 		ID:          pr.product.ID,
@@ -174,14 +216,12 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 	}
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 保存产品
 		if err := tx.Create(newProduct).Error; err != nil {
 			if strings.Contains(err.Error(), "Duplicate entry") {
 				return errcode.ErrDuplicateSKU
 			}
 			return err
 		}
-		// 关联分类
 		for _, categoryID := range req.CategoryIDs {
 			pc := &shared.ProductCategory{
 				ProductID:  newProduct.ID,
@@ -197,7 +237,6 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 		return nil, err
 	}
 
-	// 发布产品创建事件（事务外）
 	categoryIDValue := int64(0)
 	if len(req.CategoryIDs) > 0 {
 		categoryIDValue = req.CategoryIDs[0]
@@ -224,13 +263,11 @@ func (s *ProductService) GetProductBySKU(ctx context.Context, sku string) (*mode
 
 // GetProductWithCategories 获取产品及其关联的分类
 func (s *ProductService) GetProductWithCategories(ctx context.Context, productID int64) (*models.Product, []models.Category, error) {
-	// 获取产品
 	prod, err := s.repo.FindByID(ctx, productID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// 通过中间表查询关联的分类
 	var categories []models.Category
 	if err := s.db.WithContext(ctx).Table("categories").
 		Joins("JOIN product_categories ON categories.id = product_categories.category_id").
@@ -249,13 +286,11 @@ func (s *ProductService) ListProductsByCategory(ctx context.Context, categoryID 
 
 // UpdateProduct 更新产品
 func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.UpdateProductDTO) (*models.Product, error) {
-	// 获取产品（事务外查询）
 	existingProduct, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	// 更新产品信息
 	if req.Name != nil {
 		existingProduct.Name = *req.Name
 	}
@@ -266,7 +301,6 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 		existingProduct.Price = *req.Price
 	}
 
-	// 事务内保存产品和分类关联
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(existingProduct).Error; err != nil {
 			return err
@@ -291,7 +325,6 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 		return nil, err
 	}
 
-	// 发布产品更新事件（事务外）
 	categoryIDValue := int64(0)
 	if len(req.CategoryIDs) > 0 {
 		categoryIDValue = req.CategoryIDs[0]
@@ -308,13 +341,11 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 
 // DeleteProduct 删除产品
 func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
-	// 获取产品（事务外查询）
 	existingProduct, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	// 事务内删除分类关联和产品
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("product_id = ?", id).Delete(&shared.ProductCategory{}).Error; err != nil {
 			return err
@@ -328,7 +359,6 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
 		return err
 	}
 
-	// 发布产品删除事件（事务外）
 	s.bus.Publish(events.ProductDeletedEvent{
 		ProductID:  existingProduct.ID,
 		Name:       existingProduct.Name,

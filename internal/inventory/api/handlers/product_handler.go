@@ -254,3 +254,27 @@ func (h *ProductHandler) ListCachedProducts(c *gin.Context) {
 
 	response.Success(c, result)
 }
+
+// GetCachedProduct 从缓存中查询单个商品
+// @Summary 从缓存查询商品
+// @Description 从 Redis 缓存中根据 ID 查询单个商品
+// @Tags products
+// @Produce json
+// @Param id path int true "商品ID"
+// @Success 200 {object} response.Response{data=models.Product}
+// @Router /api/v1/products/cache/{id} [get]
+func (h *ProductHandler) GetCachedProduct(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	product, err := h.productService.GetCachedProductByID(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, product)
+}
