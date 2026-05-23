@@ -152,8 +152,8 @@ certs/
 *.vrb
 
 # Generated files
-generate_*
 User.md
+*.pyc
 
 # docs include swagger generated files
 docs/swagger.json
