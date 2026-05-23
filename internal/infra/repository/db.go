@@ -113,6 +113,7 @@ func InitRedis(cfg config.RedisConfig) (*redis.Client, error) {
 
 // // Repositories 仓储集合
 type Repositories struct {
+	Redis        *redis.Client
 	Inventory    invRepos.IinventoryRepository
 	Product      invRepos.IproductRepository
 	Category     invRepos.IcategoryRepository
@@ -130,6 +131,7 @@ type Repositories struct {
 // // NewRepositories 创建仓储集合
 func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 	return &Repositories{
+		Redis:        redisClient,
 		Inventory:    invRepos.NewInventoryRepository(db),
 		Product:      invRepos.NewProductRepository(db),
 		Category:     invRepos.NewCategoryRepository(db),

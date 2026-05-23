@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"sort"
 	"strings"
+	"time"
 
 	"eshop-monolith/internal/infra/domain/shared"
 	"eshop-monolith/internal/infra/eventbus"
@@ -12,8 +15,12 @@ import (
 	"eshop-monolith/internal/inventory/events"
 	"eshop-monolith/pkg/errcode"
 
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
+
+const productCacheKey = "product:all"
+const cachedProductListTTL = time.Hour
 
 // ProductService 产品服务
 type ProductService struct {
@@ -21,6 +28,7 @@ type ProductService struct {
 	inventoryRepo repositories.IinventoryRepository
 	bus           *eventbus.Bus
 	db            *gorm.DB
+	rdb           *redis.Client
 }
 
 // NewProductService 创建产品服务
@@ -29,13 +37,78 @@ func NewProductService(
 	inventoryRepo repositories.IinventoryRepository,
 	bus *eventbus.Bus,
 	db *gorm.DB,
+	rdb *redis.Client,
 ) *ProductService {
 	return &ProductService{
 		repo:          repo,
 		inventoryRepo: inventoryRepo,
 		bus:           bus,
 		db:            db,
+		rdb:           rdb,
 	}
+}
+
+// WarmupProductCache 将全量商品缓存到 Redis
+func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
+	products, err := s.repo.FindAll(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	data, err := json.Marshal(products)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := s.rdb.Set(context.Background(), productCacheKey, data, cachedProductListTTL).Err(); err != nil {
+		return 0, err
+	}
+
+	return len(products), nil
+}
+
+// ListCachedProducts 从 Redis 缓存中读取商品列表并分页返回
+func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductListQuery) (*dto.ProductListResult, error) {
+	data, err := s.rdb.Get(context.Background(), productCacheKey).Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	var products []models.Product
+	if err := json.Unmarshal(data, &products); err != nil {
+		return nil, err
+	}
+
+	// 内存排序
+	sorted := make([]models.Product, len(products))
+	copy(sorted, products)
+	less := func(i, j int) bool {
+		switch q.SortBy {
+		case "name":
+			return sorted[i].Name < sorted[j].Name
+		case "price":
+			return sorted[i].Price < sorted[j].Price
+		default:
+			return sorted[i].ID < sorted[j].ID
+		}
+	}
+	if q.Order == "desc" {
+		sort.Slice(sorted, func(i, j int) bool { return !less(i, j) })
+	} else {
+		sort.Slice(sorted, less)
+	}
+
+	total := int64(len(sorted))
+	offset := (q.Page - 1) * q.Size
+	end := offset + q.Size
+	if offset > int(total) {
+		return &dto.ProductListResult{List: []models.Product{}, Total: total}, nil
+	}
+	if end > int(total) {
+		end = int(total)
+	}
+
+	return &dto.ProductListResult{List: sorted[offset:end], Total: total}, nil
 }
 
 // GetProductWithInventory 获取产品详情（聚合库存信息），使用 goroutine + channel 并发查询以降低延迟

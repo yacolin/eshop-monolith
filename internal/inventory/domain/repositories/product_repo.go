@@ -32,6 +32,8 @@ type IproductRepository interface {
 	ListProducts(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]invModels.Product, error)
 	// CountProducts 统计产品数量
 	CountProducts(ctx context.Context, q dto.ProductListQuery) (int64, error)
+	// FindAll 查询所有产品（不分页）
+	FindAll(ctx context.Context) ([]invModels.Product, error)
 }
 
 // ProductRepository 产品仓储实现
@@ -131,6 +133,21 @@ func (r *ProductRepository) Update(ctx context.Context, product *invModels.Produ
 // Delete 删除产品
 func (r *ProductRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&models.ProductPO{}, "id = ?", id).Error
+}
+
+// FindAll 查询所有产品（不分页）
+func (r *ProductRepository) FindAll(ctx context.Context) ([]invModels.Product, error) {
+	var pos []models.ProductPO
+	err := r.db.WithContext(ctx).Order("id asc").Find(&pos).Error
+	if err != nil {
+		return nil, err
+	}
+
+	products := make([]invModels.Product, len(pos))
+	for i, po := range pos {
+		products[i] = *po.ToDomain()
+	}
+	return products, nil
 }
 
 // ListProducts 列出产品（支持查询条件）

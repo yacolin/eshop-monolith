@@ -2,11 +2,11 @@ package routes
 
 import (
 	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/internal/inventory/api/handlers"
 	"eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/pkg/middleware"
-	"eshop-monolith/internal/infra/repository"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -14,12 +14,14 @@ import (
 
 func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) {
 	productRepo := repositories.NewProductRepository(db)
-	productService := service.NewProductService(productRepo, repos.Inventory, bus, db)
+	productService := service.NewProductService(productRepo, repos.Inventory, bus, db, repos.Redis)
 	productHandler := handlers.NewProductHandler(productService)
 
 	products := v1.Group("/products")
 	{
 		products.GET("", productHandler.ListProducts)
+		products.GET("/cache", productHandler.ListCachedProducts)
+		products.POST("/cache/warmup", productHandler.WarmupCache)
 		products.GET("/:id", productHandler.GetProduct)
 		products.GET("/:id/detail", productHandler.GetProductDetail)
 		products.GET("/category/:category_id", productHandler.ListProductsByCategory)
@@ -29,6 +31,7 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 	auth := v1.Group("/products")
 	auth.Use(middleware.JWTAuth())
 	{
+		// auth.POST("/cache/warmup", productHandler.WarmupCache)
 		auth.POST("", productHandler.CreateProduct)
 		auth.PUT("/:id", productHandler.UpdateProduct)
 		auth.DELETE("/:id", productHandler.DeleteProduct)

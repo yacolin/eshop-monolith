@@ -208,3 +208,49 @@ func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"message": "deleted"})
 }
+
+// WarmupCache 将全量商品预热到 Redis 缓存
+// @Summary 预热商品缓存
+// @Description 将全量商品数据加载到 Redis 缓存中
+// @Tags products
+// @Produce json
+// @Success 200 {object} response.Response{data=map[string]int}
+// @Router /api/v1/products/cache/warmup [post]
+func (h *ProductHandler) WarmupCache(c *gin.Context) {
+	total, err := h.productService.WarmupProductCache(c)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, gin.H{"total": total})
+}
+
+// ListCachedProducts 从缓存中获取产品列表
+// @Summary 从缓存获取产品列表
+// @Description 从 Redis 缓存中读取产品列表，支持分页和排序
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页条数" default(10)
+// @Param sort_by query string false "排序字段 (id, name, price)"
+// @Param order query string false "排序方向 (asc, desc)" default(asc)
+// @Success 200 {object} response.Response{data=dto.ProductListResult}
+// @Router /api/v1/products/cache [get]
+func (h *ProductHandler) ListCachedProducts(c *gin.Context) {
+	var q dto.ProductListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
+		return
+	}
+
+	(&q).Normalize()
+
+	result, err := h.productService.ListCachedProducts(c, q)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result)
+}
