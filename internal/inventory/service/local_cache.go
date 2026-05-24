@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 
@@ -11,11 +12,18 @@ import (
 )
 
 const (
-	localCacheSize = 8192
-	localCacheTTL  = 60 * time.Second
-	listCacheSize  = 512
-	listCacheTTL   = 30 * time.Second
+	localCacheSize     = 8192
+	localCacheTTL      = 60 * time.Second
+	localCacheTTLJitter = 0.2
+	listCacheSize      = 512
+	listCacheTTL       = 30 * time.Second
+	listCacheTTLJitter = 0.2
 )
+
+func jitteredTTL(base time.Duration, jitter float64) time.Duration {
+	delta := time.Duration(float64(base) * jitter)
+	return base + time.Duration(rand.Int63n(int64(delta*2+1)))-delta
+}
 
 type cacheEntry[T any] struct {
 	item      T
@@ -66,7 +74,7 @@ func (c *productLocalCache) getSingle(id int64) (*dto.CachedProductItem, bool) {
 
 func (c *productLocalCache) setSingle(id int64, item *dto.CachedProductItem) {
 	c.mu.Lock()
-	c.single.Add(id, newCacheEntry(item, c.singleTTL))
+	c.single.Add(id, newCacheEntry(item, jitteredTTL(c.singleTTL, localCacheTTLJitter)))
 	c.mu.Unlock()
 }
 
@@ -87,7 +95,13 @@ func (c *productLocalCache) getList(key string) (*query.ListResult[dto.CachedPro
 
 func (c *productLocalCache) setList(key string, result *query.ListResult[dto.CachedProductItem]) {
 	c.mu.Lock()
-	c.list.Add(key, newCacheEntry(result, c.listTTL))
+	c.list.Add(key, newCacheEntry(result, jitteredTTL(c.listTTL, listCacheTTLJitter)))
+	c.mu.Unlock()
+}
+
+func (c *productLocalCache) removeSingle(id int64) {
+	c.mu.Lock()
+	c.single.Remove(id)
 	c.mu.Unlock()
 }
 
@@ -100,11 +114,10 @@ func (c *productLocalCache) clear() {
 
 func (c *productLocalCache) warmup(items []dto.CachedProductItem) {
 	c.mu.Lock()
-	now := time.Now()
 	for i := range items {
 		entry := &cacheEntry[*dto.CachedProductItem]{
 			item:      &items[i],
-			expiresAt: now.Add(c.singleTTL),
+			expiresAt: time.Now().Add(jitteredTTL(c.singleTTL, localCacheTTLJitter)),
 		}
 		c.single.Add(items[i].ID, entry)
 	}

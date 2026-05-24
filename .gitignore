@@ -161,6 +161,7 @@ docs/swagger.yaml
 docs/docs.go
 docs/bugs.md
 docs/development_plan.md
+docs/cache_optimization_todo.md
 
 # Protocol Buffer generated files
 api/proto/*_pb.go

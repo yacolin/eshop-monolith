@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"eshop-monolith/internal/infra/domain/shared"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
 
@@ -24,9 +26,12 @@ const (
 	productCacheZSet     = "product:zset"
 	productInfoPrefix    = "product:info:"
 	cachedProductListTTL = time.Hour
+	hotKeyThreshold      = 1000
+	hotKeyWindow         = 10 * time.Second
+	emptyPlaceholder     = "__EMPTY__"
+	emptyCacheTTL        = 30 * time.Second
 )
 
-// zrangeMGetScript 一次网络往返完成 ZRANGE + ZCARD + MGET
 var zrangeMGetScript = redis.NewScript(`
 local ids
 if ARGV[3] == "desc" then
@@ -44,7 +49,40 @@ local values = redis.call("MGET", unpack(keys))
 return {total, values}
 `)
 
-// ProductService 产品服务
+type hotKeyCounter struct {
+	mu       sync.Mutex
+	counters map[int64]*hotKeyEntry
+}
+
+type hotKeyEntry struct {
+	count int64
+	start time.Time
+}
+
+func newHotKeyCounter() *hotKeyCounter {
+	return &hotKeyCounter{counters: make(map[int64]*hotKeyEntry)}
+}
+
+func (h *hotKeyCounter) increment(id int64) bool {
+	h.mu.Lock()
+	entry, ok := h.counters[id]
+	now := time.Now()
+	if !ok || now.Sub(entry.start) > hotKeyWindow {
+		entry = &hotKeyEntry{start: now}
+		h.counters[id] = entry
+	}
+	entry.count++
+	hot := entry.count >= hotKeyThreshold
+	h.mu.Unlock()
+	return hot
+}
+
+func (h *hotKeyCounter) reset(id int64) {
+	h.mu.Lock()
+	delete(h.counters, id)
+	h.mu.Unlock()
+}
+
 type ProductService struct {
 	repo          repositories.IproductRepository
 	inventoryRepo repositories.IinventoryRepository
@@ -52,9 +90,11 @@ type ProductService struct {
 	db            *gorm.DB
 	rdb           *redis.Client
 	localCache    *productLocalCache
+	bloomFilter   *productBloomFilter
+	singleGroup   singleflight.Group
+	hotCounter    *hotKeyCounter
 }
 
-// NewProductService 创建产品服务
 func NewProductService(
 	repo repositories.IproductRepository,
 	inventoryRepo repositories.IinventoryRepository,
@@ -69,10 +109,24 @@ func NewProductService(
 		db:            db,
 		rdb:           rdb,
 		localCache:    newProductLocalCache(),
+		bloomFilter:   newProductBloomFilter(),
+		hotCounter:    newHotKeyCounter(),
 	}
 }
 
-// WarmupProductCache 将全量商品写入 Redis zset + 本地缓存
+func (s *ProductService) evictProductCache(id int64) {
+	s.localCache.removeSingle(id)
+	s.rdb.Del(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10))
+	s.rdb.ZRem(context.Background(), productCacheZSet, id)
+}
+
+func (s *ProductService) delayedDoubleDelete(id int64) {
+	s.evictProductCache(id)
+	time.AfterFunc(500*time.Millisecond, func() {
+		s.evictProductCache(id)
+	})
+}
+
 func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 	products, err := s.repo.FindAll(ctx)
 	if err != nil {
@@ -80,6 +134,7 @@ func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 	}
 
 	items := make([]dto.CachedProductItem, 0, len(products))
+	ids := make([]int64, 0, len(products))
 	pipe := s.rdb.Pipeline()
 	ctxBg := context.Background()
 
@@ -93,6 +148,7 @@ func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 			SKU:   p.SKU,
 		}
 		items = append(items, item)
+		ids = append(ids, p.ID)
 		data, err := sonic.Marshal(item)
 		if err != nil {
 			return 0, err
@@ -104,17 +160,17 @@ func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 		})
 	}
 
-	_, err = pipe.Exec(ctxBg)
-	if err != nil {
+	if _, err = pipe.Exec(ctxBg); err != nil {
 		return 0, err
 	}
 
+	s.bloomFilter.clear()
+	s.bloomFilter.addAll(ids)
 	s.localCache.warmup(items)
 
 	return len(products), nil
 }
 
-// ListCachedProducts 从二级缓存中分页读取商品列表: L1(本地LRU) → L2(Redis)
 func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductListQuery) (*query.ListResult[dto.CachedProductItem], error) {
 	cacheKey := "list:" + strconv.FormatInt(int64(q.Page), 10) + ":" + strconv.FormatInt(int64(q.Size), 10) + ":" + q.Order
 	if result, ok := s.localCache.getList(cacheKey); ok {
@@ -167,28 +223,57 @@ func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductLi
 	return listResult, nil
 }
 
-// GetCachedProductByID 从二级缓存中查询单个商品: L1(本地LRU) → L2(Redis)
 func (s *ProductService) GetCachedProductByID(ctx context.Context, id int64) (*dto.CachedProductItem, error) {
+	if !s.bloomFilter.mayExist(id) {
+		return nil, errcode.ErrProductNotFound
+	}
+
 	if item, ok := s.localCache.getSingle(id); ok {
+		s.hotCounter.increment(id)
 		return item, nil
 	}
 
-	data, err := s.rdb.Get(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10)).Bytes()
+	sfKey := "product:" + strconv.FormatInt(id, 10)
+	v, err, _ := s.singleGroup.Do(sfKey, func() (any, error) {
+		data, err := s.rdb.Get(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10)).Bytes()
+		if err == redis.Nil {
+			s.rdb.Set(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10), emptyPlaceholder, emptyCacheTTL)
+			return nil, errcode.ErrProductNotFound
+		}
+		if err != nil {
+			product, dbErr := s.repo.FindByID(context.Background(), id)
+			if dbErr != nil {
+				return nil, errcode.ErrProductNotFound
+			}
+			item := &dto.CachedProductItem{
+				ID:    product.ID,
+				Name:  product.Name,
+				Price: product.Price,
+				SKU:   product.SKU,
+			}
+			s.localCache.setSingle(id, item)
+			return item, nil
+		}
+
+		if string(data) == emptyPlaceholder {
+			return nil, errcode.ErrProductNotFound
+		}
+
+		var item dto.CachedProductItem
+		if err := sonic.Unmarshal(data, &item); err != nil {
+			return nil, err
+		}
+
+		s.localCache.setSingle(id, &item)
+		return &item, nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-
-	var item dto.CachedProductItem
-	if err := sonic.Unmarshal(data, &item); err != nil {
-		return nil, err
-	}
-
-	s.localCache.setSingle(id, &item)
-
-	return &item, nil
+	return v.(*dto.CachedProductItem), nil
 }
 
-// GetProductWithInventory 获取产品详情（聚合库存信息），使用 goroutine + channel 并发查询以降低延迟
 func (s *ProductService) GetProductWithInventory(ctx context.Context, id int64) (*dto.ProductDetailDTO, error) {
 	type prodResult struct {
 		product *models.Product
@@ -237,7 +322,6 @@ func (s *ProductService) GetProductWithInventory(ctx context.Context, id int64) 
 	return detail, nil
 }
 
-// CreateProduct 创建产品
 func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProductDTO) (*models.Product, error) {
 	newProduct := &models.Product{
 		Name:        req.Name,
@@ -268,6 +352,8 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 		return nil, err
 	}
 
+	s.bloomFilter.add(newProduct.ID)
+
 	categoryIDValue := int64(0)
 	if len(req.CategoryIDs) > 0 {
 		categoryIDValue = req.CategoryIDs[0]
@@ -282,17 +368,14 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 	return newProduct, nil
 }
 
-// GetProductByID 根据ID获取产品
 func (s *ProductService) GetProductByID(ctx context.Context, id int64) (*models.Product, error) {
 	return s.repo.FindByID(ctx, id)
 }
 
-// GetProductBySKU 根据SKU获取产品
 func (s *ProductService) GetProductBySKU(ctx context.Context, sku string) (*models.Product, error) {
 	return s.repo.FindBySKU(ctx, sku)
 }
 
-// GetProductWithCategories 获取产品及其关联的分类
 func (s *ProductService) GetProductWithCategories(ctx context.Context, productID int64) (*models.Product, []models.Category, error) {
 	prod, err := s.repo.FindByID(ctx, productID)
 	if err != nil {
@@ -310,12 +393,10 @@ func (s *ProductService) GetProductWithCategories(ctx context.Context, productID
 	return prod, categories, nil
 }
 
-// ListProductsByCategory 根据分类列出产品
 func (s *ProductService) ListProductsByCategory(ctx context.Context, categoryID int64, page, pageSize int) ([]models.Product, int64, error) {
 	return s.repo.ListByCategory(ctx, categoryID, page, pageSize)
 }
 
-// UpdateProduct 更新产品
 func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.UpdateProductDTO) (*models.Product, error) {
 	existingProduct, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -356,6 +437,8 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 		return nil, err
 	}
 
+	s.delayedDoubleDelete(id)
+
 	categoryIDValue := int64(0)
 	if len(req.CategoryIDs) > 0 {
 		categoryIDValue = req.CategoryIDs[0]
@@ -370,7 +453,6 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 	return existingProduct, nil
 }
 
-// DeleteProduct 删除产品
 func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
 	existingProduct, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -390,6 +472,8 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
 		return err
 	}
 
+	s.delayedDoubleDelete(id)
+
 	s.bus.Publish(events.ProductDeletedEvent{
 		ProductID:  existingProduct.ID,
 		Name:       existingProduct.Name,
@@ -399,7 +483,6 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ListAllProducts 列出所有产品
 func (s *ProductService) ListAllProducts(ctx context.Context, page, pageSize int) ([]models.Product, int64, error) {
 	return s.repo.ListAll(ctx, page, pageSize)
 }
