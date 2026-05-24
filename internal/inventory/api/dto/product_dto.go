@@ -6,6 +6,14 @@ import (
 	"eshop-monolith/pkg/utils"
 )
 
+// CachedProductItem 精简缓存 DTO，仅包含列表展示所需字段
+type CachedProductItem struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Price int64  `json:"price"`
+	SKU   string `json:"sku"`
+}
+
 // ProductListQuery 商品列表查询参数
 // ProductListQuery 产品列表查询参数
 type ProductListQuery struct {

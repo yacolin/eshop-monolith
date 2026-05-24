@@ -13,6 +13,7 @@ import (
 	"eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/internal/inventory/events"
 	"eshop-monolith/pkg/errcode"
+	"eshop-monolith/pkg/query"
 
 	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
@@ -25,7 +26,7 @@ const (
 	cachedProductListTTL = time.Hour
 )
 
-// zrangeMGetScript 一次网络往返完成 ZRANGE + MGET
+// zrangeMGetScript 一次网络往返完成 ZRANGE + ZCARD + MGET
 var zrangeMGetScript = redis.NewScript(`
 local ids
 if ARGV[3] == "desc" then
@@ -33,12 +34,14 @@ if ARGV[3] == "desc" then
 else
 	ids = redis.call("ZRANGE", KEYS[1], ARGV[1], ARGV[2])
 end
-if #ids == 0 then return {} end
+local total = redis.call("ZCARD", KEYS[1])
+if #ids == 0 then return {total, {}} end
 local keys = {}
 for i, id in ipairs(ids) do
 	keys[i] = ARGV[4] .. id
 end
-return redis.call("MGET", unpack(keys))
+local values = redis.call("MGET", unpack(keys))
+return {total, values}
 `)
 
 // ProductService 产品服务
@@ -48,6 +51,7 @@ type ProductService struct {
 	bus           *eventbus.Bus
 	db            *gorm.DB
 	rdb           *redis.Client
+	localCache    *productLocalCache
 }
 
 // NewProductService 创建产品服务
@@ -64,23 +68,32 @@ func NewProductService(
 		bus:           bus,
 		db:            db,
 		rdb:           rdb,
+		localCache:    newProductLocalCache(),
 	}
 }
 
-// WarmupProductCache 将全量商品写入 Redis zset，每个商品独立 key 存储
+// WarmupProductCache 将全量商品写入 Redis zset + 本地缓存
 func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 	products, err := s.repo.FindAll(ctx)
 	if err != nil {
 		return 0, err
 	}
 
+	items := make([]dto.CachedProductItem, 0, len(products))
 	pipe := s.rdb.Pipeline()
 	ctxBg := context.Background()
 
 	pipe.Del(ctxBg, productCacheZSet)
 
 	for _, p := range products {
-		data, err := sonic.Marshal(p)
+		item := dto.CachedProductItem{
+			ID:    p.ID,
+			Name:  p.Name,
+			Price: p.Price,
+			SKU:   p.SKU,
+		}
+		items = append(items, item)
+		data, err := sonic.Marshal(item)
 		if err != nil {
 			return 0, err
 		}
@@ -96,11 +109,18 @@ func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
+	s.localCache.warmup(items)
+
 	return len(products), nil
 }
 
-// ListCachedProducts 从 Redis zset 中分页读取商品列表（Lua 脚本一次网络往返）
-func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductListQuery) (*dto.ProductListResult, error) {
+// ListCachedProducts 从二级缓存中分页读取商品列表: L1(本地LRU) → L2(Redis)
+func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductListQuery) (*query.ListResult[dto.CachedProductItem], error) {
+	cacheKey := "list:" + strconv.FormatInt(int64(q.Page), 10) + ":" + strconv.FormatInt(int64(q.Size), 10) + ":" + q.Order
+	if result, ok := s.localCache.getList(cacheKey); ok {
+		return result, nil
+	}
+
 	ctxBg := context.Background()
 	offset := int64((q.Page - 1) * q.Size)
 	stop := offset + int64(q.Size) - 1
@@ -110,49 +130,62 @@ func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductLi
 		order = "desc"
 	}
 
-	dataList, err := zrangeMGetScript.Run(ctxBg, s.rdb, []string{productCacheZSet}, offset, stop, order, productInfoPrefix).Result()
+	result, err := zrangeMGetScript.Run(ctxBg, s.rdb, []string{productCacheZSet}, offset, stop, order, productInfoPrefix).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	items, ok := dataList.([]any)
-	if !ok {
-		items = nil
+	values, ok := result.([]any)
+	if !ok || len(values) != 2 {
+		return &query.ListResult[dto.CachedProductItem]{Total: 0}, nil
 	}
 
-	products := make([]models.Product, 0, len(items))
+	total, ok := values[0].(int64)
+	if !ok {
+		if totalFloat, ok := values[0].(float64); ok {
+			total = int64(totalFloat)
+		} else {
+			return nil, nil
+		}
+	}
+
+	items, _ := values[1].([]any)
+	products := make([]dto.CachedProductItem, 0, len(items))
 	for _, data := range items {
 		if data == nil {
 			continue
 		}
-		var p models.Product
+		var p dto.CachedProductItem
 		if err := sonic.Unmarshal([]byte(data.(string)), &p); err != nil {
 			continue
 		}
 		products = append(products, p)
 	}
 
-	total, err := s.rdb.ZCard(ctxBg, productCacheZSet).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	return &dto.ProductListResult{List: products, Total: total}, nil
+	listResult := &query.ListResult[dto.CachedProductItem]{List: products, Total: total}
+	s.localCache.setList(cacheKey, listResult)
+	return listResult, nil
 }
 
-// GetCachedProductByID 从 Redis 缓存中查询单个商品
-func (s *ProductService) GetCachedProductByID(ctx context.Context, id int64) (*models.Product, error) {
+// GetCachedProductByID 从二级缓存中查询单个商品: L1(本地LRU) → L2(Redis)
+func (s *ProductService) GetCachedProductByID(ctx context.Context, id int64) (*dto.CachedProductItem, error) {
+	if item, ok := s.localCache.getSingle(id); ok {
+		return item, nil
+	}
+
 	data, err := s.rdb.Get(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10)).Bytes()
 	if err != nil {
 		return nil, err
 	}
 
-	var product models.Product
-	if err := sonic.Unmarshal(data, &product); err != nil {
+	var item dto.CachedProductItem
+	if err := sonic.Unmarshal(data, &item); err != nil {
 		return nil, err
 	}
 
-	return &product, nil
+	s.localCache.setSingle(id, &item)
+
+	return &item, nil
 }
 
 // GetProductWithInventory 获取产品详情（聚合库存信息），使用 goroutine + channel 并发查询以降低延迟
