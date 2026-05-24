@@ -93,6 +93,7 @@ type ProductService struct {
 	bloomFilter   *productBloomFilter
 	singleGroup   singleflight.Group
 	hotCounter    *hotKeyCounter
+	metrics       *cacheMetrics
 }
 
 func NewProductService(
@@ -111,6 +112,7 @@ func NewProductService(
 		localCache:    newProductLocalCache(),
 		bloomFilter:   newProductBloomFilter(),
 		hotCounter:    newHotKeyCounter(),
+		metrics:       getCacheMetrics(),
 	}
 }
 
@@ -118,6 +120,7 @@ func (s *ProductService) evictProductCache(id int64) {
 	s.localCache.removeSingle(id)
 	s.rdb.Del(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10))
 	s.rdb.ZRem(context.Background(), productCacheZSet, id)
+	s.metrics.incEviction()
 }
 
 func (s *ProductService) delayedDoubleDelete(id int64) {
@@ -225,36 +228,49 @@ func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductLi
 
 func (s *ProductService) GetCachedProductByID(ctx context.Context, id int64) (*dto.CachedProductItem, error) {
 	if !s.bloomFilter.mayExist(id) {
+		s.metrics.incBloomReject()
 		return nil, errcode.ErrProductNotFound
 	}
 
 	if item, ok := s.localCache.getSingle(id); ok {
+		s.metrics.incL1Hit()
 		s.hotCounter.increment(id)
 		return item, nil
 	}
+	s.metrics.incL1Miss()
 
 	sfKey := "product:" + strconv.FormatInt(id, 10)
-	v, err, _ := s.singleGroup.Do(sfKey, func() (any, error) {
+	v, err, shared := s.singleGroup.Do(sfKey, func() (any, error) {
+		var dbItem *dto.CachedProductItem
+
+		start := time.Now()
 		data, err := s.rdb.Get(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10)).Bytes()
 		if err == redis.Nil {
+			s.metrics.incL2Miss()
 			s.rdb.Set(context.Background(), productInfoPrefix+strconv.FormatInt(id, 10), emptyPlaceholder, emptyCacheTTL)
+			s.metrics.observeDuration("l2", time.Since(start).Seconds())
 			return nil, errcode.ErrProductNotFound
 		}
 		if err != nil {
+			start = time.Now()
+			s.metrics.incDBFallback()
 			product, dbErr := s.repo.FindByID(context.Background(), id)
 			if dbErr != nil {
 				return nil, errcode.ErrProductNotFound
 			}
-			item := &dto.CachedProductItem{
+			dbItem = &dto.CachedProductItem{
 				ID:    product.ID,
 				Name:  product.Name,
 				Price: product.Price,
 				SKU:   product.SKU,
 			}
-			s.localCache.setSingle(id, item)
-			return item, nil
+			s.localCache.setSingle(id, dbItem)
+			s.metrics.observeDuration("db", time.Since(start).Seconds())
+			return dbItem, nil
 		}
 
+		s.metrics.incL2Hit()
+		s.metrics.observeDuration("l2", time.Since(start).Seconds())
 		if string(data) == emptyPlaceholder {
 			return nil, errcode.ErrProductNotFound
 		}
@@ -267,6 +283,10 @@ func (s *ProductService) GetCachedProductByID(ctx context.Context, id int64) (*d
 		s.localCache.setSingle(id, &item)
 		return &item, nil
 	})
+
+	if shared {
+		s.metrics.incSingleflightDedup()
+	}
 
 	if err != nil {
 		return nil, err

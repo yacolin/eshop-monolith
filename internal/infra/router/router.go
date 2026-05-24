@@ -14,6 +14,7 @@ import (
 	"eshop-monolith/internal/infra/repository"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gorm.io/gorm"
 )
 
@@ -34,6 +35,9 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 			"status": "ok",
 		})
 	})
+
+	// Prometheus 监控指标
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// API v1 路由组
 	v1 := router.Group("/api/v1")
