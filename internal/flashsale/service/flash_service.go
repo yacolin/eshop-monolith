@@ -134,10 +134,17 @@ func (s *FlashService) ConfirmOrder(ctx context.Context, orderID int64) error {
 		if err := s.repo.UpdateOrderStatusWithTx(tx, orderID, string(models.FlashOrderStatusPaid)); err != nil {
 			return err
 		}
-		return tx.Exec(
+		res := tx.Exec(
 			"UPDATE inventories SET reserved = reserved - 1, quantity = quantity - 1 WHERE product_id = ? AND reserved >= 1 AND quantity >= 1",
 			activity.ProductID,
-		).Error
+		)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("inventory deduction failed, no reserved stock found")
+		}
+		return nil
 	}); err != nil {
 		return errors.New("order confirmation failed: " + err.Error())
 	}
@@ -166,10 +173,17 @@ func (s *FlashService) CancelOrder(ctx context.Context, orderID int64) error {
 		if err := s.repo.UpdateSoldStockWithTx(tx, order.ActivityID, -1); err != nil {
 			return err
 		}
-		return tx.Exec(
+		res := tx.Exec(
 			"UPDATE inventories SET reserved = reserved - 1 WHERE product_id = ? AND reserved >= 1",
 			activity.ProductID,
-		).Error
+		)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("inventory release failed, no reserved stock found")
+		}
+		return nil
 	}); err != nil {
 		return errors.New("order cancellation failed: " + err.Error())
 	}
@@ -232,10 +246,17 @@ func (s *FlashService) FlashBuy(ctx context.Context, req *dto.FlashBuyReq) (*dto
 		if err := s.repo.CreateOrderWithTx(tx, order); err != nil {
 			return err
 		}
-		return tx.Exec(
+		res := tx.Exec(
 			"UPDATE inventories SET reserved = reserved + 1 WHERE product_id = ? AND quantity - reserved >= 1",
 			activity.ProductID,
-		).Error
+		)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("inventory reservation failed, insufficient stock or product not found")
+		}
+		return nil
 	}); err != nil {
 		s.rdb.Incr(ctx, stockKey)
 		return &dto.FlashBuyResp{Success: false, Message: "order creation failed, insufficient inventory"}, nil

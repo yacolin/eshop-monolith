@@ -7,7 +7,7 @@ def redis_get(key):
     return r.stdout.strip()
 
 def db_query(sql):
-    r = subprocess.run(["mysql", "-uroot", "-proot", "eshop_db", "-N", "-e", sql],
+    r = subprocess.run(["mysql", "-uroot", "-p123456", "eshop_db", "-N", "-e", sql],
                        capture_output=True, text=True, timeout=5)
     return r.stdout.strip()
 
