@@ -6,6 +6,7 @@ import (
 	orderRoutes "eshop-monolith/internal/order/api/routes"
 	payRoutes "eshop-monolith/internal/payment/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
+	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
 
 	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/pkg/config"
@@ -59,6 +60,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		userRoutes.RegisterUserRoutes(v1, repos)
 		payRoutes.RegisterPaymentRoutes(v1, repos, bus, db)
 		cartRoutes.RegisterCartRoutes(v1, repos)
+		flashRoutes.RegisterFlashRoutes(v1, repos, db)
 		userRoutes.RegisterAuthRoutes(v1, repos, db)
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
 		userRoutes.RegisterRoleRoutes(v1, repos, db)

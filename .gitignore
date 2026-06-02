@@ -199,3 +199,4 @@ logs/
 
 *.rdb
 *.lua
+test_*
