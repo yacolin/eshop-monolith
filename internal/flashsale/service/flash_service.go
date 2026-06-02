@@ -9,6 +9,7 @@ import (
 	"eshop-monolith/internal/flashsale/api/dto"
 	"eshop-monolith/internal/flashsale/domain/models"
 	"eshop-monolith/internal/flashsale/domain/repositories"
+	invRepos "eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/utils"
 
@@ -31,13 +32,14 @@ return 1
 `)
 
 type FlashService struct {
-	db    *gorm.DB
-	rdb   *redis.Client
-	repo  *repositories.FlashRepository
+	db            *gorm.DB
+	rdb           *redis.Client
+	repo          *repositories.FlashRepository
+	inventoryRepo invRepos.IinventoryRepository
 }
 
-func NewFlashService(db *gorm.DB, rdb *redis.Client, repo *repositories.FlashRepository) *FlashService {
-	return &FlashService{db: db, rdb: rdb, repo: repo}
+func NewFlashService(db *gorm.DB, rdb *redis.Client, repo *repositories.FlashRepository, inventoryRepo invRepos.IinventoryRepository) *FlashService {
+	return &FlashService{db: db, rdb: rdb, repo: repo, inventoryRepo: inventoryRepo}
 }
 
 func stockKey(activityID int64) string {
@@ -114,6 +116,70 @@ func (s *FlashService) GetUserOrders(ctx context.Context, userID int64, activity
 	return s.repo.GetUserOrders(ctx, userID, activityID)
 }
 
+func (s *FlashService) ConfirmOrder(ctx context.Context, orderID int64) error {
+	order, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		return errcode.ErrNotFound
+	}
+	if order.Status != string(models.FlashOrderStatusPending) {
+		return errors.New("order cannot be confirmed in current status: " + order.Status)
+	}
+
+	activity, err := s.repo.GetActivity(ctx, order.ActivityID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.repo.UpdateOrderStatusWithTx(tx, orderID, string(models.FlashOrderStatusPaid)); err != nil {
+			return err
+		}
+		return tx.Exec(
+			"UPDATE inventories SET reserved = reserved - 1, quantity = quantity - 1 WHERE product_id = ? AND reserved >= 1 AND quantity >= 1",
+			activity.ProductID,
+		).Error
+	}); err != nil {
+		return errors.New("order confirmation failed: " + err.Error())
+	}
+
+	return nil
+}
+
+func (s *FlashService) CancelOrder(ctx context.Context, orderID int64) error {
+	order, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		return errcode.ErrNotFound
+	}
+	if order.Status != string(models.FlashOrderStatusPending) {
+		return errors.New("order cannot be cancelled in current status: " + order.Status)
+	}
+
+	activity, err := s.repo.GetActivity(ctx, order.ActivityID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.repo.UpdateOrderStatusWithTx(tx, orderID, string(models.FlashOrderStatusCancelled)); err != nil {
+			return err
+		}
+		if err := s.repo.UpdateSoldStockWithTx(tx, order.ActivityID, -1); err != nil {
+			return err
+		}
+		return tx.Exec(
+			"UPDATE inventories SET reserved = reserved - 1 WHERE product_id = ? AND reserved >= 1",
+			activity.ProductID,
+		).Error
+	}); err != nil {
+		return errors.New("order cancellation failed: " + err.Error())
+	}
+
+	stockKey := stockKey(order.ActivityID)
+	s.rdb.Incr(ctx, stockKey)
+
+	return nil
+}
+
 func (s *FlashService) FlashBuy(ctx context.Context, req *dto.FlashBuyReq) (*dto.FlashBuyResp, error) {
 	activity, err := s.repo.GetActivity(ctx, req.ActivityID)
 	if err != nil {
@@ -163,10 +229,16 @@ func (s *FlashService) FlashBuy(ctx context.Context, req *dto.FlashBuyReq) (*dto
 		if err := s.repo.IncrementSoldStockWithTx(tx, req.ActivityID, 1); err != nil {
 			return err
 		}
-		return s.repo.CreateOrderWithTx(tx, order)
+		if err := s.repo.CreateOrderWithTx(tx, order); err != nil {
+			return err
+		}
+		return tx.Exec(
+			"UPDATE inventories SET reserved = reserved + 1 WHERE product_id = ? AND quantity - reserved >= 1",
+			activity.ProductID,
+		).Error
 	}); err != nil {
 		s.rdb.Incr(ctx, stockKey)
-		return &dto.FlashBuyResp{Success: false, Message: "order creation failed"}, nil
+		return &dto.FlashBuyResp{Success: false, Message: "order creation failed, insufficient inventory"}, nil
 	}
 
 	s.rdb.Set(ctx, limitKey, 1, 24*time.Hour)
@@ -174,6 +246,6 @@ func (s *FlashService) FlashBuy(ctx context.Context, req *dto.FlashBuyReq) (*dto
 	return &dto.FlashBuyResp{
 		Success: true,
 		OrderID: order.ID,
-		Message: "order created successfully",
+		Message: "order created successfully, please confirm within 24h",
 	}, nil
 }

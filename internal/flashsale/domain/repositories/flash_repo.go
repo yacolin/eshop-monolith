@@ -123,3 +123,20 @@ func (r *FlashRepository) CreateOrderWithTx(tx *gorm.DB, o *models.FlashOrder) e
 	o.ID = po.ID
 	return nil
 }
+
+func (r *FlashRepository) UpdateOrderStatusWithTx(tx *gorm.DB, orderID int64, status string) error {
+	return tx.Model(&infraModels.FlashOrderPO{}).
+		Where("id = ?", orderID).
+		Update("status", status).Error
+}
+
+func (r *FlashRepository) UpdateSoldStockWithTx(tx *gorm.DB, activityID int64, delta int) error {
+	if delta >= 0 {
+		return tx.Model(&infraModels.FlashActivityPO{}).
+			Where("id = ? AND total_stock - sold_stock >= ?", activityID, delta).
+			UpdateColumn("sold_stock", gorm.Expr("sold_stock + ?", delta)).Error
+	}
+	return tx.Model(&infraModels.FlashActivityPO{}).
+		Where("id = ? AND sold_stock >= ?", activityID, -delta).
+		UpdateColumn("sold_stock", gorm.Expr("sold_stock + ?", delta)).Error
+}

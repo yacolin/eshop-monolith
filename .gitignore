@@ -199,4 +199,4 @@ logs/
 
 *.rdb
 *.lua
-test_*
+test_flash.sh

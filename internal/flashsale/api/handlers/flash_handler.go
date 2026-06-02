@@ -122,3 +122,33 @@ func (h *FlashHandler) GetUserOrders(c *gin.Context) {
 
 	response.Success(c, orders)
 }
+
+func (h *FlashHandler) ConfirmOrder(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	if err := h.flashService.ConfirmOrder(c, id); err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, gin.H{"message": "order confirmed successfully"})
+}
+
+func (h *FlashHandler) CancelOrder(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	if err := h.flashService.CancelOrder(c, id); err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, gin.H{"message": "order cancelled successfully"})
+}
