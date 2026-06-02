@@ -14,6 +14,8 @@ import (
 type IPaymentRepository interface {
 	// Create 创建支付记录
 	Create(ctx context.Context, payment *payModels.Payment) error
+	// CreateWithTx 在已有事务内创建支付记录
+	CreateWithTx(tx *gorm.DB, payment *payModels.Payment) error
 	// GetByID 根据ID获取支付记录
 	GetByID(ctx context.Context, id int64) (*payModels.Payment, error)
 	// GetByOrderID 根据订单ID获取支付记录
@@ -51,6 +53,16 @@ func NewPaymentRepository(db *gorm.DB) IPaymentRepository {
 func (r *paymentRepository) Create(ctx context.Context, payment *payModels.Payment) error {
 	po := models.PaymentFromDomain(payment)
 	if err := r.db.WithContext(ctx).Create(po).Error; err != nil {
+		return err
+	}
+	payment.ID = po.ID
+	return nil
+}
+
+// CreateWithTx 在已有事务内创建支付记录
+func (r *paymentRepository) CreateWithTx(tx *gorm.DB, payment *payModels.Payment) error {
+	po := models.PaymentFromDomain(payment)
+	if err := tx.Create(po).Error; err != nil {
 		return err
 	}
 	payment.ID = po.ID

@@ -152,11 +152,14 @@ func (s *PaymentService) UpdatePaymentStatus(ctx context.Context, id int64, stat
 		TransactionID:  transactionID,
 	})
 
-	// 如果支付成功，更新订单状态
+	// 如果支付成功，发布支付成功事件（由下游 handler 完成订单状态更新+库存扣减）
 	if status == "success" {
-		if err := s.orderRepo.UpdateStatus(ctx, payment.OrderID, "paid"); err != nil {
-			logger.Error("update order status failed", "order_id", payment.OrderID, "error", err)
-		}
+		s.bus.Publish(events.PaymentSuccessEvent{
+			PaymentID: payment.ID,
+			OrderID:   payment.OrderID,
+			Amount:    payment.Amount,
+			OrderType: payment.OrderType,
+		})
 	}
 
 	// 如果支付失败，发布支付失败事件

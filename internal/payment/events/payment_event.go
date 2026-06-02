@@ -28,6 +28,14 @@ type PaymentFailedEvent struct {
 	FailureReason string `json:"failure_reason"`
 }
 
+// PaymentSuccessEvent 支付成功事件（下游 handler 据此进行订单状态更新+库存扣减）
+type PaymentSuccessEvent struct {
+	PaymentID int64  `json:"payment_id"`
+	OrderID   int64  `json:"order_id"`
+	Amount    int64  `json:"amount"`
+	OrderType string `json:"order_type"` // "order" 常规订单, "flash" 闪购订单
+}
+
 // RefundCreatedEvent 退款创建事件
 type RefundCreatedEvent struct {
 	RefundID     int64  `json:"refund_id"`

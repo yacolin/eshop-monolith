@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) {
+func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) *service.OrderService {
 	// InventoryRepository 同时实现了 IinventoryRepository 和 InventoryForOrder
 	invForOrder, ok := repos.Inventory.(orderRepos.InventoryForOrder)
 	if !ok {
@@ -38,4 +38,6 @@ func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db
 	{
 		users.GET("/:user_id/orders", orderHandler.GetOrdersByUserID)
 	}
+
+	return orderService
 }

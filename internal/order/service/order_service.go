@@ -154,6 +154,29 @@ func (s *OrderService) CancelOrder(ctx context.Context, orderID int64) error {
 	return nil
 }
 
+// HandlePaidSuccess 支付成功处理（事务内扣减库存+更新订单状态, 事务外发布事件）
+func (s *OrderService) HandlePaidSuccess(ctx context.Context, orderID int64) error {
+	if err := s.UpdateOrderStatus(ctx, orderID, models.OrderStatusPaid); err != nil {
+		return err
+	}
+
+	// 事务外发布支付成功事件
+	if s.bus != nil {
+		order, err := s.orderRepo.FindByID(ctx, orderID)
+		if err == nil {
+			s.bus.Publish(events.OrderPaidEvent{
+				OrderID:     order.ID,
+				CustomerID:  order.CustomerID,
+				TotalAmount: order.TotalAmount,
+				Currency:    order.Currency,
+				PaidAt:      time.Now(),
+			})
+		}
+	}
+
+	return nil
+}
+
 // UpdateOrderStatus 更新订单状态（事务内完成库存扣减/释放 + 状态更新）
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, orderID int64, status string) error {
 	validStatuses := map[string]bool{

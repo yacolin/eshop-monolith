@@ -9,7 +9,11 @@ import (
 	"eshop-monolith/internal/flashsale/api/dto"
 	"eshop-monolith/internal/flashsale/domain/models"
 	"eshop-monolith/internal/flashsale/domain/repositories"
+	"eshop-monolith/internal/flashsale/events"
+	"eshop-monolith/internal/infra/eventbus"
 	invRepos "eshop-monolith/internal/inventory/domain/repositories"
+	paymentModels "eshop-monolith/internal/payment/domain/models"
+	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/utils"
 
@@ -36,10 +40,12 @@ type FlashService struct {
 	rdb           *redis.Client
 	repo          *repositories.FlashRepository
 	inventoryRepo invRepos.IinventoryRepository
+	paymentRepo   paymentRepos.IPaymentRepository
+	bus           *eventbus.Bus
 }
 
-func NewFlashService(db *gorm.DB, rdb *redis.Client, repo *repositories.FlashRepository, inventoryRepo invRepos.IinventoryRepository) *FlashService {
-	return &FlashService{db: db, rdb: rdb, repo: repo, inventoryRepo: inventoryRepo}
+func NewFlashService(db *gorm.DB, rdb *redis.Client, repo *repositories.FlashRepository, inventoryRepo invRepos.IinventoryRepository, paymentRepo paymentRepos.IPaymentRepository, bus *eventbus.Bus) *FlashService {
+	return &FlashService{db: db, rdb: rdb, repo: repo, inventoryRepo: inventoryRepo, paymentRepo: paymentRepo, bus: bus}
 }
 
 func stockKey(activityID int64) string {
@@ -116,6 +122,11 @@ func (s *FlashService) GetUserOrders(ctx context.Context, userID int64, activity
 	return s.repo.GetUserOrders(ctx, userID, activityID)
 }
 
+// HandlePaidSuccess 闪购支付成功处理（用于事件 handler 分发, 参见 ConfirmOrder）
+func (s *FlashService) HandlePaidSuccess(ctx context.Context, orderID int64) error {
+	return s.ConfirmOrder(ctx, orderID)
+}
+
 func (s *FlashService) ConfirmOrder(ctx context.Context, orderID int64) error {
 	order, err := s.repo.GetOrder(ctx, orderID)
 	if err != nil {
@@ -131,9 +142,26 @@ func (s *FlashService) ConfirmOrder(ctx context.Context, orderID int64) error {
 	}
 
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 创建 Payment 记录
+		payment := &paymentModels.Payment{
+			OrderID:       order.ID,
+			OrderType:     "flash",
+			Amount:        order.TotalAmount,
+			Currency:      "CNY",
+			PaymentMethod: "flash",
+			Status:        "success",
+			Metadata:      "{}",
+		}
+		if err := s.paymentRepo.CreateWithTx(tx, payment); err != nil {
+			return err
+		}
+
+		// 2. 更新闪购订单状态为 paid
 		if err := s.repo.UpdateOrderStatusWithTx(tx, orderID, string(models.FlashOrderStatusPaid)); err != nil {
 			return err
 		}
+
+		// 3. 扣减库存
 		res := tx.Exec(
 			"UPDATE inventories SET reserved = reserved - 1, quantity = quantity - 1 WHERE product_id = ? AND reserved >= 1 AND quantity >= 1",
 			activity.ProductID,
@@ -147,6 +175,18 @@ func (s *FlashService) ConfirmOrder(ctx context.Context, orderID int64) error {
 		return nil
 	}); err != nil {
 		return errors.New("order confirmation failed: " + err.Error())
+	}
+
+	// 事务外发布闪购订单支付成功事件
+	if s.bus != nil {
+		s.bus.Publish(events.FlashOrderPaidEvent{
+			OrderID:    order.ID,
+			UserID:     order.UserID,
+			ActivityID: order.ActivityID,
+			ProductID:  order.ProductID,
+			Amount:     order.TotalAmount,
+			PaidAt:     time.Now(),
+		})
 	}
 
 	return nil
@@ -190,6 +230,16 @@ func (s *FlashService) CancelOrder(ctx context.Context, orderID int64) error {
 
 	stockKey := stockKey(order.ActivityID)
 	s.rdb.Incr(ctx, stockKey)
+
+	// 事务外发布闪购订单取消事件
+	if s.bus != nil {
+		s.bus.Publish(events.FlashOrderCancelledEvent{
+			OrderID:     order.ID,
+			UserID:      order.UserID,
+			ActivityID:  order.ActivityID,
+			CancelledAt: time.Now(),
+		})
+	}
 
 	return nil
 }
@@ -260,6 +310,18 @@ func (s *FlashService) FlashBuy(ctx context.Context, req *dto.FlashBuyReq) (*dto
 	}); err != nil {
 		s.rdb.Incr(ctx, stockKey)
 		return &dto.FlashBuyResp{Success: false, Message: "order creation failed, insufficient inventory"}, nil
+	}
+
+	// 事务外发布闪购订单创建事件
+	if s.bus != nil {
+		s.bus.Publish(events.FlashOrderCreatedEvent{
+			OrderID:    order.ID,
+			UserID:     order.UserID,
+			ActivityID: req.ActivityID,
+			ProductID:  activity.ProductID,
+			Amount:     order.TotalAmount,
+			CreatedAt:  time.Now(),
+		})
 	}
 
 	s.rdb.Set(ctx, limitKey, 1, 24*time.Hour)

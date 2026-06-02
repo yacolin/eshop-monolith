@@ -1,15 +1,21 @@
 package router
 
 import (
+	"context"
+
 	cartRoutes "eshop-monolith/internal/cart/api/routes"
 	invRoutes "eshop-monolith/internal/inventory/api/routes"
 	orderRoutes "eshop-monolith/internal/order/api/routes"
+	orderSvcPkg "eshop-monolith/internal/order/service"
 	payRoutes "eshop-monolith/internal/payment/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
 	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
+	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 
 	"eshop-monolith/internal/infra/eventbus"
+	paymentEvents "eshop-monolith/internal/payment/events"
 	"eshop-monolith/pkg/config"
+	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/internal/infra/repository"
@@ -25,6 +31,8 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 
 	// 创建事件总线实例
 	bus := eventbus.NewBus()
+
+	// 注册基础事件处理器（日志记录等）
 	eventbus.RegisterHandlers(bus)
 
 	// 添加全局错误处理中间件
@@ -39,6 +47,10 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 
 	// Prometheus 监控指标
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册）
+	var orderSvc *orderSvcPkg.OrderService
+	var flashSvc *flashSvcPkg.FlashService
 
 	// API v1 路由组
 	v1 := router.Group("/api/v1")
@@ -56,11 +68,11 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		invRoutes.RegisterProductRoutes(v1, repos, db, bus)
 		invRoutes.RegisterInventoryRoutes(v1, repos, bus)
 
-		orderRoutes.RegisterOrderRoutes(v1, repos, db, bus)
+		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, bus)
 		userRoutes.RegisterUserRoutes(v1, repos)
 		payRoutes.RegisterPaymentRoutes(v1, repos, bus, db)
 		cartRoutes.RegisterCartRoutes(v1, repos)
-		flashRoutes.RegisterFlashRoutes(v1, repos, db)
+		flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, bus)
 		userRoutes.RegisterAuthRoutes(v1, repos, db)
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
 		userRoutes.RegisterRoleRoutes(v1, repos, db)
@@ -73,6 +85,26 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 			// 例如：订单、用户管理等路由
 		}
 	}
+
+	// 注册支付成功事件业务处理器（在 service 创建后, 通过闭包注入依赖）
+	bus.Subscribe("payment.PaymentSuccessEvent", func(event interface{}) {
+		e, ok := event.(paymentEvents.PaymentSuccessEvent)
+		if !ok {
+			return
+		}
+		switch e.OrderType {
+		case "flash":
+			if err := flashSvc.HandlePaidSuccess(context.Background(), e.OrderID); err != nil {
+				logger.Error("flash order paid handler failed",
+					"order_id", e.OrderID, "error", err)
+			}
+		default:
+			if err := orderSvc.HandlePaidSuccess(context.Background(), e.OrderID); err != nil {
+				logger.Error("order paid handler failed",
+					"order_id", e.OrderID, "error", err)
+			}
+		}
+	})
 
 	return router
 }

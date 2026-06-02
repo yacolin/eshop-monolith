@@ -8,7 +8,7 @@ import (
 // RegisterOrderHandlers 注册订单事件处理器
 func RegisterOrderHandlers(bus *Bus) {
 	bus.Subscribe("order.OrderCreatedEvent", handleOrderCreated)
-	bus.Subscribe("order.OrderStatusChangedEvent", handleOrderStatusChanged)
+	bus.Subscribe("order.OrderPaidEvent", handleOrderPaid)
 	bus.Subscribe("order.OrderCancelledEvent", handleOrderCancelled)
 }
 
@@ -22,8 +22,8 @@ func handleOrderCreated(event interface{}) {
 	// 这里可以添加发送通知、记录日志等逻辑
 }
 
-// handleOrderStatusChanged 处理订单状态变更事件
-func handleOrderStatusChanged(event interface{}) {
+// handleOrderPaid 处理订单支付成功事件
+func handleOrderPaid(event interface{}) {
 	e, ok := event.(events.OrderPaidEvent)
 	if !ok {
 		return

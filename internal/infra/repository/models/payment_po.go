@@ -12,6 +12,7 @@ import (
 type PaymentPO struct {
 	ID            int64                  `gorm:"primaryKey;autoIncrement"`
 	OrderID       int64                  `gorm:"not null;index"`
+	OrderType     string                 `gorm:"type:varchar(20);not null;default:'order'"`
 	Amount        int64                  `gorm:"not null"`
 	Currency      string                 `gorm:"type:varchar(10);not null;default:'CNY'"`
 	PaymentMethod string                 `gorm:"type:varchar(50);not null"`
@@ -23,7 +24,8 @@ type PaymentPO struct {
 	CreatedAt     time.Time              `gorm:"type:timestamp;default:CURRENT_TIMESTAMP()"`
 	UpdatedAt     time.Time              `gorm:"type:timestamp;default:CURRENT_TIMESTAMP();onUpdate:CURRENT_TIMESTAMP()"`
 	DeletedAt     gorm.DeletedAt         `gorm:"index"`
-	Order         *PaymentOrderPO        `gorm:"foreignKey:OrderID"`
+	// Order 关联已移除（避免外键约束限制闪购订单创建支付记录）
+	// 如需查询订单信息, 根据 order_type 和 order_id 分别查询 orders/flash_orders 表
 	Transactions  []PaymentTransactionPO `gorm:"foreignKey:PaymentID"`
 	Refunds       []RefundPO             `gorm:"foreignKey:PaymentID"`
 }
@@ -36,10 +38,6 @@ func (po *PaymentPO) ToDomain() *payDomain.Payment {
 		ts := utils.Timestamp(*po.PaidAt)
 		paidAt = &ts
 	}
-	var payOrder *payDomain.Order
-	if po.Order != nil {
-		payOrder = po.Order.ToDomain()
-	}
 	transactions := make([]payDomain.PaymentTransaction, len(po.Transactions))
 	for i, t := range po.Transactions {
 		transactions[i] = *t.ToDomain()
@@ -51,6 +49,7 @@ func (po *PaymentPO) ToDomain() *payDomain.Payment {
 	return &payDomain.Payment{
 		ID:            po.ID,
 		OrderID:       po.OrderID,
+		OrderType:     po.OrderType,
 		Amount:        po.Amount,
 		Currency:      po.Currency,
 		PaymentMethod: po.PaymentMethod,
@@ -61,7 +60,6 @@ func (po *PaymentPO) ToDomain() *payDomain.Payment {
 		PaidAt:        paidAt,
 		CreatedAt:     utils.Timestamp(po.CreatedAt),
 		UpdatedAt:     utils.Timestamp(po.UpdatedAt),
-		Order:         payOrder,
 		Transactions:  transactions,
 		Refunds:       refunds,
 	}
@@ -72,10 +70,6 @@ func PaymentFromDomain(p *payDomain.Payment) *PaymentPO {
 	if p.PaidAt != nil {
 		t := time.Time(*p.PaidAt)
 		paidAt = &t
-	}
-	var payOrder *PaymentOrderPO
-	if p.Order != nil {
-		payOrder = PaymentOrderFromDomain(p.Order)
 	}
 	transactions := make([]PaymentTransactionPO, len(p.Transactions))
 	for i, t := range p.Transactions {
@@ -88,6 +82,7 @@ func PaymentFromDomain(p *payDomain.Payment) *PaymentPO {
 	return &PaymentPO{
 		ID:            p.ID,
 		OrderID:       p.OrderID,
+		OrderType:     p.OrderType,
 		Amount:        p.Amount,
 		Currency:      p.Currency,
 		PaymentMethod: p.PaymentMethod,
@@ -98,7 +93,6 @@ func PaymentFromDomain(p *payDomain.Payment) *PaymentPO {
 		PaidAt:        paidAt,
 		CreatedAt:     time.Time(p.CreatedAt),
 		UpdatedAt:     time.Time(p.UpdatedAt),
-		Order:         payOrder,
 		Transactions:  transactions,
 		Refunds:       refunds,
 	}

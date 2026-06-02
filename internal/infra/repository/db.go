@@ -11,6 +11,8 @@ import (
 
 	cartRepos "eshop-monolith/internal/cart/domain/repositories"
 
+	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
+
 	"eshop-monolith/pkg/config"
 	"fmt"
 	"time"
@@ -126,6 +128,7 @@ type Repositories struct {
 	Role         userRepos.IroleRepository
 	Permission   userRepos.IpermissionRepository
 	Cart         cartRepos.CartRepository
+	Payment      paymentRepos.IPaymentRepository
 }
 
 // // NewRepositories 创建仓储集合
@@ -144,5 +147,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Role:         userRepos.NewRoleRepository(db),
 		Permission:   userRepos.NewPermissionRepository(db),
 		Cart:         cartRepos.NewCartRepository(db),
+		Payment:      paymentRepos.NewPaymentRepository(db),
 	}
 }

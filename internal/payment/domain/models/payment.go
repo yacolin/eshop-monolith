@@ -6,9 +6,10 @@ import "eshop-monolith/pkg/utils"
 type Payment struct {
 	ID             int64   `json:"id"`
 	OrderID        int64   `json:"order_id"`
+	OrderType      string  `json:"order_type"` // 订单类型: "order"(常规), "flash"(闪购)
 	Amount         int64   `json:"amount"` // 金额（分）
 	Currency       string  `json:"currency"`
-	PaymentMethod  string  `json:"payment_method"` // 支付方式：alipay, wechat, bank, cash
+	PaymentMethod  string  `json:"payment_method"` // 支付方式：alipay, wechat, bank, cash, flash
 	TransactionID  string  `json:"transaction_id"` // 第三方交易ID
 	Status         string  `json:"status"` // pending, processing, success, failed, refunded
 	FailureReason  string  `json:"failure_reason"`
