@@ -5,6 +5,7 @@ import (
 
 	cartRoutes "eshop-monolith/internal/cart/api/routes"
 	invRoutes "eshop-monolith/internal/inventory/api/routes"
+	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	orderRoutes "eshop-monolith/internal/order/api/routes"
 	orderSvcPkg "eshop-monolith/internal/order/service"
 	payRoutes "eshop-monolith/internal/payment/api/routes"
@@ -76,6 +77,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		userRoutes.RegisterAuthRoutes(v1, repos, db)
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
 		userRoutes.RegisterRoleRoutes(v1, repos, db)
+		notifRoutes.RegisterNotificationRoutes(v1, repos, db, bus)
 
 		// 需要认证的路由组
 		auth := v1.Group("/")
