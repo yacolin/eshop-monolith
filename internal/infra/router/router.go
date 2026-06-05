@@ -14,6 +14,7 @@ import (
 	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 
 	"eshop-monolith/internal/infra/eventbus"
+	ws "eshop-monolith/internal/infra/ws"
 	paymentEvents "eshop-monolith/internal/payment/events"
 	"eshop-monolith/pkg/config"
 	"eshop-monolith/pkg/logger"
@@ -35,6 +36,14 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 
 	// 注册基础事件处理器（日志记录等）
 	eventbus.RegisterHandlers(bus)
+
+	// 创建 WebSocket Hub 并启动
+	wsHub := ws.NewHub()
+	go wsHub.Run()
+
+	// 注册 WebSocket 事件处理器（将业务事件推送给在线用户）
+	eventbus.RegisterWSHandlers(bus, wsHub)
+	wsHandler := ws.NewHandler(wsHub)
 
 	// 添加全局错误处理中间件
 	router.Use(middleware.ErrorHandler())
@@ -78,6 +87,12 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
 		userRoutes.RegisterRoleRoutes(v1, repos, db)
 		notifRoutes.RegisterNotificationRoutes(v1, repos, db, bus)
+
+		// WebSocket 连接端点（JWT 鉴权通过 token 查询参数）
+		v1.GET("/ws", wsHandler.Upgrade)
+
+		// WebSocket 在线统计（调试/管理用）
+		v1.GET("/ws/stats", wsHandler.GetOnlineStats)
 
 		// 需要认证的路由组
 		auth := v1.Group("/")
