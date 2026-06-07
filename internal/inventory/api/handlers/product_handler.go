@@ -53,6 +53,36 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// ListProductsWithCategory 列出所有产品（含分类信息）
+// @Summary 列出所有产品（含分类）
+// @Description 获取所有产品的列表，每个产品附带其首个分类信息，通过一次批量查询补全
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页条数" default(10)
+// @Param name query string false "产品名称模糊搜索"
+// @Param sku query string false "SKU精确搜索"
+// @Success 200 {object} response.Response{data=dto.ProductWithCategoryListResult}
+// @Router /api/v1/products/enriched [get]
+func (h *ProductHandler) ListProductsWithCategory(c *gin.Context) {
+	var q dto.ProductListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
+		return
+	}
+
+	(&q).Normalize()
+
+	result, err := h.productService.ListProductsWithCategory(c, q)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result)
+}
+
 // GetProduct 根据ID获取产品
 // @Summary 获取产品详情
 // @Description 根据产品ID获取产品详情
@@ -69,6 +99,30 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 		return
 	}
 	product, err := h.productService.GetProductByID(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, product)
+}
+
+// GetProductWithCategory 获取产品详情（含分类信息）
+// @Summary 获取产品详情（含分类）
+// @Description 根据产品ID获取产品详情，包含产品信息和首个分类信息
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "产品ID"
+// @Success 200 {object} response.Response{data=dto.ProductWithCategoryDTO}
+// @Router /api/v1/products/{id}/enriched [get]
+func (h *ProductHandler) GetProductWithCategory(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	product, err := h.productService.GetProductWithCategory(c, id)
 	if err != nil {
 		c.Error(err)
 		return

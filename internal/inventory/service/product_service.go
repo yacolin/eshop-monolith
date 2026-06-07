@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -340,6 +341,134 @@ func (s *ProductService) GetProductWithInventory(ctx context.Context, id int64) 
 	}
 
 	return detail, nil
+}
+
+// getFirstCategoryInfo 查询产品的首个分类（一次额外查询）
+func (s *ProductService) getFirstCategoryInfo(ctx context.Context, productID int64) (int64, string, error) {
+	type categoryRow struct {
+		CategoryID   int64
+		CategoryName string
+	}
+	var row categoryRow
+	err := s.db.WithContext(ctx).
+		Table("product_categories").
+		Select("product_categories.category_id, categories.name as category_name").
+		Joins("JOIN categories ON categories.id = product_categories.category_id").
+		Where("product_categories.product_id = ?", productID).
+		Order("product_categories.category_id ASC").
+		Limit(1).
+		Take(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, "", nil
+		}
+		return 0, "", err
+	}
+	return row.CategoryID, row.CategoryName, nil
+}
+
+// batchFirstCategoryInfo 批量查询产品的首个分类（一次查询）
+func (s *ProductService) batchFirstCategoryInfo(ctx context.Context, products []models.Product) (map[int64]dto.ProductCategoryBrief, error) {
+	if len(products) == 0 {
+		return nil, nil
+	}
+
+	productIDs := make([]int64, len(products))
+	for i, p := range products {
+		productIDs[i] = p.ID
+	}
+
+	type categoryRow struct {
+		ProductID  int64
+		CategoryID int64
+		Name       string
+	}
+
+	var rows []categoryRow
+	sub := s.db.Table("product_categories").
+		Select("product_id, MIN(category_id) as category_id").
+		Where("product_id IN ?", productIDs).
+		Group("product_id")
+
+	if err := s.db.WithContext(ctx).
+		Table("(?) as pc", sub).
+		Select("pc.product_id, pc.category_id, c.name").
+		Joins("JOIN categories c ON c.id = pc.category_id").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[int64]dto.ProductCategoryBrief, len(rows))
+	for _, row := range rows {
+		result[row.ProductID] = dto.ProductCategoryBrief{
+			ID:   row.CategoryID,
+			Name: row.Name,
+		}
+	}
+	return result, nil
+}
+
+// GetProductWithCategory 获取产品详情（含分类信息）
+func (s *ProductService) GetProductWithCategory(ctx context.Context, id int64) (*dto.ProductWithCategoryDTO, error) {
+	product, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &dto.ProductWithCategoryDTO{
+		ID:          product.ID,
+		Name:        product.Name,
+		Description: product.Description,
+		Price:       product.Price,
+		SKU:         product.SKU,
+		CreatedAt:   product.CreatedAt,
+		UpdatedAt:   product.UpdatedAt,
+	}
+
+	// 一次额外查询补全分类信息
+	if catID, catName, err := s.getFirstCategoryInfo(ctx, id); err == nil {
+		result.CategoryID = catID
+		result.CategoryName = catName
+	}
+
+	return result, nil
+}
+
+// ListProductsWithCategory 列出产品（含分类信息，批量补全）
+func (s *ProductService) ListProductsWithCategory(ctx context.Context, q dto.ProductListQuery) (*query.ListResult[dto.ProductWithCategoryDTO], error) {
+	products, err := s.ListProducts(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	enrichedList := make([]dto.ProductWithCategoryDTO, len(products.List))
+	for i, p := range products.List {
+		enrichedList[i] = dto.ProductWithCategoryDTO{
+			ID:          p.ID,
+			Name:        p.Name,
+			Description: p.Description,
+			Price:       p.Price,
+			SKU:         p.SKU,
+			CreatedAt:   p.CreatedAt,
+			UpdatedAt:   p.UpdatedAt,
+		}
+	}
+
+	// 一次批量查询补全所有产品的分类信息
+	categoryMap, batchErr := s.batchFirstCategoryInfo(ctx, products.List)
+	if batchErr == nil {
+		for i, p := range products.List {
+			if cat, ok := categoryMap[p.ID]; ok {
+				enrichedList[i].CategoryID = cat.ID
+				enrichedList[i].CategoryName = cat.Name
+			}
+		}
+	}
+
+	return &query.ListResult[dto.ProductWithCategoryDTO]{
+		List:  enrichedList,
+		Total: products.Total,
+	}, nil
 }
 
 func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProductDTO) (*models.Product, error) {

@@ -191,6 +191,11 @@ func (r *ProductRepository) applyQueryConditions(ctx context.Context, q dto.Prod
 	if q.SKU != "" {
 		db = db.Where("sku = ?", q.SKU)
 	}
+	if q.CategoryID != nil {
+		db = db.Where("id IN (?)",
+			r.db.Table("product_categories").Select("product_id").Where("category_id = ?", *q.CategoryID),
+		)
+	}
 	return db
 }
 

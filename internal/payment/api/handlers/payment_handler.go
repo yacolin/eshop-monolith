@@ -227,7 +227,7 @@ func (h *PaymentHandler) ListPayments(c *gin.Context) {
 // CreateRefund 创建退款
 // @Summary 创建退款
 // @Description 创建新的退款记录
-// @Tags 退款
+// @Tags refunds
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateRefundRequest true "创建退款请求"
@@ -263,7 +263,7 @@ func (h *PaymentHandler) CreateRefund(c *gin.Context) {
 // UpdateRefundStatus 更新退款状态
 // @Summary 更新退款状态
 // @Description 更新退款记录的状态
-// @Tags 退款
+// @Tags refunds
 // @Accept json
 // @Produce json
 // @Param id path int true "退款ID"
@@ -297,7 +297,7 @@ func (h *PaymentHandler) UpdateRefundStatus(c *gin.Context) {
 // ListRefunds 获取退款列表
 // @Summary 获取退款列表
 // @Description 根据查询条件获取退款记录列表
-// @Tags 退款
+// @Tags refunds
 // @Accept json
 // @Produce json
 // @Param payment_id query int false "支付ID"
@@ -345,7 +345,7 @@ func (h *PaymentHandler) ListRefunds(c *gin.Context) {
 // ListPaymentMethods 获取支付方式列表
 // @Summary 获取支付方式列表
 // @Description 获取所有可用的支付方式
-// @Tags 支付方式
+// @Tags payment-methods
 // @Accept json
 // @Produce json
 // @Param page query int false "页码，默认1"
