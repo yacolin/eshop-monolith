@@ -316,6 +316,18 @@ go run ./cmd/server
 make run
 ```
 
+#### 5. 生成 API 文档
+
+```bash
+# 安装 swag CLI（首次使用）
+go install github.com/swaggo/swag/cmd/swag@latest
+
+# 生成 Swagger 文档
+swag init -g cmd/server/main.go --output docs
+```
+
+启动服务后访问：**http://localhost:8080/swagger/index.html**
+
 ### 使用 Makefile
 
 ```bash

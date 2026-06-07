@@ -156,7 +156,7 @@ func (h *PermissionHandler) DeletePermission(c *gin.Context) {
 // @Param category query string false "分类"
 // @Param resource query string false "资源"
 // @Param role query string false "角色"
-// @Success 200 {object} response.Response{data=service.ListPermissionsResponse}
+// @Success 200 {object} response.Response{data=dto.ListPermissionsResponse}
 // @Router /api/v1/permissions [get]
 func (h *PermissionHandler) ListPermissions(c *gin.Context) {
 	var query dto.PermissionListQuery

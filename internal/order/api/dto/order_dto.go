@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"eshop-monolith/internal/order/domain/models"
+	ordermodels "eshop-monolith/internal/order/domain/models"
 	"eshop-monolith/pkg/query"
 )
 
@@ -17,7 +17,7 @@ type OrderListQuery struct {
 }
 
 // OrderListResult 订单列表结果（使用泛型）
-type OrderListResult = query.ListResult[models.Order]
+type OrderListResult = query.ListResult[ordermodels.Order]
 
 type CreateOrderDTO struct {
 	CustomerID string               `json:"customer_id" binding:"required"`

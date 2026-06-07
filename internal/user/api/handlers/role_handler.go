@@ -28,7 +28,7 @@ func NewRoleHandler(permissionSvc service.PermissionService) *RoleHandler {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body service.CreateRoleRequest true "角色信息"
+// @Param request body dto.CreateRoleRequest true "角色信息"
 // @Success 200 {object} response.Response{data=models.Role} "成功"
 // @Failure 400 {object} response.Response "请求参数错误"
 // @Failure 401 {object} response.Response "未授权"
@@ -110,7 +110,7 @@ func (h *RoleHandler) GetRoleByName(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "角色ID" format(uuid)
-// @Param request body service.UpdateRoleRequest true "角色信息"
+// @Param request body dto.UpdateRoleRequest true "角色信息"
 // @Success 200 {object} response.Response{data=models.Role} "成功"
 // @Failure 400 {object} response.Response "请求参数错误"
 // @Failure 401 {object} response.Response "未授权"
@@ -181,7 +181,7 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 // @Security BearerAuth
 // @Param page query int false "页码" minimum(1) default(1)
 // @Param page_size query int false "每页数量" minimum(1) maximum(100) default(20)
-// @Success 200 {object} response.Response{data=service.ListRolesResponse} "成功"
+// @Success 200 {object} response.Response{data=dto.ListRolesResponse} "成功"
 // @Failure 400 {object} response.Response "请求参数错误"
 // @Failure 401 {object} response.Response "未授权"
 // @Failure 500 {object} response.Response "服务器内部错误"

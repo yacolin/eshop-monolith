@@ -61,7 +61,7 @@ func (h *OrderHandler) ListOrders(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "订单ID"
-// @Success 200 {object} response.Response{data=models.Order}
+// @Success 200 {object} response.Response
 // @Router /api/v1/orders/{id} [get]
 func (h *OrderHandler) GetOrder(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
@@ -86,7 +86,7 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param order body dto.CreateOrderDTO true "订单信息"
-// @Success 200 {object} response.Response{data=models.Order}
+// @Success 200 {object} response.Response
 // @Router /api/v1/orders [post]
 func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	var req dto.CreateOrderDTO
@@ -112,7 +112,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 // @Produce json
 // @Param id path int true "订单ID"
 // @Param order body dto.UpdateOrderDTO true "订单信息"
-// @Success 200 {object} response.Response{data=models.Order}
+// @Success 200 {object} response.Response
 // @Router /api/v1/orders/{id} [put]
 func (h *OrderHandler) UpdateOrder(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")

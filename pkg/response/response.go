@@ -18,6 +18,9 @@ type APIResponse struct {
 	TraceID string      `json:"trace_id,omitempty"`
 }
 
+// Response 是 APIResponse 的类型别名，用于 Swagger 注解
+type Response = APIResponse
+
 // ValidationFieldError 字段验证错误详情
 type ValidationFieldError struct {
 	Field   string `json:"field"`

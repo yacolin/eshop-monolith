@@ -1,3 +1,9 @@
+// @title Eshop Monolith API
+// @version 1.0
+// @description 电商单体应用 API
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+// @BasePath
 package main
 
 import (
@@ -10,10 +16,10 @@ import (
 	"syscall"
 	"time"
 
+	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/internal/infra/router"
 	"eshop-monolith/pkg/config"
 	"eshop-monolith/pkg/logger"
-	"eshop-monolith/internal/infra/repository"
 )
 
 func main() {

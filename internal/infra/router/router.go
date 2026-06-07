@@ -22,8 +22,12 @@ import (
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/internal/infra/repository"
 
+	_ "eshop-monolith/docs" // swagger docs, 由 swag CLI 生成
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 )
 
@@ -56,6 +60,9 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 
 	// Prometheus 监控指标
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	// Swagger 文档
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册）
 	var orderSvc *orderSvcPkg.OrderService
