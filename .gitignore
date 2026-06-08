@@ -201,3 +201,6 @@ logs/
 *.rdb
 *.lua
 test_flash.sh
+
+# Personal assessment (not part of project codebase)
+assessment.md

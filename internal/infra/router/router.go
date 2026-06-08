@@ -2,25 +2,26 @@ package router
 
 import (
 	"context"
+	"strconv"
 
 	cartRoutes "eshop-monolith/internal/cart/api/routes"
+	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
+	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 	invRoutes "eshop-monolith/internal/inventory/api/routes"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	orderRoutes "eshop-monolith/internal/order/api/routes"
 	orderSvcPkg "eshop-monolith/internal/order/service"
 	payRoutes "eshop-monolith/internal/payment/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
-	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
-	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 
 	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/repository"
 	ws "eshop-monolith/internal/infra/ws"
 	paymentEvents "eshop-monolith/internal/payment/events"
 	"eshop-monolith/pkg/config"
 	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
-	"eshop-monolith/internal/infra/repository"
 
 	_ "eshop-monolith/docs" // swagger docs, 由 swag CLI 生成
 
@@ -41,9 +42,29 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	// 注册基础事件处理器（日志记录等）
 	eventbus.RegisterHandlers(bus)
 
-	// 创建 WebSocket Hub 并启动
-	wsHub := ws.NewHub()
+	// 创建 WebSocket Hub 并启动（传入Redis客户端支持断线重连和增量同步）
+	wsHub := ws.NewHub(repos.Redis)
 	go wsHub.Run()
+
+	// 设置用户信息查询回调（用于实时在线事件广播）
+	wsHub.SetUserInfoProvider(func(userID int64) (string, string, error) {
+		ctx := context.Background()
+
+		// 查询用户名 (provider=password 的 identifier)
+		uid := strconv.FormatInt(userID, 10)
+		identity, err := repos.UserIdentity.GetByUserIDAndProvider(ctx, uid, "password")
+		if err != nil {
+			return "", "", err
+		}
+		username := identity.Identifier
+
+		// 查询昵称
+		info, err := repos.UserInfo.GetUserInfoByUserID(ctx, userID)
+		if err != nil {
+			return username, "", nil // 用户名有值即可，昵称为空不影响
+		}
+		return username, info.Nickname, nil
+	})
 
 	// 注册 WebSocket 事件处理器（将业务事件推送给在线用户）
 	eventbus.RegisterWSHandlers(bus, wsHub)
