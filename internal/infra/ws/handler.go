@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -276,6 +277,74 @@ func (h *Handler) GetUserSession(c *gin.Context) {
 		LastActiveAt:   session.LastActiveAt.Format(time.RFC3339),
 		ReconnectCount: session.ReconnectCount,
 	})
+}
+
+// TestPushRequest 测试推送请求
+type TestPushRequest struct {
+	Title   string `json:"title" binding:"required"`   // 通知标题
+	Message string `json:"message" binding:"required"` // 通知内容
+	Level   string `json:"level"`                      // 级别: info/warning/error
+	Target  string `json:"target"`                     // 目标: all(默认) 或 user_id
+}
+
+// PushTestMessage 推送测试消息
+// @Summary 推送WebSocket测试消息
+// @Description 向WebSocket客户端推送一条测试消息，用于调试
+// @Tags websocket
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer Token"
+// @Param request body TestPushRequest true "测试消息"
+// @Success 200 {object} response.Response
+// @Failure 401 "未授权"
+// @Router /api/v1/ws/test/push [post]
+func (h *Handler) PushTestMessage(c *gin.Context) {
+	var req TestPushRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(errcode.ErrInvalidParams)
+		return
+	}
+
+	level := req.Level
+	if level == "" {
+		level = "info"
+	}
+
+	payload := struct {
+		Title   string `json:"title"`
+		Message string `json:"message"`
+		Level   string `json:"level"`
+	}{
+		Title:   req.Title,
+		Message: req.Message,
+		Level:   level,
+	}
+
+	msg := struct {
+		Type    string      `json:"type"`
+		Payload interface{} `json:"payload"`
+	}{
+		Type:    "notification",
+		Payload: payload,
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		response.SysError(c, err)
+		return
+	}
+
+	if req.Target != "" {
+		userID, err := strconv.ParseInt(req.Target, 10, 64)
+		if err == nil {
+			h.hub.SendToUser(userID, data)
+			response.Success(c, gin.H{"target": userID, "message": "测试消息已发送"})
+			return
+		}
+	}
+
+	h.hub.Broadcast(data)
+	response.Success(c, gin.H{"target": "all", "message": "测试消息已广播到所有在线用户"})
 }
 
 func extractUserIDFromClaims(claims map[string]interface{}) (int64, error) {
