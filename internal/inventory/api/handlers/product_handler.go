@@ -55,7 +55,7 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 
 // ListProductsWithCategory 列出所有产品（含分类信息）
 // @Summary 列出所有产品（含分类）
-// @Description 获取所有产品的列表，每个产品附带其首个分类信息，通过一次批量查询补全
+// @Description 获取所有产品的列表，每个产品附带其所有分类信息，通过一次批量查询补全
 // @Tags products
 // @Accept json
 // @Produce json
@@ -109,7 +109,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 
 // GetProductWithCategory 获取产品详情（含分类信息）
 // @Summary 获取产品详情（含分类）
-// @Description 根据产品ID获取产品详情，包含产品信息和首个分类信息
+// @Description 根据产品ID获取产品详情，包含产品信息和所有分类信息
 // @Tags products
 // @Accept json
 // @Produce json

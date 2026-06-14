@@ -53,32 +53,30 @@ type ProductCategoryBrief struct {
 
 // ProductDetailDTO 产品详情（聚合产品和库存信息，字段平摊）
 type ProductDetailDTO struct {
-	ID           int64               `json:"id"`
-	Name         string              `json:"name"`
-	Description  string              `json:"description"`
-	Price        int64               `json:"price"`
-	SKU          string              `json:"sku"`
-	CategoryID   int64               `json:"category_id"`
-	CategoryName string              `json:"category_name"`
-	Quantity     int                 `json:"quantity"`
-	Status       string              `json:"status"`
-	Reserved     int                 `json:"reserved"`
-	Threshold    int                 `json:"threshold"`
-	CreatedAt    utils.Timestamp     `json:"created_at"`
-	UpdatedAt    utils.Timestamp     `json:"updated_at"`
+	ID           int64                  `json:"id"`
+	Name         string                 `json:"name"`
+	Description  string                 `json:"description"`
+	Price        int64                  `json:"price"`
+	SKU          string                 `json:"sku"`
+	Categories   []ProductCategoryBrief `json:"categories"`
+	Quantity     int                    `json:"quantity"`
+	Status       string                 `json:"status"`
+	Reserved     int                    `json:"reserved"`
+	Threshold    int                    `json:"threshold"`
+	CreatedAt    utils.Timestamp        `json:"created_at"`
+	UpdatedAt    utils.Timestamp        `json:"updated_at"`
 }
 
 // ProductWithCategoryDTO 产品列表项（含分类信息）
 type ProductWithCategoryDTO struct {
-	ID           int64           `json:"id"`
-	Name         string          `json:"name"`
-	Description  string          `json:"description"`
-	Price        int64           `json:"price"`
-	SKU          string          `json:"sku"`
-	CategoryID   int64           `json:"category_id"`
-	CategoryName string          `json:"category_name"`
-	CreatedAt    utils.Timestamp `json:"created_at"`
-	UpdatedAt    utils.Timestamp `json:"updated_at"`
+	ID           int64                  `json:"id"`
+	Name         string                 `json:"name"`
+	Description  string                 `json:"description"`
+	Price        int64                  `json:"price"`
+	SKU          string                 `json:"sku"`
+	Categories   []ProductCategoryBrief `json:"categories"`
+	CreatedAt    utils.Timestamp        `json:"created_at"`
+	UpdatedAt    utils.Timestamp        `json:"updated_at"`
 }
 
 // ProductWithCategoryListResult swaggo 兼容的具体类型

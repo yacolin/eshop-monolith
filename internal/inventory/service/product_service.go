@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -340,35 +339,30 @@ func (s *ProductService) GetProductWithInventory(ctx context.Context, id int64) 
 		detail.Threshold = ir.inventory.Threshold
 	}
 
+	// 补充分类信息
+	detail.Categories, _ = s.getCategoryInfo(ctx, id)
+
 	return detail, nil
 }
 
-// getFirstCategoryInfo 查询产品的首个分类（一次额外查询）
-func (s *ProductService) getFirstCategoryInfo(ctx context.Context, productID int64) (int64, string, error) {
-	type categoryRow struct {
-		CategoryID   int64
-		CategoryName string
-	}
-	var row categoryRow
+// getCategoryInfo 查询产品的所有分类
+func (s *ProductService) getCategoryInfo(ctx context.Context, productID int64) ([]dto.ProductCategoryBrief, error) {
+	var categories []dto.ProductCategoryBrief
 	err := s.db.WithContext(ctx).
 		Table("product_categories").
-		Select("product_categories.category_id, categories.name as category_name").
+		Select("categories.id, categories.name").
 		Joins("JOIN categories ON categories.id = product_categories.category_id").
 		Where("product_categories.product_id = ?", productID).
-		Order("product_categories.category_id ASC").
-		Limit(1).
-		Take(&row).Error
+		Order("categories.id ASC").
+		Scan(&categories).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, "", nil
-		}
-		return 0, "", err
+		return nil, err
 	}
-	return row.CategoryID, row.CategoryName, nil
+	return categories, nil
 }
 
-// batchFirstCategoryInfo 批量查询产品的首个分类（一次查询）
-func (s *ProductService) batchFirstCategoryInfo(ctx context.Context, products []models.Product) (map[int64]dto.ProductCategoryBrief, error) {
+// batchCategoriesInfo 批量查询产品的所有分类（一次查询）
+func (s *ProductService) batchCategoriesInfo(ctx context.Context, products []models.Product) (map[int64][]dto.ProductCategoryBrief, error) {
 	if len(products) == 0 {
 		return nil, nil
 	}
@@ -385,25 +379,22 @@ func (s *ProductService) batchFirstCategoryInfo(ctx context.Context, products []
 	}
 
 	var rows []categoryRow
-	sub := s.db.Table("product_categories").
-		Select("product_id, MIN(category_id) as category_id").
-		Where("product_id IN ?", productIDs).
-		Group("product_id")
-
 	if err := s.db.WithContext(ctx).
-		Table("(?) as pc", sub).
-		Select("pc.product_id, pc.category_id, c.name").
-		Joins("JOIN categories c ON c.id = pc.category_id").
+		Table("product_categories").
+		Select("product_categories.product_id, categories.id as category_id, categories.name").
+		Joins("JOIN categories ON categories.id = product_categories.category_id").
+		Where("product_categories.product_id IN ?", productIDs).
+		Order("categories.id ASC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	result := make(map[int64]dto.ProductCategoryBrief, len(rows))
+	result := make(map[int64][]dto.ProductCategoryBrief, len(rows))
 	for _, row := range rows {
-		result[row.ProductID] = dto.ProductCategoryBrief{
+		result[row.ProductID] = append(result[row.ProductID], dto.ProductCategoryBrief{
 			ID:   row.CategoryID,
 			Name: row.Name,
-		}
+		})
 	}
 	return result, nil
 }
@@ -426,10 +417,7 @@ func (s *ProductService) GetProductWithCategory(ctx context.Context, id int64) (
 	}
 
 	// 一次额外查询补全分类信息
-	if catID, catName, err := s.getFirstCategoryInfo(ctx, id); err == nil {
-		result.CategoryID = catID
-		result.CategoryName = catName
-	}
+	result.Categories, _ = s.getCategoryInfo(ctx, id)
 
 	return result, nil
 }
@@ -454,27 +442,12 @@ func (s *ProductService) ListProductsWithCategory(ctx context.Context, q dto.Pro
 		}
 	}
 
-	if q.CategoryID != nil {
-		// 按分类筛选时，所有返回商品都属于该分类，直接使用筛选的分类
-		var categoryName string
-		if err := s.db.WithContext(ctx).Table("categories").
-			Select("name").
-			Where("id = ?", *q.CategoryID).
-			Take(&categoryName).Error; err == nil {
-			for i := range enrichedList {
-				enrichedList[i].CategoryID = *q.CategoryID
-				enrichedList[i].CategoryName = categoryName
-			}
-		}
-	} else {
-		// 不按分类筛选时，使用商品的首个分类作为展示分类
-		categoryMap, batchErr := s.batchFirstCategoryInfo(ctx, products.List)
-		if batchErr == nil {
-			for i, p := range products.List {
-				if cat, ok := categoryMap[p.ID]; ok {
-					enrichedList[i].CategoryID = cat.ID
-					enrichedList[i].CategoryName = cat.Name
-				}
+	// 批量查询所有商品的分类信息
+	categoryMap, batchErr := s.batchCategoriesInfo(ctx, products.List)
+	if batchErr == nil {
+		for i, p := range products.List {
+			if cats, ok := categoryMap[p.ID]; ok {
+				enrichedList[i].Categories = cats
 			}
 		}
 	}
