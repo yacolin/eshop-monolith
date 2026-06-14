@@ -36,6 +36,8 @@ type IorderRepository interface {
 	CreateWithTx(tx *gorm.DB, order *orderModels.Order) error
 	// UpdateStatusWithTx 在已有事务内更新订单状态
 	UpdateStatusWithTx(tx *gorm.DB, id int64, status string) error
+	// FindByIDWithTx 在事务内查询订单
+	FindByIDWithTx(tx *gorm.DB, id int64) (*orderModels.Order, error)
 
 	ListByQuery(ctx context.Context, q dto.OrderListQuery, offset, limit int) ([]orderModels.Order, error)
 	CountByQuery(ctx context.Context, q dto.OrderListQuery) (int64, error)
@@ -53,10 +55,19 @@ func NewOrderRepository(db *gorm.DB) IorderRepository {
 // Create 创建订单
 func (r *OrderRepository) Create(ctx context.Context, order *orderModels.Order) error {
 	po := models.OrderFromDomain(order)
-	if err := r.db.WithContext(ctx).Create(po).Error; err != nil {
+	if err := r.db.WithContext(ctx).Omit("Items").Create(po).Error; err != nil {
 		return err
 	}
 	order.ID = po.ID
+	for i := range order.Items {
+		itemPO := models.OrderItemFromDomain(&order.Items[i])
+		itemPO.OrderID = po.ID
+		if err := r.db.WithContext(ctx).Create(itemPO).Error; err != nil {
+			return err
+		}
+		order.Items[i].ID = itemPO.ID
+		order.Items[i].OrderID = itemPO.OrderID
+	}
 	return nil
 }
 
@@ -103,13 +114,26 @@ func (r *OrderRepository) UpdateStatus(ctx context.Context, id int64, status str
 	return r.db.WithContext(ctx).Model(&models.OrderPO{}).Where("id = ?", id).Update("status", status).Error
 }
 
-// CreateWithTx 在已有事务内创建订单
+// CreateWithTx 在已有事务内创建订单（显式创建订单和订单项）
 func (r *OrderRepository) CreateWithTx(tx *gorm.DB, order *orderModels.Order) error {
 	po := models.OrderFromDomain(order)
-	if err := tx.Create(po).Error; err != nil {
+
+	// 先创建订单主记录，获取自增 ID
+	if err := tx.Omit("Items").Create(po).Error; err != nil {
 		return err
 	}
 	order.ID = po.ID
+
+	// 显式逐条创建订单项，确保 order_id 正确关联
+	for i := range order.Items {
+		itemPO := models.OrderItemFromDomain(&order.Items[i])
+		itemPO.OrderID = po.ID
+		if err := tx.Create(itemPO).Error; err != nil {
+			return err
+		}
+		order.Items[i].ID = itemPO.ID
+		order.Items[i].OrderID = itemPO.OrderID
+	}
 	return nil
 }
 
@@ -238,6 +262,27 @@ func (r *OrderRepository) applyQueryConditions(ctx context.Context, q dto.OrderL
 	}
 
 	return db
+}
+
+// FindByIDWithTx 在事务内查询订单（含订单项）
+func (r *OrderRepository) FindByIDWithTx(tx *gorm.DB, id int64) (*orderModels.Order, error) {
+	var po models.OrderPO
+	if err := tx.First(&po, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+
+	var itemPOs []models.OrderItemPO
+	if err := tx.Where("order_id = ?", id).Find(&itemPOs).Error; err != nil {
+		return nil, err
+	}
+
+	order := po.ToDomain()
+	items := make([]orderModels.OrderItem, len(itemPOs))
+	for i, ip := range itemPOs {
+		items[i] = *ip.ToDomain()
+	}
+	order.Items = items
+	return order, nil
 }
 
 // applyOrder 应用排序

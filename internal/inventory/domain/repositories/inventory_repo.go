@@ -12,6 +12,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// recalcStatus 根据 可用库存=Quantity-Reserved 重新计算状态
+func recalcStatus(po *models.InventoryPO) {
+	available := po.Quantity - po.Reserved
+	switch {
+	case available <= 0:
+		po.Status = string(invModels.InventoryStatusOutOfStock)
+	case available <= po.Threshold:
+		po.Status = string(invModels.InventoryStatusLowStock)
+	default:
+		po.Status = string(invModels.InventoryStatusInStock)
+	}
+}
+
 // IinventoryRepository 库存仓储接口
 type IinventoryRepository interface {
 	// CreateInventory 创建库存
@@ -87,6 +100,7 @@ func (r *InventoryRepository) ReserveInventory(ctx context.Context, productID in
 
 		// 预占库存
 		po.Reserved += quantity
+		recalcStatus(&po)
 		return tx.Save(&po).Error
 	})
 }
@@ -107,55 +121,76 @@ func (r *InventoryRepository) ReleaseInventory(ctx context.Context, productID in
 
 		// 释放库存
 		po.Reserved -= quantity
+		recalcStatus(&po)
 		return tx.Save(&po).Error
 	})
 }
 
-// ReserveWithTx 在已有事务内预占库存（不自行提交/回滚）
+// ReserveWithTx 在已有事务内预占库存（原子 SQL，不自行提交/回滚）
 func (r *InventoryRepository) ReserveWithTx(tx *gorm.DB, productID int64, quantity int) error {
-	var po models.InventoryPO
-	if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
-		return err
+	result := tx.Exec(
+		"UPDATE inventories SET reserved = reserved + ? WHERE product_id = ? AND quantity - reserved >= ?",
+		quantity, productID, quantity,
+	)
+	if result.Error != nil {
+		return result.Error
 	}
-	if po.Quantity-po.Reserved < quantity {
+	if result.RowsAffected == 0 {
 		return errcode.ErrInsufficientInventory
 	}
-	po.Reserved += quantity
-	return tx.Save(&po).Error
+	return r.updateInventoryStatus(tx, productID)
 }
 
-// DeductWithTx 在已有事务内扣减库存（不自行提交/回滚）
+// DeductWithTx 在已有事务内扣减库存（原子 SQL，不自行提交/回滚）
 func (r *InventoryRepository) DeductWithTx(tx *gorm.DB, productID int64, quantity int) error {
-	var po models.InventoryPO
-	if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
-		return err
+	result := tx.Exec(
+		"UPDATE inventories SET quantity = quantity - ?, reserved = reserved - ? WHERE product_id = ? AND reserved >= ?",
+		quantity, quantity, productID, quantity,
+	)
+	if result.Error != nil {
+		return result.Error
 	}
-	if po.Reserved < quantity {
+	if result.RowsAffected == 0 {
 		return errcode.ErrInsufficientInventory
 	}
-	po.Quantity -= quantity
-	po.Reserved -= quantity
-	if po.Quantity <= 0 {
-		po.Status = string(invModels.InventoryStatusOutOfStock)
-	} else if po.Quantity <= po.Threshold {
-		po.Status = string(invModels.InventoryStatusLowStock)
-	} else {
-		po.Status = string(invModels.InventoryStatusInStock)
-	}
-	return tx.Save(&po).Error
+	return r.updateInventoryStatus(tx, productID)
 }
 
-// ReleaseWithTx 在已有事务内释放库存（不自行提交/回滚）
+// ReleaseWithTx 在已有事务内释放库存（原子 SQL，不自行提交/回滚）
 func (r *InventoryRepository) ReleaseWithTx(tx *gorm.DB, productID int64, quantity int) error {
+	result := tx.Exec(
+		"UPDATE inventories SET reserved = reserved - ? WHERE product_id = ? AND reserved >= ?",
+		quantity, productID, quantity,
+	)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errcode.ErrInsufficientInventory
+	}
+	return r.updateInventoryStatus(tx, productID)
+}
+
+// RestoreWithTx 在已有事务内恢复已扣减库存（原子 SQL，不自行提交/回滚）
+func (r *InventoryRepository) RestoreWithTx(tx *gorm.DB, productID int64, quantity int) error {
+	result := tx.Exec(
+		"UPDATE inventories SET quantity = quantity + ? WHERE product_id = ?",
+		quantity, productID,
+	)
+	if result.Error != nil {
+		return result.Error
+	}
+	return r.updateInventoryStatus(tx, productID)
+}
+
+// updateInventoryStatus 更新事务完成后重新计算库存状态
+func (r *InventoryRepository) updateInventoryStatus(tx *gorm.DB, productID int64) error {
 	var po models.InventoryPO
 	if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
 		return err
 	}
-	if po.Reserved < quantity {
-		return errcode.ErrInsufficientInventory
-	}
-	po.Reserved -= quantity
-	return tx.Save(&po).Error
+	recalcStatus(&po)
+	return tx.Model(&models.InventoryPO{}).Where("product_id = ?", productID).Update("status", po.Status).Error
 }
 
 // UpdateInventory 更新库存
@@ -183,14 +218,7 @@ func (r *InventoryRepository) DeductInventory(ctx context.Context, productID int
 		// 扣减库存：减少实际库存和预占库存
 		po.Quantity -= quantity
 		po.Reserved -= quantity
-		// UpdateStatus handled by BeforeCreate hook or manually
-		if po.Quantity <= 0 {
-			po.Status = string(invModels.InventoryStatusOutOfStock)
-		} else if po.Quantity <= po.Threshold {
-			po.Status = string(invModels.InventoryStatusLowStock)
-		} else {
-			po.Status = string(invModels.InventoryStatusInStock)
-		}
+		recalcStatus(&po)
 		return tx.Save(&po).Error
 	})
 }
@@ -206,13 +234,7 @@ func (r *InventoryRepository) IncreaseInventory(ctx context.Context, productID i
 
 		// 增加实际库存
 		po.Quantity += quantity
-		if po.Quantity <= 0 {
-			po.Status = string(invModels.InventoryStatusOutOfStock)
-		} else if po.Quantity <= po.Threshold {
-			po.Status = string(invModels.InventoryStatusLowStock)
-		} else {
-			po.Status = string(invModels.InventoryStatusInStock)
-		}
+		recalcStatus(&po)
 		return tx.Save(&po).Error
 	})
 }

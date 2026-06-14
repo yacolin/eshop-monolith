@@ -34,6 +34,8 @@ func NewOrderHandler(orderService *service.OrderService) *OrderHandler {
 // @Param customer_id query int false "用户ID过滤"
 // @Param order_no query string false "订单号搜索"
 // @Param status query string false "订单状态过滤"
+// @Param sort_by query string false "排序字段 (total_price, created_at)"
+// @Param order query string false "排序方向 (asc/desc)" default(asc)
 // @Success 200 {object} response.Response{data=dto.OrderListResult}
 // @Router /api/v1/orders [get]
 func (h *OrderHandler) ListOrders(c *gin.Context) {

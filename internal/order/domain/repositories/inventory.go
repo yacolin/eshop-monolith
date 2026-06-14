@@ -19,4 +19,6 @@ type InventoryForOrder interface {
 	DeductWithTx(tx *gorm.DB, productID int64, quantity int) error
 	// ReleaseWithTx 在已有事务内释放库存
 	ReleaseWithTx(tx *gorm.DB, productID int64, quantity int) error
+	// RestoreWithTx 在已有事务内恢复已扣减库存（支付后退款）
+	RestoreWithTx(tx *gorm.DB, productID int64, quantity int) error
 }
