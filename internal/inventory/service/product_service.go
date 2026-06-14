@@ -454,13 +454,27 @@ func (s *ProductService) ListProductsWithCategory(ctx context.Context, q dto.Pro
 		}
 	}
 
-	// 一次批量查询补全所有产品的分类信息
-	categoryMap, batchErr := s.batchFirstCategoryInfo(ctx, products.List)
-	if batchErr == nil {
-		for i, p := range products.List {
-			if cat, ok := categoryMap[p.ID]; ok {
-				enrichedList[i].CategoryID = cat.ID
-				enrichedList[i].CategoryName = cat.Name
+	if q.CategoryID != nil {
+		// 按分类筛选时，所有返回商品都属于该分类，直接使用筛选的分类
+		var categoryName string
+		if err := s.db.WithContext(ctx).Table("categories").
+			Select("name").
+			Where("id = ?", *q.CategoryID).
+			Take(&categoryName).Error; err == nil {
+			for i := range enrichedList {
+				enrichedList[i].CategoryID = *q.CategoryID
+				enrichedList[i].CategoryName = categoryName
+			}
+		}
+	} else {
+		// 不按分类筛选时，使用商品的首个分类作为展示分类
+		categoryMap, batchErr := s.batchFirstCategoryInfo(ctx, products.List)
+		if batchErr == nil {
+			for i, p := range products.List {
+				if cat, ok := categoryMap[p.ID]; ok {
+					enrichedList[i].CategoryID = cat.ID
+					enrichedList[i].CategoryName = cat.Name
+				}
 			}
 		}
 	}
