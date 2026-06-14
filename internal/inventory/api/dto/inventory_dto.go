@@ -16,8 +16,11 @@ type InventoryListQuery struct {
 	Order       string `form:"order,default=asc"` // asc or desc
 }
 
-// InventoryListResult 库存列表结果（使用泛型）
-type InventoryListResult = query.ListResult[models.Inventory]
+// InventoryListResult 库存列表结果
+type InventoryListResult struct {
+	Total int64             `json:"total"`
+	List  []models.Inventory `json:"list"`
+}
 
 // CreateInventoryDTO 创建库存请求
 //

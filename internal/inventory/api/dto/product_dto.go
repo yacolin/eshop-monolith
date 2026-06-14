@@ -15,18 +15,20 @@ type CachedProductItem struct {
 }
 
 // ProductListQuery 商品列表查询参数
-// ProductListQuery 产品列表查询参数
 type ProductListQuery struct {
 	query.Pagination
-	Name       string `form:"name"`                // 产品名称模糊搜索
-	SKU        string `form:"sku"`                 // SKU精确搜索
-	CategoryID *int64 `form:"category_id"`         // 分类ID筛选
-	SortBy     string `form:"sort_by"`             // 排序字段，例如 name, price, created_at
-	Order      string `form:"order,default=asc"`   // asc or desc
+	Name       string `form:"name"`              // 产品名称模糊搜索
+	SKU        string `form:"sku"`               // SKU精确搜索
+	CategoryID *int64 `form:"category_id"`       // 分类ID筛选
+	SortBy     string `form:"sort_by"`           // 排序字段，例如 name, price, created_at
+	Order      string `form:"order,default=asc"` // asc or desc
 }
 
-// ProductListResult 商品列表结果（使用泛型）
-type ProductListResult = query.ListResult[models.Product]
+// ProductListResult 商品列表结果
+type ProductListResult struct {
+	Total int64           `json:"total"`
+	List  []models.Product `json:"list"`
+}
 
 // CreateProductDTO 创建商品请求
 type CreateProductDTO struct {
@@ -53,30 +55,30 @@ type ProductCategoryBrief struct {
 
 // ProductDetailDTO 产品详情（聚合产品和库存信息，字段平摊）
 type ProductDetailDTO struct {
-	ID           int64                  `json:"id"`
-	Name         string                 `json:"name"`
-	Description  string                 `json:"description"`
-	Price        int64                  `json:"price"`
-	SKU          string                 `json:"sku"`
-	Categories   []ProductCategoryBrief `json:"categories"`
-	Quantity     int                    `json:"quantity"`
-	Status       string                 `json:"status"`
-	Reserved     int                    `json:"reserved"`
-	Threshold    int                    `json:"threshold"`
-	CreatedAt    utils.Timestamp        `json:"created_at"`
-	UpdatedAt    utils.Timestamp        `json:"updated_at"`
+	ID          int64                  `json:"id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Price       int64                  `json:"price"`
+	SKU         string                 `json:"sku"`
+	Categories  []ProductCategoryBrief `json:"categories"`
+	Quantity    int                    `json:"quantity"`
+	Status      string                 `json:"status"`
+	Reserved    int                    `json:"reserved"`
+	Threshold   int                    `json:"threshold"`
+	CreatedAt   utils.Timestamp        `json:"created_at"`
+	UpdatedAt   utils.Timestamp        `json:"updated_at"`
 }
 
 // ProductWithCategoryDTO 产品列表项（含分类信息）
 type ProductWithCategoryDTO struct {
-	ID           int64                  `json:"id"`
-	Name         string                 `json:"name"`
-	Description  string                 `json:"description"`
-	Price        int64                  `json:"price"`
-	SKU          string                 `json:"sku"`
-	Categories   []ProductCategoryBrief `json:"categories"`
-	CreatedAt    utils.Timestamp        `json:"created_at"`
-	UpdatedAt    utils.Timestamp        `json:"updated_at"`
+	ID          int64                  `json:"id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Price       int64                  `json:"price"`
+	SKU         string                 `json:"sku"`
+	Categories  []ProductCategoryBrief `json:"categories"`
+	CreatedAt   utils.Timestamp        `json:"created_at"`
+	UpdatedAt   utils.Timestamp        `json:"updated_at"`
 }
 
 // ProductWithCategoryListResult swaggo 兼容的具体类型

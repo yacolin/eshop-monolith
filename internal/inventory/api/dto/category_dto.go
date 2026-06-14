@@ -14,8 +14,11 @@ type CategoryListQuery struct {
 	Order    string  `form:"order,default=asc"` // asc or desc
 }
 
-// CategoryListResult 分类列表结果（使用泛型）
-type CategoryListResult = query.ListResult[models.Category]
+// CategoryListResult 分类列表结果
+type CategoryListResult struct {
+	Total int64            `json:"total"`
+	List  []models.Category `json:"list"`
+}
 
 // CreateCategoryDTO 创建分类请求
 type CreateCategoryDTO struct {

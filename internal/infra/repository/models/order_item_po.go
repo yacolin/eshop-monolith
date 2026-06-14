@@ -1,17 +1,23 @@
 package models
 
 import (
+	"time"
+
 	domain "eshop-monolith/internal/order/domain/models"
+	"gorm.io/gorm"
 )
 
 // OrderItemPO 订单项持久化对象
 type OrderItemPO struct {
-	ID        int64  `gorm:"primaryKey;autoIncrement"`
-	OrderID   int64  `gorm:"type:bigint;not null;index"`
-	ProductID string `gorm:"type:varchar(36);not null"`
-	Quantity  int    `gorm:"not null"`
-	UnitPrice int64  `gorm:"type:bigint;not null"`
-	Amount    int64  `gorm:"type:bigint;not null"`
+	ID        int64          `gorm:"primaryKey;autoIncrement"`
+	OrderID   int64          `gorm:"type:bigint;not null;index"`
+	ProductID string         `gorm:"type:varchar(36);not null"`
+	Quantity  int            `gorm:"not null"`
+	UnitPrice int64          `gorm:"type:bigint;not null"`
+	Amount    int64          `gorm:"type:bigint;not null"`
+	CreatedAt time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP()"`
+	UpdatedAt time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP();onUpdate:CURRENT_TIMESTAMP()"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 func (OrderItemPO) TableName() string { return "order_items" }

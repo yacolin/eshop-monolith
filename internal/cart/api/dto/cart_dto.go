@@ -44,4 +44,7 @@ type CartListQuery struct {
 }
 
 // CartListResult 购物车列表结果
-type CartListResult = query.ListResult[CartResponse]
+type CartListResult struct {
+	Total int64           `json:"total"`
+	List  []CartResponse  `json:"list"`
+}

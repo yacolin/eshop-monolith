@@ -25,6 +25,10 @@ type IorderRepository interface {
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	// Delete 删除订单
 	Delete(ctx context.Context, id int64) error
+	// FindItemsByOrderID 根据订单ID查询订单项（分页）
+	FindItemsByOrderID(ctx context.Context, orderID int64, page, pageSize int) ([]orderModels.OrderItem, int64, error)
+	// ListAllItems 查询所有订单项（分页），支持条件筛选
+	ListAllItems(ctx context.Context, q dto.OrderItemListQuery, offset, limit int) ([]orderModels.OrderItem, int64, error)
 
 	// CreateWithTx 在已有事务内创建订单
 	CreateWithTx(tx *gorm.DB, order *orderModels.Order) error
@@ -117,6 +121,53 @@ func (r *OrderRepository) UpdateStatusWithTx(tx *gorm.DB, id int64, status strin
 // Delete 删除订单
 func (r *OrderRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&models.OrderPO{}, "id = ?", id).Error
+}
+
+// FindItemsByOrderID 根据订单ID分页查询订单项
+func (r *OrderRepository) FindItemsByOrderID(ctx context.Context, orderID int64, page, pageSize int) ([]orderModels.OrderItem, int64, error) {
+	var pos []models.OrderItemPO
+	var total int64
+
+	db := r.db.WithContext(ctx).Model(&models.OrderItemPO{}).Where("order_id = ?", orderID)
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	if err := db.Offset(offset).Limit(pageSize).Find(&pos).Error; err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]orderModels.OrderItem, len(pos))
+	for i, po := range pos {
+		items[i] = *po.ToDomain()
+	}
+	return items, total, nil
+}
+
+// ListAllItems 查询所有订单项（分页）
+func (r *OrderRepository) ListAllItems(ctx context.Context, q dto.OrderItemListQuery, offset, limit int) ([]orderModels.OrderItem, int64, error) {
+	var pos []models.OrderItemPO
+	var total int64
+
+	db := r.db.WithContext(ctx).Model(&models.OrderItemPO{})
+	if q.OrderID != nil {
+		db = db.Where("order_id = ?", *q.OrderID)
+	}
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	db = query.ApplyOrder(db, q.SortBy, q.Order, "id asc")
+	if err := db.Offset(offset).Limit(limit).Find(&pos).Error; err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]orderModels.OrderItem, len(pos))
+	for i, po := range pos {
+		items[i] = *po.ToDomain()
+	}
+	return items, total, nil
 }
 
 func (r *OrderRepository) ListByQuery(ctx context.Context, q dto.OrderListQuery, offset, limit int) ([]orderModels.Order, error) {

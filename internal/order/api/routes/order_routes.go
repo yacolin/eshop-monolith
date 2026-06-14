@@ -14,7 +14,6 @@ import (
 )
 
 func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) *service.OrderService {
-	// InventoryRepository 同时实现了 IinventoryRepository 和 InventoryForOrder
 	invForOrder, ok := repos.Inventory.(orderRepos.InventoryForOrder)
 	if !ok {
 		log.Fatal("Inventory repository does not implement InventoryForOrder interface")
@@ -29,6 +28,8 @@ func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db
 		orders.POST("", orderHandler.CreateOrder)
 		orders.PUT("/:id", orderHandler.UpdateOrder)
 		orders.DELETE("/:id", orderHandler.DeleteOrder)
+		orders.GET("/items", orderHandler.ListAllOrderItems)
+		orders.GET("/:id/items", orderHandler.GetOrderItems)
 		orders.POST("/:id/cancel", orderHandler.CancelOrder)
 		orders.PATCH("/:id/status", orderHandler.UpdateOrderStatus)
 	}

@@ -18,14 +18,13 @@ const (
 
 // Order 订单
 type Order struct {
-	ID          int64  `json:"id"`
-	CustomerID  string `json:"customer_id"`
-	TotalAmount int64  `json:"total_amount"` // 订单总金额，单位：分
-	Currency    string `json:"currency"`
-	Status      string `json:"status"`
-
-	CreatedAt utils.Timestamp `json:"created_at"`
-	UpdatedAt utils.Timestamp `json:"updated_at"`
+	ID          int64          `json:"id"`
+	CustomerID  string         `json:"customer_id"`
+	TotalAmount int64          `json:"total_amount"` // 订单总金额，单位：分
+	Currency    string         `json:"currency"`
+	Status      string         `json:"status"`
+	CreatedAt   utils.Timestamp `json:"created_at"`
+	UpdatedAt   utils.Timestamp `json:"updated_at"`
 
 	Items []OrderItem `json:"items,omitempty"`
 }
@@ -36,6 +35,7 @@ func (Order) TableName() string {
 }
 
 // OrderItem 订单项
+// @Description 订单内的商品项
 type OrderItem struct {
 	ID        int64  `json:"id"`
 	OrderID   int64  `json:"order_id"`

@@ -17,6 +17,34 @@ import (
 	"gorm.io/gorm"
 )
 
+func orderToResponse(o *models.Order) dto.OrderResponse {
+	items := make([]dto.OrderItemResponse, len(o.Items))
+	for i, item := range o.Items {
+		items[i] = orderItemToResponse(&item)
+	}
+	return dto.OrderResponse{
+		ID:          o.ID,
+		CustomerID:  o.CustomerID,
+		TotalAmount: o.TotalAmount,
+		Currency:    o.Currency,
+		Status:      o.Status,
+		CreatedAt:   o.CreatedAt,
+		UpdatedAt:   o.UpdatedAt,
+		Items:       items,
+	}
+}
+
+func orderItemToResponse(item *models.OrderItem) dto.OrderItemResponse {
+	return dto.OrderItemResponse{
+		ID:        item.ID,
+		OrderID:   item.OrderID,
+		ProductID: item.ProductID,
+		Quantity:  item.Quantity,
+		UnitPrice: item.UnitPrice,
+		Amount:    item.Amount,
+	}
+}
+
 type OrderService struct {
 	db            *gorm.DB
 	orderRepo     repositories.IorderRepository
@@ -236,10 +264,14 @@ func (s *OrderService) ListOrders(ctx context.Context, q dto.OrderListQuery) (*d
 		return nil, err
 	}
 
-	return &dto.OrderListResult{
-		List:  orders,
+	result := &dto.OrderListResult{
+		List:  make([]dto.OrderResponse, len(orders)),
 		Total: total,
-	}, nil
+	}
+	for i, o := range orders {
+		result.List[i] = orderToResponse(&o)
+	}
+	return result, nil
 }
 
 // DeleteOrder 删除订单
@@ -257,6 +289,53 @@ func (s *OrderService) DeleteOrder(ctx context.Context, orderID int64) error {
 }
 
 // GetOrdersByUserID 根据用户ID获取订单列表
-func (s *OrderService) GetOrdersByUserID(ctx context.Context, userID int64, page, pageSize int) ([]models.Order, int64, error) {
-	return s.orderRepo.FindByUserID(ctx, userID, page, pageSize)
+func (s *OrderService) GetOrdersByUserID(ctx context.Context, userID int64, page, pageSize int) (*dto.OrderListResult, error) {
+	orders, total, err := s.orderRepo.FindByUserID(ctx, userID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &dto.OrderListResult{
+		List:  make([]dto.OrderResponse, len(orders)),
+		Total: total,
+	}
+	for i, o := range orders {
+		result.List[i] = orderToResponse(&o)
+	}
+	return result, nil
+}
+
+// GetOrderItems 获取订单项（分页）
+func (s *OrderService) GetOrderItems(ctx context.Context, orderID int64, page, pageSize int) (*dto.OrderItemListResult, error) {
+	items, total, err := s.orderRepo.FindItemsByOrderID(ctx, orderID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &dto.OrderItemListResult{
+		List:  make([]dto.OrderItemResponse, len(items)),
+		Total: total,
+	}
+	for i, item := range items {
+		result.List[i] = orderItemToResponse(&item)
+	}
+	return result, nil
+}
+
+// ListAllOrderItems 查询所有订单项（分页）
+func (s *OrderService) ListAllOrderItems(ctx context.Context, q dto.OrderItemListQuery) (*dto.OrderItemListResult, error) {
+	offset := (q.Page - 1) * q.Size
+	items, total, err := s.orderRepo.ListAllItems(ctx, q, offset, q.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &dto.OrderItemListResult{
+		List:  make([]dto.OrderItemResponse, len(items)),
+		Total: total,
+	}
+	for i, item := range items {
+		result.List[i] = orderItemToResponse(&item)
+	}
+	return result, nil
 }

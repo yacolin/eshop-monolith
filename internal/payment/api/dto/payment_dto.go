@@ -15,7 +15,11 @@ type CreatePaymentRequest struct {
 	Metadata      string `json:"metadata"`
 }
 
-type PaymentListResult = query.ListResult[PaymentResponse]
+// PaymentListResult 支付列表结果
+type PaymentListResult struct {
+	Total int64            `json:"total"`
+	List  []PaymentResponse `json:"list"`
+}
 
 // PaymentResponse 支付响应
 type PaymentResponse struct {
@@ -93,7 +97,10 @@ type RefundListQuery struct {
 }
 
 // RefundListResult 退款列表结果
-type RefundListResult = query.ListResult[RefundResponse]
+type RefundListResult struct {
+	Total int64            `json:"total"`
+	List  []RefundResponse `json:"list"`
+}
 
 // PaymentMethodResponse 支付方式响应
 type PaymentMethodResponse struct {

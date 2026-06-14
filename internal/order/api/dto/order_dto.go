@@ -1,9 +1,31 @@
 package dto
 
 import (
-	ordermodels "eshop-monolith/internal/order/domain/models"
 	"eshop-monolith/pkg/query"
+	"eshop-monolith/pkg/utils"
 )
+
+// OrderResponse 订单响应
+type OrderResponse struct {
+	ID          int64              `json:"id"`
+	CustomerID  string             `json:"customer_id"`
+	TotalAmount int64              `json:"total_amount"` // 订单总金额，单位：分
+	Currency    string             `json:"currency"`
+	Status      string             `json:"status"`
+	CreatedAt   utils.Timestamp    `json:"created_at"`
+	UpdatedAt   utils.Timestamp    `json:"updated_at"`
+	Items       []OrderItemResponse `json:"items,omitempty"`
+}
+
+// OrderItemResponse 订单项响应
+type OrderItemResponse struct {
+	ID        int64  `json:"id"`
+	OrderID   int64  `json:"order_id"`
+	ProductID string `json:"product_id"`
+	Quantity  int    `json:"quantity"`
+	UnitPrice int64  `json:"unit_price"` // 单价，单位：分
+	Amount    int64  `json:"amount"`     // 单项小计，单位：分
+}
 
 // OrderListQuery 支持通过 query string 进行过滤、排序和分页
 type OrderListQuery struct {
@@ -16,15 +38,40 @@ type OrderListQuery struct {
 	Order      string   `form:"order,default=asc"` // asc or desc
 }
 
-// OrderListResult 订单列表结果（使用泛型）
-type OrderListResult = query.ListResult[ordermodels.Order]
+// OrderListResult 订单列表结果
+type OrderListResult struct {
+	Total int64          `json:"total"`
+	List  []OrderResponse `json:"list"`
+}
 
+// OrderItemListResult 订单项列表结果
+type OrderItemListResult struct {
+	Total int64              `json:"total"`
+	List  []OrderItemResponse `json:"list"`
+}
+
+// OrderItemListQuery 全量订单项查询参数
+type OrderItemListQuery struct {
+	query.Pagination
+	OrderID *int64  `form:"order_id"`       // 按订单ID筛选
+	SortBy  string  `form:"sort_by"`        // 排序字段，例如 id, order_id, amount
+	Order   string  `form:"order,default=asc"` // asc or desc
+}
+
+// UserOrderListQuery 用户订单列表查询参数
+type UserOrderListQuery struct {
+	query.Pagination
+}
+
+// CreateOrderDTO 创建订单请求
+// @Description 创建订单的请求体
 type CreateOrderDTO struct {
 	CustomerID string               `json:"customer_id" binding:"required"`
 	Currency   string               `json:"currency"` // 可选，默认 CNY
 	Items      []CreateOrderItemDTO `json:"items" binding:"required,min=1,dive"`
 }
 
+// UpdateOrderDTO 更新订单请求
 type UpdateOrderDTO struct {
 	UserID     *int64   `json:"user_id"`
 	ProductID  *int64   `json:"product_id"`
