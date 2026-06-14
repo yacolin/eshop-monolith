@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -17,13 +19,22 @@ import (
 	"gorm.io/gorm"
 )
 
+// generateOrderNo 生成全局唯一订单号
+// 格式: ORD + 13位毫秒时间戳 + 4位随机数
+func generateOrderNo() string {
+	now := time.Now().UnixMilli()
+	r := rand.Intn(10000)
+	return fmt.Sprintf("ORD%d%04d", now, r)
+}
+
 func orderToResponse(o *models.Order) dto.OrderResponse {
 	items := make([]dto.OrderItemResponse, len(o.Items))
 	for i, item := range o.Items {
-		items[i] = orderItemToResponse(&item)
+		items[i] = orderItemToResponse(&item, o.OrderNo)
 	}
 	return dto.OrderResponse{
 		ID:          o.ID,
+		OrderNo:     o.OrderNo,
 		CustomerID:  o.CustomerID,
 		TotalAmount: o.TotalAmount,
 		Currency:    o.Currency,
@@ -34,10 +45,11 @@ func orderToResponse(o *models.Order) dto.OrderResponse {
 	}
 }
 
-func orderItemToResponse(item *models.OrderItem) dto.OrderItemResponse {
+func orderItemToResponse(item *models.OrderItem, orderNo string) dto.OrderItemResponse {
 	return dto.OrderItemResponse{
 		ID:        item.ID,
 		OrderID:   item.OrderID,
+		OrderNo:   orderNo,
 		ProductID: item.ProductID,
 		Quantity:  item.Quantity,
 		UnitPrice: item.UnitPrice,
@@ -89,6 +101,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *dto.CreateOrderDTO)
 		}
 
 		order = &models.Order{
+			OrderNo:     generateOrderNo(),
 			CustomerID:  req.CustomerID,
 			TotalAmount: totalAmount,
 			Currency:    req.Currency,
@@ -307,6 +320,11 @@ func (s *OrderService) GetOrdersByUserID(ctx context.Context, userID int64, page
 
 // GetOrderItems 获取订单项（分页）
 func (s *OrderService) GetOrderItems(ctx context.Context, orderID int64, page, pageSize int) (*dto.OrderItemListResult, error) {
+	order, err := s.orderRepo.FindByID(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+
 	items, total, err := s.orderRepo.FindItemsByOrderID(ctx, orderID, page, pageSize)
 	if err != nil {
 		return nil, err
@@ -317,7 +335,7 @@ func (s *OrderService) GetOrderItems(ctx context.Context, orderID int64, page, p
 		Total: total,
 	}
 	for i, item := range items {
-		result.List[i] = orderItemToResponse(&item)
+		result.List[i] = orderItemToResponse(&item, order.OrderNo)
 	}
 	return result, nil
 }
@@ -330,12 +348,23 @@ func (s *OrderService) ListAllOrderItems(ctx context.Context, q dto.OrderItemLis
 		return nil, err
 	}
 
+	// 批量查询订单号
+	orderIDs := make([]int64, 0, len(items))
+	seen := make(map[int64]bool)
+	for _, item := range items {
+		if !seen[item.OrderID] {
+			orderIDs = append(orderIDs, item.OrderID)
+			seen[item.OrderID] = true
+		}
+	}
+	orderNoMap, _ := s.orderRepo.BatchGetOrderNo(ctx, orderIDs)
+
 	result := &dto.OrderItemListResult{
 		List:  make([]dto.OrderItemResponse, len(items)),
 		Total: total,
 	}
 	for i, item := range items {
-		result.List[i] = orderItemToResponse(&item)
+		result.List[i] = orderItemToResponse(&item, orderNoMap[item.OrderID])
 	}
 	return result, nil
 }

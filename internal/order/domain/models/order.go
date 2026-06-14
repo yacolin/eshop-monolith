@@ -19,6 +19,7 @@ const (
 // Order 订单
 type Order struct {
 	ID          int64          `json:"id"`
+	OrderNo     string         `json:"order_no"`     // 订单号，全局唯一
 	CustomerID  string         `json:"customer_id"`
 	TotalAmount int64          `json:"total_amount"` // 订单总金额，单位：分
 	Currency    string         `json:"currency"`

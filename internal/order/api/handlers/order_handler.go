@@ -32,6 +32,7 @@ func NewOrderHandler(orderService *service.OrderService) *OrderHandler {
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
 // @Param customer_id query int false "用户ID过滤"
+// @Param order_no query string false "订单号搜索"
 // @Param status query string false "订单状态过滤"
 // @Success 200 {object} response.Response{data=dto.OrderListResult}
 // @Router /api/v1/orders [get]
@@ -290,7 +291,7 @@ func (h *OrderHandler) GetOrderItems(c *gin.Context) {
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
-// @Param order_id query int false "订单ID筛选"
+// @Param order_no query string false "订单号筛选"
 // @Param sort_by query string false "排序字段 (id, order_id, amount)"
 // @Param order query string false "排序方向 (asc/desc)" default(asc)
 // @Success 200 {object} response.Response{data=dto.OrderItemListResult}

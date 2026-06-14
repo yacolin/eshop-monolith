@@ -11,6 +11,7 @@ import (
 // OrderPO 订单持久化对象
 type OrderPO struct {
 	ID          int64          `gorm:"primaryKey;autoIncrement"`
+	OrderNo     string         `gorm:"type:varchar(32);not null"`
 	CustomerID  string         `gorm:"type:varchar(36);not null;index"`
 	TotalAmount int64          `gorm:"type:bigint;not null"`
 	Currency    string         `gorm:"type:varchar(10);default:CNY"`
@@ -30,6 +31,7 @@ func (po *OrderPO) ToDomain() *domain.Order {
 	}
 	return &domain.Order{
 		ID:          po.ID,
+		OrderNo:     po.OrderNo,
 		CustomerID:  po.CustomerID,
 		TotalAmount: po.TotalAmount,
 		Currency:    po.Currency,
@@ -47,6 +49,7 @@ func OrderFromDomain(o *domain.Order) *OrderPO {
 	}
 	return &OrderPO{
 		ID:          o.ID,
+		OrderNo:     o.OrderNo,
 		CustomerID:  o.CustomerID,
 		TotalAmount: o.TotalAmount,
 		Currency:    o.Currency,

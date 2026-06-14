@@ -29,6 +29,8 @@ type IorderRepository interface {
 	FindItemsByOrderID(ctx context.Context, orderID int64, page, pageSize int) ([]orderModels.OrderItem, int64, error)
 	// ListAllItems 查询所有订单项（分页），支持条件筛选
 	ListAllItems(ctx context.Context, q dto.OrderItemListQuery, offset, limit int) ([]orderModels.OrderItem, int64, error)
+	// BatchGetOrderNo 批量查询订单号
+	BatchGetOrderNo(ctx context.Context, orderIDs []int64) (map[int64]string, error)
 
 	// CreateWithTx 在已有事务内创建订单
 	CreateWithTx(tx *gorm.DB, order *orderModels.Order) error
@@ -73,12 +75,10 @@ func (r *OrderRepository) FindByUserID(ctx context.Context, userID int64, page, 
 	var pos []models.OrderPO
 	var total int64
 
-	// 计算总数
 	if err := r.db.WithContext(ctx).Model(&models.OrderPO{}).Where("customer_id = ?", userID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// 查询数据
 	offset := (page - 1) * pageSize
 	err := r.db.WithContext(ctx).Preload("Items").Where("customer_id = ?", userID).Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&pos).Error
 	if err != nil {
@@ -151,8 +151,8 @@ func (r *OrderRepository) ListAllItems(ctx context.Context, q dto.OrderItemListQ
 	var total int64
 
 	db := r.db.WithContext(ctx).Model(&models.OrderItemPO{})
-	if q.OrderID != nil {
-		db = db.Where("order_id = ?", *q.OrderID)
+	if q.OrderNo != "" {
+		db = db.Joins("JOIN orders ON orders.id = order_items.order_id").Where("orders.order_no = ?", q.OrderNo)
 	}
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -168,6 +168,25 @@ func (r *OrderRepository) ListAllItems(ctx context.Context, q dto.OrderItemListQ
 		items[i] = *po.ToDomain()
 	}
 	return items, total, nil
+}
+
+// BatchGetOrderNo 批量查询订单号
+func (r *OrderRepository) BatchGetOrderNo(ctx context.Context, orderIDs []int64) (map[int64]string, error) {
+	if len(orderIDs) == 0 {
+		return map[int64]string{}, nil
+	}
+	var results []struct {
+		ID      int64
+		OrderNo string
+	}
+	if err := r.db.WithContext(ctx).Model(&models.OrderPO{}).Select("id, order_no").Where("id IN ?", orderIDs).Find(&results).Error; err != nil {
+		return nil, err
+	}
+	orderNoMap := make(map[int64]string, len(results))
+	for _, r := range results {
+		orderNoMap[r.ID] = r.OrderNo
+	}
+	return orderNoMap, nil
 }
 
 func (r *OrderRepository) ListByQuery(ctx context.Context, q dto.OrderListQuery, offset, limit int) ([]orderModels.Order, error) {
@@ -202,6 +221,9 @@ func (r *OrderRepository) applyQueryConditions(ctx context.Context, q dto.OrderL
 	db := r.db.WithContext(ctx).Model(&models.OrderPO{})
 	if q.CustomerID != nil {
 		db = db.Where("customer_id = ?", q.CustomerID)
+	}
+	if q.OrderNo != "" {
+		db = db.Where("order_no = ?", q.OrderNo)
 	}
 	if q.Status != "" {
 		db = db.Where("status = ?", q.Status)

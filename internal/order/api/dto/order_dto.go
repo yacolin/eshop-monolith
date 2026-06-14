@@ -8,6 +8,7 @@ import (
 // OrderResponse 订单响应
 type OrderResponse struct {
 	ID          int64              `json:"id"`
+	OrderNo     string             `json:"order_no"`
 	CustomerID  string             `json:"customer_id"`
 	TotalAmount int64              `json:"total_amount"` // 订单总金额，单位：分
 	Currency    string             `json:"currency"`
@@ -21,6 +22,7 @@ type OrderResponse struct {
 type OrderItemResponse struct {
 	ID        int64  `json:"id"`
 	OrderID   int64  `json:"order_id"`
+	OrderNo   string `json:"order_no"`
 	ProductID string `json:"product_id"`
 	Quantity  int    `json:"quantity"`
 	UnitPrice int64  `json:"unit_price"` // 单价，单位：分
@@ -31,6 +33,7 @@ type OrderItemResponse struct {
 type OrderListQuery struct {
 	query.Pagination
 	CustomerID *int64   `form:"customer_id"`       // 用户ID过滤
+	OrderNo    string   `form:"order_no"`          // 订单号搜索
 	Status     string   `form:"status"`            // 订单状态过滤
 	MinPrice   *float64 `form:"min_price"`         // 价格区间下限
 	MaxPrice   *float64 `form:"max_price"`         // 价格区间上限
@@ -53,9 +56,9 @@ type OrderItemListResult struct {
 // OrderItemListQuery 全量订单项查询参数
 type OrderItemListQuery struct {
 	query.Pagination
-	OrderID *int64  `form:"order_id"`       // 按订单ID筛选
-	SortBy  string  `form:"sort_by"`        // 排序字段，例如 id, order_id, amount
-	Order   string  `form:"order,default=asc"` // asc or desc
+	OrderNo string `form:"order_no"`           // 按订单号筛选
+	SortBy  string `form:"sort_by"`            // 排序字段，例如 id, order_id, amount
+	Order   string `form:"order,default=asc"`  // asc or desc
 }
 
 // UserOrderListQuery 用户订单列表查询参数
