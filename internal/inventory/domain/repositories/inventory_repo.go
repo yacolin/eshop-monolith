@@ -10,6 +10,7 @@ import (
 	"eshop-monolith/pkg/query"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // recalcStatus 根据 可用库存=Quantity-Reserved 重新计算状态
@@ -126,71 +127,58 @@ func (r *InventoryRepository) ReleaseInventory(ctx context.Context, productID in
 	})
 }
 
-// ReserveWithTx 在已有事务内预占库存（原子 SQL，不自行提交/回滚）
+// ReserveWithTx 在已有事务内预占库存（不自行提交/回滚）
 func (r *InventoryRepository) ReserveWithTx(tx *gorm.DB, productID int64, quantity int) error {
-	result := tx.Exec(
-		"UPDATE inventories SET reserved = reserved + ? WHERE product_id = ? AND quantity - reserved >= ?",
-		quantity, productID, quantity,
-	)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return errcode.ErrInsufficientInventory
-	}
-	return r.updateInventoryStatus(tx, productID)
-}
-
-// DeductWithTx 在已有事务内扣减库存（原子 SQL，不自行提交/回滚）
-func (r *InventoryRepository) DeductWithTx(tx *gorm.DB, productID int64, quantity int) error {
-	result := tx.Exec(
-		"UPDATE inventories SET quantity = quantity - ?, reserved = reserved - ? WHERE product_id = ? AND reserved >= ?",
-		quantity, quantity, productID, quantity,
-	)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return errcode.ErrInsufficientInventory
-	}
-	return r.updateInventoryStatus(tx, productID)
-}
-
-// ReleaseWithTx 在已有事务内释放库存（原子 SQL，不自行提交/回滚）
-func (r *InventoryRepository) ReleaseWithTx(tx *gorm.DB, productID int64, quantity int) error {
-	result := tx.Exec(
-		"UPDATE inventories SET reserved = reserved - ? WHERE product_id = ? AND reserved >= ?",
-		quantity, productID, quantity,
-	)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return errcode.ErrInsufficientInventory
-	}
-	return r.updateInventoryStatus(tx, productID)
-}
-
-// RestoreWithTx 在已有事务内恢复已扣减库存（原子 SQL，不自行提交/回滚）
-func (r *InventoryRepository) RestoreWithTx(tx *gorm.DB, productID int64, quantity int) error {
-	result := tx.Exec(
-		"UPDATE inventories SET quantity = quantity + ? WHERE product_id = ?",
-		quantity, productID,
-	)
-	if result.Error != nil {
-		return result.Error
-	}
-	return r.updateInventoryStatus(tx, productID)
-}
-
-// updateInventoryStatus 更新事务完成后重新计算库存状态
-func (r *InventoryRepository) updateInventoryStatus(tx *gorm.DB, productID int64) error {
 	var po models.InventoryPO
-	if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "product_id = ?", productID).Error; err != nil {
 		return err
 	}
+	if po.Quantity-po.Reserved < quantity {
+		return errcode.ErrInsufficientInventory
+	}
+	po.Reserved += quantity
 	recalcStatus(&po)
-	return tx.Model(&models.InventoryPO{}).Where("product_id = ?", productID).Update("status", po.Status).Error
+	return tx.Save(&po).Error
+}
+
+// DeductWithTx 在已有事务内扣减库存（不自行提交/回滚）
+func (r *InventoryRepository) DeductWithTx(tx *gorm.DB, productID int64, quantity int) error {
+	var po models.InventoryPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "product_id = ?", productID).Error; err != nil {
+		return err
+	}
+	if po.Reserved < quantity {
+		return errcode.ErrInsufficientInventory
+	}
+	po.Quantity -= quantity
+	po.Reserved -= quantity
+	recalcStatus(&po)
+	return tx.Save(&po).Error
+}
+
+// ReleaseWithTx 在已有事务内释放库存（不自行提交/回滚）
+func (r *InventoryRepository) ReleaseWithTx(tx *gorm.DB, productID int64, quantity int) error {
+	var po models.InventoryPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "product_id = ?", productID).Error; err != nil {
+		return err
+	}
+	if po.Reserved < quantity {
+		return errcode.ErrInsufficientInventory
+	}
+	po.Reserved -= quantity
+	recalcStatus(&po)
+	return tx.Save(&po).Error
+}
+
+// RestoreWithTx 在已有事务内恢复已扣减库存（用于支付后退款场景）
+func (r *InventoryRepository) RestoreWithTx(tx *gorm.DB, productID int64, quantity int) error {
+	var po models.InventoryPO
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "product_id = ?", productID).Error; err != nil {
+		return err
+	}
+	po.Quantity += quantity
+	recalcStatus(&po)
+	return tx.Save(&po).Error
 }
 
 // UpdateInventory 更新库存

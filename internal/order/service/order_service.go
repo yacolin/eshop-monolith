@@ -232,75 +232,47 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, orderID int64, sta
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var currentStatus string
-		if err := tx.Raw("SELECT status FROM orders WHERE id = ? FOR UPDATE", orderID).Scan(&currentStatus).Error; err != nil {
-			return err
-		}
-
-		rows, err := tx.Raw("SELECT product_id, quantity FROM order_items WHERE order_id = ?", orderID).Rows()
+		order, err := s.orderRepo.FindByIDWithTx(tx, orderID)
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
 
-		type itemData struct {
-			pid int64
-			qty int
-		}
-		var items []itemData
-		for rows.Next() {
-			var pidStr string
-			var qty int
-			if err := rows.Scan(&pidStr, &qty); err != nil {
-				return err
+		switch {
+		case status == models.OrderStatusPaid && order.Status == models.OrderStatusPending:
+			for _, item := range order.Items {
+				pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
+				if parseErr != nil {
+					return errcode.ErrInvalidParams
+				}
+				if deductErr := s.inventoryRepo.DeductWithTx(tx, pid, item.Quantity); deductErr != nil {
+					return deductErr
+				}
 			}
-			pid, parseErr := strconv.ParseInt(pidStr, 10, 64)
-			if parseErr != nil {
-				return errcode.ErrInvalidParams
+
+		case status == models.OrderStatusCancelled && order.Status == models.OrderStatusPending:
+			for _, item := range order.Items {
+				pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
+				if parseErr != nil {
+					return errcode.ErrInvalidParams
+				}
+				if releaseErr := s.inventoryRepo.ReleaseWithTx(tx, pid, item.Quantity); releaseErr != nil {
+					return releaseErr
+				}
 			}
-			items = append(items, itemData{pid: pid, qty: qty})
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
 
-		for _, it := range items {
-			switch {
-			case status == models.OrderStatusPaid && currentStatus == models.OrderStatusPending:
-				result := tx.Exec(
-					"UPDATE inventories SET quantity = quantity - ?, reserved = reserved - ? WHERE product_id = ? AND reserved >= ?",
-					it.qty, it.qty, it.pid, it.qty,
-				)
-				if result.Error != nil {
-					return result.Error
+		case status == models.OrderStatusCancelled && order.Status == models.OrderStatusPaid:
+			for _, item := range order.Items {
+				pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
+				if parseErr != nil {
+					return errcode.ErrInvalidParams
 				}
-				if result.RowsAffected == 0 {
-					return errcode.ErrInsufficientInventory
-				}
-
-			case status == models.OrderStatusCancelled && currentStatus == models.OrderStatusPending:
-				result := tx.Exec(
-					"UPDATE inventories SET reserved = reserved - ? WHERE product_id = ? AND reserved >= ?",
-					it.qty, it.pid, it.qty,
-				)
-				if result.Error != nil {
-					return result.Error
-				}
-				if result.RowsAffected == 0 {
-					return errcode.ErrInsufficientInventory
-				}
-
-			case status == models.OrderStatusCancelled && currentStatus == models.OrderStatusPaid:
-				if execErr := tx.Exec(
-					"UPDATE inventories SET quantity = quantity + ? WHERE product_id = ?",
-					it.qty, it.pid,
-				).Error; execErr != nil {
-					return execErr
+				if restoreErr := s.inventoryRepo.RestoreWithTx(tx, pid, item.Quantity); restoreErr != nil {
+					return restoreErr
 				}
 			}
 		}
 
-		return tx.Exec("UPDATE orders SET status = ? WHERE id = ?", status, orderID).Error
+		return s.orderRepo.UpdateStatusWithTx(tx, orderID, status)
 	})
 }
 
