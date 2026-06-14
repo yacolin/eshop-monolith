@@ -28,9 +28,9 @@ func (po *CategoryPO) ToDomain() *domain.Category {
 	if po.Parent != nil {
 		parent = po.Parent.ToDomain()
 	}
-	children := make([]domain.Category, len(po.Children))
-	for i, c := range po.Children {
-		children[i] = *c.ToDomain()
+	var children []domain.Category
+	for i := range po.Children {
+		children = append(children, *po.Children[i].ToDomain())
 	}
 	return &domain.Category{
 		ID:          po.ID,

@@ -56,16 +56,16 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 // @Tags categories
 // @Accept json
 // @Produce json
-// @Success 200 {object} response.Response{data=[]models.Category}
+// @Success 200 {object} response.Response{data=dto.CategoryListResult}
 // @Router /api/v1/categories/root [get]
 func (h *CategoryHandler) ListRootCategories(c *gin.Context) {
-	categories, err := h.categoryService.ListRootCategories(c)
+	result, err := h.categoryService.ListRootCategories(c)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	response.Success(c, categories)
+	response.Success(c, result)
 }
 
 // ListSubCategories 列出子分类

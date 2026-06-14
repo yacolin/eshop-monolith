@@ -69,8 +69,15 @@ func (s *CategoryService) ListAllCategories(ctx context.Context) ([]models.Categ
 }
 
 // ListRootCategories 列出根分类
-func (s *CategoryService) ListRootCategories(ctx context.Context) ([]models.Category, error) {
-	return s.repo.ListRoot(ctx)
+func (s *CategoryService) ListRootCategories(ctx context.Context) (*dto.CategoryListResult, error) {
+	list, err := s.repo.ListRoot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.CategoryListResult{
+		List:  list,
+		Total: int64(len(list)),
+	}, nil
 }
 
 // ListSubCategories 列出子分类

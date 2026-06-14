@@ -9,7 +9,7 @@ type Category struct {
 	Description string      `json:"description"`
 	ParentID    *int64      `json:"parent_id"` // 父分类ID，支持层级结构
 	Parent      *Category   `json:"parent"`
-	Children    []Category  `json:"children"`
+	Children    []Category  `json:"children,omitempty"`
 
 	CreatedAt utils.Timestamp `json:"created_at"`
 	UpdatedAt utils.Timestamp `json:"updated_at"`
