@@ -70,7 +70,8 @@ var (
 	ErrUnexpectedSigningMethod = &BizError{Code: 1021, Message: "unexpected signing method"}
 	ErrParseToken              = &BizError{Code: 1022, Message: "parse token failed"}
 
-	ErrDuplicateSKU = &BizError{Code: 1023, Message: "duplicate sku"}
+	ErrDuplicateSKU           = &BizError{Code: 1023, Message: "duplicate sku"}
+	ErrInsufficientInventory = &BizError{Code: 1024, Message: "insufficient inventory"}
 )
 
 // ==================== 域：权限（2001-2999） ====================

@@ -22,7 +22,7 @@ var (
 	// ErrInternal 内部错误
 	ErrInternal = errors.New("internal error")
 
-	// ErrInsufficientInventory 库存不足
+	// Deprecated: 改用 errcode.ErrInsufficientInventory
 	ErrInsufficientInventory = errors.New("insufficient inventory")
 
 	// ErrInvalidCredentials 无效凭证

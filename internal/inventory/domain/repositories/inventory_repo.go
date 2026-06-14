@@ -3,9 +3,9 @@ package repositories
 import (
 	"context"
 
-	"eshop-monolith/internal/infra/domain/shared"
 	"eshop-monolith/internal/infra/repository/models"
 	"eshop-monolith/internal/inventory/api/dto"
+	"eshop-monolith/pkg/errcode"
 	invModels "eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/pkg/query"
 
@@ -82,7 +82,7 @@ func (r *InventoryRepository) ReserveInventory(ctx context.Context, productID in
 
 		// 检查库存是否足够
 		if po.Quantity-po.Reserved < quantity {
-			return shared.ErrInsufficientInventory
+			return errcode.ErrInsufficientInventory
 		}
 
 		// 预占库存
@@ -102,7 +102,7 @@ func (r *InventoryRepository) ReleaseInventory(ctx context.Context, productID in
 
 		// 检查预占库存是否足够
 		if po.Reserved < quantity {
-			return shared.ErrInsufficientInventory
+			return errcode.ErrInsufficientInventory
 		}
 
 		// 释放库存
@@ -118,7 +118,7 @@ func (r *InventoryRepository) ReserveWithTx(tx *gorm.DB, productID int64, quanti
 		return err
 	}
 	if po.Quantity-po.Reserved < quantity {
-		return shared.ErrInsufficientInventory
+		return errcode.ErrInsufficientInventory
 	}
 	po.Reserved += quantity
 	return tx.Save(&po).Error
@@ -131,7 +131,7 @@ func (r *InventoryRepository) DeductWithTx(tx *gorm.DB, productID int64, quantit
 		return err
 	}
 	if po.Reserved < quantity {
-		return shared.ErrInsufficientInventory
+		return errcode.ErrInsufficientInventory
 	}
 	po.Quantity -= quantity
 	po.Reserved -= quantity
@@ -152,7 +152,7 @@ func (r *InventoryRepository) ReleaseWithTx(tx *gorm.DB, productID int64, quanti
 		return err
 	}
 	if po.Reserved < quantity {
-		return shared.ErrInsufficientInventory
+		return errcode.ErrInsufficientInventory
 	}
 	po.Reserved -= quantity
 	return tx.Save(&po).Error
@@ -177,7 +177,7 @@ func (r *InventoryRepository) DeductInventory(ctx context.Context, productID int
 
 		// 检查预占库存是否足够
 		if po.Reserved < quantity {
-			return shared.ErrInsufficientInventory
+			return errcode.ErrInsufficientInventory
 		}
 
 		// 扣减库存：减少实际库存和预占库存
