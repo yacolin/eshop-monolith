@@ -5,6 +5,7 @@ import (
 
 	"eshop-monolith/internal/user/api/dto"
 	"eshop-monolith/internal/user/service"
+	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
 
@@ -28,8 +29,9 @@ func NewUserHandler(userSvc *service.UserService) *UserHandler {
 // @Success 200 {object} response.Response{data=models.User}
 // @Router /api/v1/users/profile [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	userID, err := utils.ParseIntParam(c, "user_id")
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		c.Error(err)
 		return
 	}
 
@@ -51,8 +53,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 // @Success 200 {object} response.Response{data=models.UserInfo}
 // @Router /api/v1/users/info [get]
 func (h *UserHandler) GetUserInfo(c *gin.Context) {
-	userID, err := utils.ParseIntParam(c, "user_id")
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		c.Error(err)
 		return
 	}
 
@@ -75,8 +78,9 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 // @Success 200 {object} response.Response{data=models.UserInfo}
 // @Router /api/v1/users/info [put]
 func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
-	userID, err := utils.ParseIntParam(c, "user_id")
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		c.Error(err)
 		return
 	}
 
@@ -119,26 +123,28 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 	response.Success(c, user)
 }
 
-func (h *UserHandler) getUserID(c *gin.Context) (string, error) {
-	userID, exists := c.Get("user_id")
+func getUserIDFromContext(c *gin.Context) (int64, error) {
+	v, exists := c.Get("user_id")
 	if !exists {
-		c.Abort()
-		return "", nil
+		return 0, errcode.ErrUnauthorized
 	}
 
-	switch v := userID.(type) {
+	switch id := v.(type) {
 	case uint:
-		return strconv.FormatUint(uint64(v), 10), nil
+		return int64(id), nil
 	case int:
-		return strconv.Itoa(v), nil
+		return int64(id), nil
 	case int64:
-		return strconv.FormatInt(v, 10), nil
+		return id, nil
 	case float64:
-		return strconv.FormatFloat(v, 'f', -1, 64), nil
+		return int64(id), nil
 	case string:
-		return v, nil
+		n, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			return 0, errcode.ErrUnauthorized
+		}
+		return n, nil
 	default:
-		c.Abort()
-		return "", nil
+		return 0, errcode.ErrUnauthorized
 	}
 }
