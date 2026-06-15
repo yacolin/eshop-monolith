@@ -86,3 +86,32 @@ type ProductWithCategoryListResult struct {
 	List  []ProductWithCategoryDTO `json:"list"`
 	Total int64                    `json:"total"`
 }
+
+// ProductCursorQuery 游标分页查询参数（深分页优化，基于主键 ID 游标）
+type ProductCursorQuery struct {
+	Cursor     int64  `form:"cursor"`               // 游标（上一页最后一条的 ID，首次查询传 0）
+	Size       int    `form:"size,default=20"`      // 每页条数
+	Name       string `form:"name"`                 // 产品名称模糊搜索
+	SKU        string `form:"sku"`                  // SKU精确搜索
+	CategoryID *int64 `form:"category_id"`          // 分类ID筛选
+}
+
+// Normalize 校验并规范化游标查询参数
+func (q *ProductCursorQuery) Normalize() {
+	if q.Size <= 0 {
+		q.Size = 20
+	}
+	if q.Size > 100 {
+		q.Size = 100
+	}
+	if q.Cursor < 0 {
+		q.Cursor = 0
+	}
+}
+
+// ProductCursorResult 游标分页结果
+type ProductCursorResult struct {
+	List       []models.Product `json:"list"`
+	NextCursor int64            `json:"next_cursor"`  // 下一页游标值（无更多数据时为 0）
+	HasMore    bool             `json:"has_more"`     // 是否还有更多数据
+}

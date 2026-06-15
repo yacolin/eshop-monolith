@@ -34,6 +34,8 @@ type IproductRepository interface {
 	CountProducts(ctx context.Context, q dto.ProductListQuery) (int64, error)
 	// FindAll 查询所有产品（不分页）
 	FindAll(ctx context.Context) ([]invModels.Product, error)
+	// ListProductsByCursor 基于游标查询产品列表（深分页优化）
+	ListProductsByCursor(ctx context.Context, q dto.ProductCursorQuery, limit int) ([]invModels.Product, error)
 }
 
 // ProductRepository 产品仓储实现
@@ -180,6 +182,42 @@ func (r *ProductRepository) CountProducts(ctx context.Context, q dto.ProductList
 	}
 
 	return total, nil
+}
+
+// ListProductsByCursor 基于游标查询产品列表（深分页优化）
+func (r *ProductRepository) ListProductsByCursor(ctx context.Context, q dto.ProductCursorQuery, limit int) ([]invModels.Product, error) {
+	var pos []models.ProductPO
+	db := r.applyCursorQueryConditions(ctx, q)
+	if q.Cursor > 0 {
+		db = db.Where("id > ?", q.Cursor)
+	}
+	err := db.Order("id asc").Limit(limit).Find(&pos).Error
+	if err != nil {
+		return nil, err
+	}
+
+	products := make([]invModels.Product, len(pos))
+	for i, po := range pos {
+		products[i] = *po.ToDomain()
+	}
+	return products, nil
+}
+
+// applyCursorQueryConditions 应用游标查询的过滤条件
+func (r *ProductRepository) applyCursorQueryConditions(ctx context.Context, q dto.ProductCursorQuery) *gorm.DB {
+	db := r.db.WithContext(ctx).Model(&models.ProductPO{})
+	if q.Name != "" {
+		db = db.Where("name LIKE ?", "%"+q.Name+"%")
+	}
+	if q.SKU != "" {
+		db = db.Where("sku = ?", q.SKU)
+	}
+	if q.CategoryID != nil {
+		db = db.Where("id IN (?)",
+			r.db.Table("product_categories").Select("product_id").Where("category_id = ?", *q.CategoryID),
+		)
+	}
+	return db
 }
 
 // applyQueryConditions 应用查询条件（不包含排序）

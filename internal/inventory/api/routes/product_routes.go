@@ -20,6 +20,7 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 	products := v1.Group("/products")
 	{
 		products.GET("", productHandler.ListProducts)
+		products.GET("/cursor", productHandler.ListProductsByCursor)
 		products.GET("/cache", productHandler.ListCachedProducts)
 		products.GET("/cache/:id", productHandler.GetCachedProduct)
 		products.POST("/cache/warmup", productHandler.WarmupCache)

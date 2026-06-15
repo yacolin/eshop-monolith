@@ -309,6 +309,34 @@ func (h *ProductHandler) ListCachedProducts(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// ListProductsByCursor 基于游标分页查询商品（深分页优化）
+// @Summary 基于游标分页查询商品
+// @Description 使用游标分页代替传统 OFFSET 分页，解决深分页性能问题
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param cursor query int false "游标（上一页最后一条的 ID，首次查询传 0）" default(0)
+// @Param size query int false "每页条数" default(20)
+// @Param name query string false "产品名称模糊搜索"
+// @Param sku query string false "SKU精确搜索"
+// @Param category_id query int false "分类ID筛选"
+// @Success 200 {object} response.Response{data=dto.ProductCursorResult}
+// @Router /api/v1/products/cursor [get]
+func (h *ProductHandler) ListProductsByCursor(c *gin.Context) {
+	var q dto.ProductCursorQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
+		return
+	}
+	q.Normalize()
+	result, err := h.productService.ListProductsByCursor(c, q)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
 // GetCachedProduct 从缓存中查询单个商品
 // @Summary 从缓存查询商品
 // @Description 从 Redis 缓存中根据 ID 查询单个商品

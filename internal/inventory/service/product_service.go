@@ -640,3 +640,26 @@ func (s *ProductService) ListProducts(ctx context.Context, q dto.ProductListQuer
 		Total: total,
 	}, nil
 }
+
+// ListProductsByCursor 基于游标的产品列表查询（深分页优化）
+func (s *ProductService) ListProductsByCursor(ctx context.Context, q dto.ProductCursorQuery) (*dto.ProductCursorResult, error) {
+	// 多查一条判断是否还有更多数据
+	limit := q.Size + 1
+	list, err := s.repo.ListProductsByCursor(ctx, q, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &dto.ProductCursorResult{}
+	if len(list) > q.Size {
+		// 有更多数据，截断多查的那条
+		result.List = list[:q.Size]
+		result.NextCursor = list[q.Size-1].ID
+		result.HasMore = true
+	} else {
+		result.List = list
+		result.NextCursor = 0
+		result.HasMore = false
+	}
+	return result, nil
+}
