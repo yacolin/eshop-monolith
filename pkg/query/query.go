@@ -15,7 +15,7 @@ type ListResult[T any] struct {
 // 通用分页
 type Pagination struct {
 	Page int `form:"page,default=1" binding:"gte=1"`          // 页码，最小 1
-	Size int `form:"size,default=10" binding:"gte=1,lte=100"` // 每页条数，范围 1..100
+	Size int `form:"size,default=10" binding:"gte=1,lte=1000"` // 每页条数，范围 1..1000
 }
 
 // Normalize 将保证 Page/Size 在合理范围内（对外部输入做最后防护）
@@ -26,7 +26,7 @@ func (p *Pagination) Normalize() {
 	// use configured defaults and max if available
 	cfg := config.Get()
 	def := 10
-	max := 100
+	max := 1000
 	if cfg != nil {
 		if cfg.Pagination.DefaultSize > 0 {
 			def = cfg.Pagination.DefaultSize

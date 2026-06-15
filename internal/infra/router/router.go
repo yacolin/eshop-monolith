@@ -3,11 +3,13 @@ package router
 import (
 	"context"
 	"strconv"
+	"sync/atomic"
 
 	cartRoutes "eshop-monolith/internal/cart/api/routes"
 	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
 	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 	invRoutes "eshop-monolith/internal/inventory/api/routes"
+	invSvcPkg "eshop-monolith/internal/inventory/service"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	orderRoutes "eshop-monolith/internal/order/api/routes"
 	orderSvcPkg "eshop-monolith/internal/order/service"
@@ -72,8 +74,18 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	// 添加全局错误处理中间件
 	router.Use(middleware.ErrorHandler())
 
+	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册和启动预热）
+	var orderSvc *orderSvcPkg.OrderService
+	var flashSvc *flashSvcPkg.FlashService
+	var productSvc *invSvcPkg.ProductService
+	var warmupDone atomic.Bool
+
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
+		if !warmupDone.Load() {
+			c.JSON(503, gin.H{"status": "warming_up"})
+			return
+		}
 		response.Success(c, gin.H{
 			"status": "ok",
 		})
@@ -85,13 +97,10 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	// Swagger 文档
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册）
-	var orderSvc *orderSvcPkg.OrderService
-	var flashSvc *flashSvcPkg.FlashService
-
-	// API v1 路由组
+	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册和启动预热）
 	v1 := router.Group("/api/v1")
 	{
+
 		// 健康检查
 		v1.GET("/health", func(c *gin.Context) {
 			response.Success(c, gin.H{
@@ -102,7 +111,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 
 		// 公开路由（按领域拆分注册）
 		invRoutes.RegisterCategoryRoutes(v1, repos, bus)
-		invRoutes.RegisterProductRoutes(v1, repos, db, bus)
+		productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, bus)
 		invRoutes.RegisterInventoryRoutes(v1, repos, bus)
 
 		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, bus)
@@ -127,6 +136,19 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		}
 	}
 
+	// 启动时异步预热商品缓存（goroutine 不阻塞启动，预热完成前 health 返回 503）
+	if productSvc != nil {
+		go func() {
+			logger.Info("Starting product cache warmup...")
+			total, err := productSvc.WarmupProductCache(context.Background())
+			if err != nil {
+				logger.Error("Product cache warmup failed", "error", err)
+			} else {
+				logger.Info("Product cache warmup completed", "total", total)
+			}
+			warmupDone.Store(true)
+		}()
+	}
 	// 注册支付成功事件业务处理器（在 service 创建后, 通过闭包注入依赖）
 	bus.Subscribe("payment.PaymentSuccessEvent", func(event interface{}) {
 		e, ok := event.(paymentEvents.PaymentSuccessEvent)

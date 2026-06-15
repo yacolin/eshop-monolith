@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) {
+func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) *service.ProductService {
 	productRepo := repositories.NewProductRepository(db)
 	productService := service.NewProductService(productRepo, repos.Inventory, bus, db, repos.Redis)
 	productHandler := handlers.NewProductHandler(productService)
@@ -39,4 +39,6 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 		auth.PUT("/:id", productHandler.UpdateProduct)
 		auth.DELETE("/:id", productHandler.DeleteProduct)
 	}
+
+	return productService
 }
