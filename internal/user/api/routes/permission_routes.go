@@ -16,7 +16,7 @@ func RegisterPermissionRoutes(v1 *gin.RouterGroup, repos *repository.Repositorie
 	permissionService := service.NewPermissionService(repos.Permission, repos.User, repos.Role)
 	permissionHandler := handlers.NewPermissionHandler(permissionService, userService)
 
-	permissions := v1.Group("/permission")
+	permissions := v1.Group("/permissions")
 	{
 		permissions.Use(middleware.JWTAuth())
 		{
