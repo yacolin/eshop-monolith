@@ -120,9 +120,9 @@ func mapBizErrorToStatus(e *errcode.BizError) int {
 		return http.StatusForbidden
 	case errcode.ErrPaymentFailed:
 		return http.StatusBadGateway
-	case errcode.ErrNotFound, errcode.ErrProductNotFound, errcode.ErrUserNotFound, errcode.ErrOrderNotFound, errcode.ErrPermissionNotFound:
+	case errcode.ErrNotFound, errcode.ErrProductNotFound, errcode.ErrUserNotFound, errcode.ErrOrderNotFound, errcode.ErrPermissionNotFound, errcode.ErrReviewNotFound:
 		return http.StatusNotFound
-	case errcode.ErrDuplicateOrder, errcode.ErrDuplicateSKU:
+	case errcode.ErrDuplicateOrder, errcode.ErrDuplicateSKU, errcode.ErrReviewDuplicate:
 		return http.StatusConflict
 	default:
 		return http.StatusBadRequest

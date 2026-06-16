@@ -34,6 +34,13 @@ func TestNoDuplicateCodes(t *testing.T) {
 		ErrInsufficientPermissions,
 		ErrCannotModifySystemRole,
 		ErrCannotDeleteSystemRole,
+		ErrReviewNotFound,
+		ErrReviewDuplicate,
+		ErrReviewNotPurchased,
+		ErrReviewInvalidRating,
+		ErrReviewMediaLimitExceed,
+		ErrReviewNotOwner,
+		ErrReviewPendingModeration,
 	}
 	for _, e := range all {
 		if name, ok := seen[e.Code]; ok {

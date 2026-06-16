@@ -23,7 +23,8 @@ func (e *BizError) Error() string {
 //    一旦发布，该数字永久归属该错误，不得修改、删除或复用于其他错误。
 //
 // 2. 每个域预留一段区间
-//    通用域 1001-1999，权限域 2001-2999。后续新增域在 3001+ 继续分配。
+//    通用域 1001-1999，权限域 2001-2999，评论评分域 3001-3999。
+//    后续新增域在 4001+ 继续分配。
 //
 // 3. 新增错误码
 //    在所属域的 var 块末尾追加一行，选区间内下一个未使用的数字。
@@ -80,4 +81,15 @@ var (
 	ErrInsufficientPermissions = &BizError{Code: 2002, Message: "insufficient permissions"}
 	ErrCannotModifySystemRole  = &BizError{Code: 2003, Message: "cannot modify system role"}
 	ErrCannotDeleteSystemRole  = &BizError{Code: 2004, Message: "cannot delete system role"}
+)
+
+// ==================== 域：评论评分（3001-3999） ====================
+var (
+	ErrReviewNotFound         = &BizError{Code: 3001, Message: "review not found"}
+	ErrReviewDuplicate        = &BizError{Code: 3002, Message: "review already exists for this order item"}
+	ErrReviewNotPurchased     = &BizError{Code: 3003, Message: "only purchased products can be reviewed"}
+	ErrReviewInvalidRating    = &BizError{Code: 3004, Message: "rating must be between 1 and 5"}
+	ErrReviewMediaLimitExceed = &BizError{Code: 3005, Message: "media count exceeds the limit"}
+	ErrReviewNotOwner         = &BizError{Code: 3006, Message: "not the owner of the review"}
+	ErrReviewPendingModeration = &BizError{Code: 3007, Message: "review is pending moderation"}
 )

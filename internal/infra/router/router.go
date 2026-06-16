@@ -14,6 +14,7 @@ import (
 	orderRoutes "eshop-monolith/internal/order/api/routes"
 	orderSvcPkg "eshop-monolith/internal/order/service"
 	payRoutes "eshop-monolith/internal/payment/api/routes"
+	reviewRoutes "eshop-monolith/internal/review/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
 
 	"eshop-monolith/internal/infra/eventbus"
@@ -123,6 +124,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
 		userRoutes.RegisterRoleRoutes(v1, repos, db)
 		notifRoutes.RegisterNotificationRoutes(v1, repos, db, bus)
+		reviewRoutes.RegisterReviewRoutes(v1, repos, db, bus)
 
 		// WebSocket 路由
 		ws.RegisterWSRoutes(v1, wsHub)
