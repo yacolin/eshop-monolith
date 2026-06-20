@@ -150,6 +150,7 @@ func (r *roleRepository) GetUserRoles(ctx context.Context, userID int64) ([]user
 	var pos []models.RolePO
 
 	err := r.db.WithContext(ctx).
+		Preload("Permissions").
 		Joins("JOIN user_roles ON user_roles.role_id = roles.id").
 		Where("user_roles.user_id = ?", userID).
 		Where("user_roles.deleted_at IS NULL").
