@@ -18,14 +18,16 @@ const (
 
 // Order 订单
 type Order struct {
-	ID          int64          `json:"id"`
-	OrderNo     string         `json:"order_no"`     // 订单号，全局唯一
-	CustomerID  string         `json:"customer_id"`
-	TotalAmount int64          `json:"total_amount"` // 订单总金额，单位：分
-	Currency    string         `json:"currency"`
-	Status      string         `json:"status"`
-	CreatedAt   utils.Timestamp `json:"created_at"`
-	UpdatedAt   utils.Timestamp `json:"updated_at"`
+	ID             int64           `json:"id"`
+	OrderNo        string          `json:"order_no"`         // 订单号，全局唯一
+	CustomerID     string          `json:"customer_id"`
+	TotalAmount    int64           `json:"total_amount"`    // 订单总金额（已扣优惠），单位：分
+	DiscountAmount int64           `json:"discount_amount"` // 优惠金额，单位：分
+	CouponID       *int64          `json:"coupon_id"`       // 使用的优惠券模板ID
+	Currency       string          `json:"currency"`
+	Status         string          `json:"status"`
+	CreatedAt      utils.Timestamp `json:"created_at"`
+	UpdatedAt      utils.Timestamp `json:"updated_at"`
 
 	Items []OrderItem `json:"items,omitempty"`
 }

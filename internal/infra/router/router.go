@@ -7,6 +7,7 @@ import (
 	"time"
 
 	cartRoutes "eshop-monolith/internal/cart/api/routes"
+	couponRoutes "eshop-monolith/internal/coupon/api/routes"
 	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
 	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
 	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
@@ -119,7 +120,11 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, bus)
 		invRoutes.RegisterInventoryRoutes(v1, repos, bus)
 
-		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, bus)
+		// 优惠券系统（需先于订单初始化，用于结算时优惠校验）
+		couponSvc := couponRoutes.RegisterCouponRoutes(v1, repos, db, bus)
+		couponRoutes.RegisterPromotionRoutes(v1, repos, db, bus)
+
+		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, bus, couponSvc)
 		userRoutes.RegisterUserRoutes(v1, repos)
 		payRoutes.RegisterPaymentRoutes(v1, repos, bus, db)
 		cartRoutes.RegisterCartRoutes(v1, repos)
@@ -130,6 +135,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		notifRoutes.RegisterNotificationRoutes(v1, repos, db, bus)
 		reviewRoutes.RegisterReviewRoutes(v1, repos, db, bus)
 		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, bus)
+
 
 		// WebSocket 路由
 		ws.RegisterWSRoutes(v1, wsHub)
@@ -177,7 +183,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		}()
 	}
 	// 注册支付成功事件业务处理器（在 service 创建后, 通过闭包注入依赖）
-	bus.Subscribe("payment.PaymentSuccessEvent", func(event interface{}) {
+	bus.Subscribe("payment.PaymentSuccessEvent", func(event any) {
 		e, ok := event.(paymentEvents.PaymentSuccessEvent)
 		if !ok {
 			return

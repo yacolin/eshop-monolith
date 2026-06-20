@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	couponSvc "eshop-monolith/internal/coupon/service"
 	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/pkg/errcode"
 
@@ -32,15 +33,17 @@ func orderToResponse(o *models.Order) dto.OrderResponse {
 		items[i] = orderItemToResponse(&item, o.OrderNo)
 	}
 	return dto.OrderResponse{
-		ID:          o.ID,
-		OrderNo:     o.OrderNo,
-		CustomerID:  o.CustomerID,
-		TotalAmount: o.TotalAmount,
-		Currency:    o.Currency,
-		Status:      o.Status,
-		CreatedAt:   o.CreatedAt,
-		UpdatedAt:   o.UpdatedAt,
-		Items:       items,
+		ID:             o.ID,
+		OrderNo:        o.OrderNo,
+		CustomerID:     o.CustomerID,
+		TotalAmount:    o.TotalAmount,
+		DiscountAmount: o.DiscountAmount,
+		CouponID:       o.CouponID,
+		Currency:       o.Currency,
+		Status:         o.Status,
+		CreatedAt:      o.CreatedAt,
+		UpdatedAt:      o.UpdatedAt,
+		Items:          items,
 	}
 }
 
@@ -60,20 +63,23 @@ type OrderService struct {
 	db            *gorm.DB
 	orderRepo     repositories.IorderRepository
 	inventoryRepo repositories.InventoryForOrder
+	couponService *couponSvc.CouponService
 	bus           *eventbus.Bus
 }
 
-func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, bus *eventbus.Bus) *OrderService {
+func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, bus *eventbus.Bus, couponService *couponSvc.CouponService) *OrderService {
 	return &OrderService{
 		db:            db,
 		orderRepo:     orderRepo,
 		inventoryRepo: inventoryRepo,
+		couponService: couponService,
 		bus:           bus,
 	}
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, req *dto.CreateOrderDTO) (*models.Order, error) {
 	var order *models.Order
+	orderNo := generateOrderNo()
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		totalAmount := int64(0)
@@ -97,13 +103,31 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *dto.CreateOrderDTO)
 			})
 		}
 
+		// 计算实际支付金额（扣除优惠券）
+		discountAmount := int64(0)
+		var couponID *int64
+
+		if req.UserCouponID != nil && *req.UserCouponID > 0 && s.couponService != nil {
+			userID, _ := strconv.ParseInt(req.CustomerID, 10, 64)
+			if userID > 0 {
+				discount, err := s.couponService.UseCoupon(ctx, *req.UserCouponID, userID, orderNo, totalAmount)
+				if err != nil {
+					return err
+				}
+				discountAmount = discount
+				couponID = req.UserCouponID
+			}
+		}
+
 		order = &models.Order{
-			OrderNo:     generateOrderNo(),
-			CustomerID:  req.CustomerID,
-			TotalAmount: totalAmount,
-			Currency:    req.Currency,
-			Status:      models.OrderStatusPending,
-			Items:       orderItems,
+			OrderNo:        orderNo,
+			CustomerID:     req.CustomerID,
+			TotalAmount:    totalAmount - discountAmount,
+			DiscountAmount: discountAmount,
+			CouponID:       couponID,
+			Currency:       req.Currency,
+			Status:         models.OrderStatusPending,
+			Items:          orderItems,
 		}
 
 		return s.orderRepo.CreateWithTx(tx, order)

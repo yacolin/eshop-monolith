@@ -7,15 +7,17 @@ import (
 
 // OrderResponse 订单响应
 type OrderResponse struct {
-	ID          int64              `json:"id"`
-	OrderNo     string             `json:"order_no"`
-	CustomerID  string             `json:"customer_id"`
-	TotalAmount int64              `json:"total_amount"` // 订单总金额，单位：分
-	Currency    string             `json:"currency"`
-	Status      string             `json:"status"`
-	CreatedAt   utils.Timestamp    `json:"created_at"`
-	UpdatedAt   utils.Timestamp    `json:"updated_at"`
-	Items       []OrderItemResponse `json:"items,omitempty"`
+	ID             int64              `json:"id"`
+	OrderNo        string             `json:"order_no"`
+	CustomerID     string             `json:"customer_id"`
+	TotalAmount    int64              `json:"total_amount"`    // 订单总金额（已扣优惠），单位：分
+	DiscountAmount int64              `json:"discount_amount"` // 优惠金额，单位：分
+	CouponID       *int64             `json:"coupon_id"`       // 使用的优惠券模板ID
+	Currency       string             `json:"currency"`
+	Status         string             `json:"status"`
+	CreatedAt      utils.Timestamp    `json:"created_at"`
+	UpdatedAt      utils.Timestamp    `json:"updated_at"`
+	Items          []OrderItemResponse `json:"items,omitempty"`
 }
 
 // OrderItemResponse 订单项响应
@@ -69,9 +71,10 @@ type UserOrderListQuery struct {
 // CreateOrderDTO 创建订单请求
 // @Description 创建订单的请求体
 type CreateOrderDTO struct {
-	CustomerID string               `json:"customer_id" binding:"required"`
-	Currency   string               `json:"currency"` // 可选，默认 CNY
-	Items      []CreateOrderItemDTO `json:"items" binding:"required,min=1,dive"`
+	CustomerID   string               `json:"customer_id" binding:"required"`
+	Currency     string               `json:"currency"`      // 可选，默认 CNY
+	UserCouponID *int64               `json:"user_coupon_id"` // 可选，使用的用户优惠券ID
+	Items        []CreateOrderItemDTO `json:"items" binding:"required,min=1,dive"`
 }
 
 // UpdateOrderDTO 更新订单请求

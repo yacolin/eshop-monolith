@@ -35,93 +35,124 @@ ALTER TABLE user_identities AUTO_INCREMENT = 1;
 -- ========================================================================
 -- 权限数据
 -- 格式: resource:action
--- 按模块分类，方便定位和扩展
+-- 按四大类分组，组间相隔1000，子模块相隔100，单模块内相隔10，便于扩展
 -- ========================================================================
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 大类一：商品库存 (1000-1999)
+-- ═══════════════════════════════════════════════════════════════════════════
 
 -- ==================== 商品管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('product:read',   '查看产品',   '查看产品列表和详情',          'product',  'read',   '商品管理', 1,  1),
-('product:create', '创建产品',   '创建新产品',                  'product',  'create', '商品管理', 2,  1),
-('product:update', '编辑产品',   '编辑产品信息',                'product',  'update', '商品管理', 3,  1),
-('product:delete', '删除产品',   '删除产品',                    'product',  'delete', '商品管理', 4,  1);
+('product:read',   '查看产品',   '查看产品列表和详情',          'product',  'read',   '商品管理', 1100, 1),
+('product:create', '创建产品',   '创建新产品',                  'product',  'create', '商品管理', 1110, 1),
+('product:update', '编辑产品',   '编辑产品信息',                'product',  'update', '商品管理', 1120, 1),
+('product:delete', '删除产品',   '删除产品',                    'product',  'delete', '商品管理', 1130, 1);
 
 -- ==================== 分类管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('category:read',   '查看分类',   '查看分类列表和详情',          'category', 'read',   '分类管理', 21, 1),
-('category:create', '创建分类',   '创建分类',                    'category', 'create', '分类管理', 22, 1),
-('category:update', '编辑分类',   '编辑分类信息',                'category', 'update', '分类管理', 23, 1),
-('category:delete', '删除分类',   '删除分类',                    'category', 'delete', '分类管理', 24, 1);
+('category:read',   '查看分类',   '查看分类列表和详情',          'category', 'read',   '分类管理', 1200, 1),
+('category:create', '创建分类',   '创建分类',                    'category', 'create', '分类管理', 1210, 1),
+('category:update', '编辑分类',   '编辑分类信息',                'category', 'update', '分类管理', 1220, 1),
+('category:delete', '删除分类',   '删除分类',                    'category', 'delete', '分类管理', 1230, 1);
 
 -- ==================== 库存管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('inventory:read',    '查看库存',   '查看库存信息',              'inventory', 'read',    '库存管理', 41, 1),
-('inventory:create',  '创建库存',   '创建库存记录',              'inventory', 'create',  '库存管理', 42, 1),
-('inventory:update',  '编辑库存',   '编辑库存信息',              'inventory', 'update',  '库存管理', 43, 1),
-('inventory:reserve', '库存操作',   '库存预订/释放等操作',       'inventory', 'reserve', '库存管理', 44, 1);
+('inventory:read',    '查看库存',   '查看库存信息',              'inventory', 'read',    '库存管理', 1300, 1),
+('inventory:create',  '创建库存',   '创建库存记录',              'inventory', 'create',  '库存管理', 1310, 1),
+('inventory:update',  '编辑库存',   '编辑库存信息',              'inventory', 'update',  '库存管理', 1320, 1),
+('inventory:reserve', '库存操作',   '库存预订/释放等操作',       'inventory', 'reserve', '库存管理', 1330, 1);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 大类二：交易订单 (2000-2999)
+-- ═══════════════════════════════════════════════════════════════════════════
 
 -- ==================== 订单管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('order:read',   '查看订单',   '查看订单列表和详情',            'order', 'read',   '订单管理', 61, 1),
-('order:create', '创建订单',   '创建订单',                      'order', 'create', '订单管理', 62, 1),
-('order:update', '编辑订单',   '编辑订单信息',                  'order', 'update', '订单管理', 63, 1),
-('order:cancel', '取消订单',   '取消订单',                      'order', 'cancel', '订单管理', 64, 1),
-('order:delete', '删除订单',   '删除订单',                      'order', 'delete', '订单管理', 65, 1);
+('order:read',   '查看订单',   '查看订单列表和详情',            'order', 'read',   '订单管理', 2100, 1),
+('order:create', '创建订单',   '创建订单',                      'order', 'create', '订单管理', 2110, 1),
+('order:update', '编辑订单',   '编辑订单信息',                  'order', 'update', '订单管理', 2120, 1),
+('order:cancel', '取消订单',   '取消订单',                      'order', 'cancel', '订单管理', 2130, 1),
+('order:delete', '删除订单',   '删除订单',                      'order', 'delete', '订单管理', 2140, 1);
 
 -- ==================== 购物车管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('cart:read',   '查看购物车',   '查看购物车内容',               'cart', 'read',   '购物车管理', 81, 1),
-('cart:create', '添加商品',     '添加商品到购物车',             'cart', 'create', '购物车管理', 82, 1),
-('cart:update', '编辑购物车',   '更新购物车商品信息',           'cart', 'update', '购物车管理', 83, 1),
-('cart:delete', '删除商品',     '删除购物车中的商品',           'cart', 'delete', '购物车管理', 84, 1);
+('cart:read',   '查看购物车',   '查看购物车内容',               'cart', 'read',   '购物车管理', 2200, 1),
+('cart:create', '添加商品',     '添加商品到购物车',             'cart', 'create', '购物车管理', 2210, 1),
+('cart:update', '编辑购物车',   '更新购物车商品信息',           'cart', 'update', '购物车管理', 2220, 1),
+('cart:delete', '删除商品',     '删除购物车中的商品',           'cart', 'delete', '购物车管理', 2230, 1);
 
 -- ==================== 支付管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('payment:read',   '查看支付',   '查看支付记录和详情',          'payment', 'read',   '支付管理', 101, 1),
-('payment:create', '发起支付',   '发起支付请求',                'payment', 'create', '支付管理', 102, 1),
-('payment:update', '更新支付',   '更新支付状态',                'payment', 'update', '支付管理', 103, 1);
+('payment:read',   '查看支付',   '查看支付记录和详情',          'payment', 'read',   '支付管理', 2300, 1),
+('payment:create', '发起支付',   '发起支付请求',                'payment', 'create', '支付管理', 2310, 1),
+('payment:update', '更新支付',   '更新支付状态',                'payment', 'update', '支付管理', 2320, 1);
 
 -- ==================== 退款管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('refund:read',   '查看退款',   '查看退款记录和详情',           'refund', 'read',   '退款管理', 121, 1),
-('refund:create', '申请退款',   '创建退款申请',                 'refund', 'create', '退款管理', 122, 1),
-('refund:update', '处理退款',   '更新退款状态',                 'refund', 'update', '退款管理', 123, 1);
+('refund:read',   '查看退款',   '查看退款记录和详情',           'refund', 'read',   '退款管理', 2400, 1),
+('refund:create', '申请退款',   '创建退款申请',                 'refund', 'create', '退款管理', 2410, 1),
+('refund:update', '处理退款',   '更新退款状态',                 'refund', 'update', '退款管理', 2420, 1);
 
 -- ==================== 秒杀管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('flash:read',   '查看秒杀',   '查看秒杀活动列表和详情',        'flash', 'read',   '秒杀管理', 141, 1),
-('flash:create', '创建秒杀',   '创建秒杀活动',                  'flash', 'create', '秒杀管理', 142, 1),
-('flash:update', '编辑秒杀',   '编辑秒杀订单信息',              'flash', 'update', '秒杀管理', 143, 1),
-('flash:cancel', '取消秒杀',   '取消秒杀订单',                  'flash', 'cancel', '秒杀管理', 144, 1),
-('flash:buy',    '秒杀购买',   '参与秒杀购买',                  'flash', 'buy',    '秒杀管理', 145, 1),
-('flash:manage', '管理秒杀',   '秒杀加载库存/上架等操作',       'flash', 'manage', '秒杀管理', 146, 1);
+('flash:read',   '查看秒杀',   '查看秒杀活动列表和详情',        'flash', 'read',   '秒杀管理', 2500, 1),
+('flash:create', '创建秒杀',   '创建秒杀活动',                  'flash', 'create', '秒杀管理', 2510, 1),
+('flash:update', '编辑秒杀',   '编辑秒杀订单信息',              'flash', 'update', '秒杀管理', 2520, 1),
+('flash:cancel', '取消秒杀',   '取消秒杀订单',                  'flash', 'cancel', '秒杀管理', 2530, 1),
+('flash:buy',    '秒杀购买',   '参与秒杀购买',                  'flash', 'buy',    '秒杀管理', 2540, 1),
+('flash:manage', '管理秒杀',   '秒杀加载库存/上架等操作',       'flash', 'manage', '秒杀管理', 2550, 1);
+
+-- ==================== 优惠券管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('coupon:read',   '查看优惠券',   '查看优惠券模板列表和详情',     'coupon', 'read',   '优惠券管理', 2600, 1),
+('coupon:create', '创建优惠券',   '创建优惠券模板',               'coupon', 'create', '优惠券管理', 2610, 1),
+('coupon:update', '编辑优惠券',   '编辑优惠券模板信息',           'coupon', 'update', '优惠券管理', 2620, 1),
+('coupon:delete', '删除优惠券',   '删除优惠券模板',               'coupon', 'delete', '优惠券管理', 2630, 1),
+('coupon:claim',  '领取优惠券',   '领取优惠券到个人账户',         'coupon', 'claim',  '优惠券管理', 2640, 1);
+
+-- ==================== 促销管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('promotion:read',   '查看促销',   '查看促销活动列表和详情',      'promotion', 'read',   '促销管理', 2700, 1),
+('promotion:create', '创建促销',   '创建促销活动',                'promotion', 'create', '促销管理', 2710, 1),
+('promotion:update', '编辑促销',   '编辑促销活动信息',            'promotion', 'update', '促销管理', 2720, 1),
+('promotion:delete', '删除促销',   '删除促销活动',                'promotion', 'delete', '促销管理', 2730, 1);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 大类三：评价 (3000-3999)
+-- ═══════════════════════════════════════════════════════════════════════════
 
 -- ==================== 评论管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('review:read',     '查看评论',   '查看评论列表和详情',         'review', 'read',     '评论管理', 161, 1),
-('review:create',   '发表评论',   '发表商品评论',               'review', 'create',   '评论管理', 162, 1),
-('review:delete',   '删除评论',   '删除评论',                   'review', 'delete',   '评论管理', 163, 1),
-('review:moderate', '审核评论',   '审核/回复评论',              'review', 'moderate', '评论管理', 164, 1);
+('review:read',     '查看评论',   '查看评论列表和详情',         'review', 'read',     '评论管理', 3100, 1),
+('review:create',   '发表评论',   '发表商品评论',               'review', 'create',   '评论管理', 3110, 1),
+('review:delete',   '删除评论',   '删除评论',                   'review', 'delete',   '评论管理', 3120, 1),
+('review:moderate', '审核评论',   '审核/回复评论',              'review', 'moderate', '评论管理', 3130, 1);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 大类四：用户与系统 (4000-4999)
+-- ═══════════════════════════════════════════════════════════════════════════
 
 -- ==================== 通知管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('notification:read',   '查看通知',   '查看通知列表和详情',     'notification', 'read',   '通知管理', 181, 1),
-('notification:update', '标记已读',   '标记通知为已读',         'notification', 'update', '通知管理', 182, 1),
-('notification:delete', '删除通知',   '删除通知',               'notification', 'delete', '通知管理', 183, 1),
-('notification:send',   '发送通知',   '发送系统通知',           'notification', 'send',   '通知管理', 184, 1);
+('notification:read',   '查看通知',   '查看通知列表和详情',     'notification', 'read',   '通知管理', 4100, 1),
+('notification:update', '标记已读',   '标记通知为已读',         'notification', 'update', '通知管理', 4110, 1),
+('notification:delete', '删除通知',   '删除通知',               'notification', 'delete', '通知管理', 4120, 1),
+('notification:send',   '发送通知',   '发送系统通知',           'notification', 'send',   '通知管理', 4130, 1);
 
 -- ==================== 用户管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('user:read',   '查看用户',   '查看用户列表和详情',            'user', 'read',   '用户管理', 201, 1),
-('user:create', '创建用户',   '创建用户',                      'user', 'create', '用户管理', 202, 1),
-('user:update', '编辑用户',   '编辑用户信息',                  'user', 'update', '用户管理', 203, 1),
-('user:delete', '删除用户',   '删除用户',                      'user', 'delete', '用户管理', 204, 1);
+('user:read',   '查看用户',   '查看用户列表和详情',            'user', 'read',   '用户管理', 4200, 1),
+('user:create', '创建用户',   '创建用户',                      'user', 'create', '用户管理', 4210, 1),
+('user:update', '编辑用户',   '编辑用户信息',                  'user', 'update', '用户管理', 4220, 1),
+('user:delete', '删除用户',   '删除用户',                      'user', 'delete', '用户管理', 4230, 1);
 
 -- ==================== 权限管理（角色） ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('role:read',   '查看角色',   '查看角色列表和详情',            'role', 'read',   '权限管理', 221, 1),
-('role:create', '创建角色',   '创建角色',                      'role', 'create', '权限管理', 222, 1),
-('role:update', '编辑角色',   '编辑角色信息',                  'role', 'update', '权限管理', 223, 1),
-('role:delete', '删除角色',   '删除角色',                      'role', 'delete', '权限管理', 224, 1);
+('role:read',   '查看角色',   '查看角色列表和详情',            'role', 'read',   '权限管理', 4300, 1),
+('role:create', '创建角色',   '创建角色',                      'role', 'create', '权限管理', 4310, 1),
+('role:update', '编辑角色',   '编辑角色信息',                  'role', 'update', '权限管理', 4320, 1),
+('role:delete', '删除角色',   '删除角色',                      'role', 'delete', '权限管理', 4330, 1);
 
 -- ========================================================================
 -- 角色数据
@@ -177,6 +208,11 @@ SELECT (SELECT id FROM roles WHERE name = 'user'), id FROM permissions WHERE nam
     -- 通知：查看和标记已读
     'notification:read',
     'notification:update',
+    -- 优惠券：查看和领取（参与营销活动）
+    'coupon:read',
+    'coupon:claim',
+    -- 促销：查看
+    'promotion:read',
     -- 用户：查看自己和编辑自己信息
     'user:read',
     'user:update'
@@ -209,11 +245,15 @@ SELECT (SELECT id FROM roles WHERE name = 'operator'), id FROM permissions WHERE
     'notification:read',
     'notification:update',
     'notification:send',
+    -- 优惠券：查看
+    'coupon:read',
+    -- 促销：查看
+    'promotion:read',
     -- 用户：查看用户信息
     'user:read'
 );
 
--- editor 角色：内容维护（商品/分类/评论/秒杀活动）
+-- editor 角色：内容维护（商品/分类/评论/秒杀活动/优惠券/促销）
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT (SELECT id FROM roles WHERE name = 'editor'), id FROM permissions WHERE name IN (
     -- 商品：查看/创建/编辑（无权删除）
@@ -238,6 +278,14 @@ SELECT (SELECT id FROM roles WHERE name = 'editor'), id FROM permissions WHERE n
     'review:moderate',
     -- 通知：查看
     'notification:read',
+    -- 优惠券：查看/创建/编辑
+    'coupon:read',
+    'coupon:create',
+    'coupon:update',
+    -- 促销：查看/创建/编辑
+    'promotion:read',
+    'promotion:create',
+    'promotion:update',
     -- 用户：查看用户信息
     'user:read'
 );
