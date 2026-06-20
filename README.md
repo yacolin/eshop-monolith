@@ -116,8 +116,7 @@ eshop-monolith/
 │   └── DEVELOPMENT.md
 ├── scripts/
 │   ├── init.sql
-│   ├── seed.sql
-│   └── permissions.sql
+│   └── seed_rbac.sql
 ├── .gitignore
 ├── go.mod
 ├── go.sum
@@ -284,14 +283,11 @@ API 层 → Service 层 → Domain 层 ← Repository 层
 # 创建数据库
 mysql -u root -p -e "CREATE DATABASE eshop_db;"
 
-# 执行初始化脚本
+# 执行初始化脚本（仅建库，表结构由 AutoMigrate 自动创建）
 mysql -u root -p eshop_db < scripts/init.sql
 
-# 导入测试数据
-mysql -u root -p eshop_db < scripts/seed.sql
-
-# 导入权限数据
-mysql -u root -p eshop_db < scripts/permissions.sql
+# 导入 RBAC 权限与测试用户数据
+mysql -u root -p eshop_db < scripts/seed_rbac.sql
 ```
 
 #### 3. 配置环境

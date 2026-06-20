@@ -1,7 +1,15 @@
 -- ============================================================================
 -- RBAC 数据初始化脚本
+-- 覆盖所有业务模块的权限与角色分配
+--
 -- 使用前请确保数据库已通过 AutoMigrate 创建表结构
 -- 运行: mysql -u root -p eshop_db < scripts/seed_rbac.sql
+-- ============================================================================
+-- 【拓展指南】
+-- 添加新权限: 在下方对应模块的 INSERT 中增加一行即可
+-- 添加新角色: ① 在 #角色数据 区域 INSERT 新角色
+--             ② 在 #角色-权限关联 区域 INSERT 关联
+-- 调整角色权限: 修改 #角色-权限关联 中 WHERE name IN (...) 列表
 -- ============================================================================
 
 USE eshop_db;
@@ -24,70 +32,168 @@ ALTER TABLE users AUTO_INCREMENT = 1;
 ALTER TABLE user_infos AUTO_INCREMENT = 1;
 ALTER TABLE user_identities AUTO_INCREMENT = 1;
 
--- ==================== 权限数据 ====================
--- resource: 所属模块, action: 操作
+-- ========================================================================
+-- 权限数据
+-- 格式: resource:action
+-- 按模块分类，方便定位和扩展
+-- ========================================================================
+
+-- ==================== 商品管理 ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
-('product:read',    '查看产品',   '查看产品列表和详情',   'product',  'read',   '商品管理', 1, 1),
-('product:create',  '创建产品',   '创建新产品',           'product',  'create', '商品管理', 2, 1),
-('product:update',  '编辑产品',   '编辑产品信息',         'product',  'update', '商品管理', 3, 1),
-('product:delete',  '删除产品',   '删除产品',             'product',  'delete', '商品管理', 4, 1),
+('product:read',   '查看产品',   '查看产品列表和详情',          'product',  'read',   '商品管理', 1,  1),
+('product:create', '创建产品',   '创建新产品',                  'product',  'create', '商品管理', 2,  1),
+('product:update', '编辑产品',   '编辑产品信息',                'product',  'update', '商品管理', 3,  1),
+('product:delete', '删除产品',   '删除产品',                    'product',  'delete', '商品管理', 4,  1);
 
-('order:read',      '查看订单',   '查看订单列表和详情',   'order',    'read',   '订单管理', 5, 1),
-('order:create',    '创建订单',   '创建订单',             'order',    'create', '订单管理', 6, 1),
-('order:update',    '编辑订单',   '编辑订单信息',         'order',    'update', '订单管理', 7, 1),
-('order:cancel',    '取消订单',   '取消订单',             'order',    'cancel', '订单管理', 8, 1),
+-- ==================== 分类管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('category:read',   '查看分类',   '查看分类列表和详情',          'category', 'read',   '分类管理', 21, 1),
+('category:create', '创建分类',   '创建分类',                    'category', 'create', '分类管理', 22, 1),
+('category:update', '编辑分类',   '编辑分类信息',                'category', 'update', '分类管理', 23, 1),
+('category:delete', '删除分类',   '删除分类',                    'category', 'delete', '分类管理', 24, 1);
 
-('user:read',       '查看用户',   '查看用户列表和详情',   'user',     'read',   '用户管理', 9, 1),
-('user:create',     '创建用户',   '创建用户',             'user',     'create', '用户管理',10, 1),
-('user:update',     '编辑用户',   '编辑用户信息',         'user',     'update', '用户管理',11, 1),
-('user:delete',     '删除用户',   '删除用户',             'user',     'delete', '用户管理',12, 1),
+-- ==================== 库存管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('inventory:read',    '查看库存',   '查看库存信息',              'inventory', 'read',    '库存管理', 41, 1),
+('inventory:create',  '创建库存',   '创建库存记录',              'inventory', 'create',  '库存管理', 42, 1),
+('inventory:update',  '编辑库存',   '编辑库存信息',              'inventory', 'update',  '库存管理', 43, 1),
+('inventory:reserve', '库存操作',   '库存预订/释放等操作',       'inventory', 'reserve', '库存管理', 44, 1);
 
-('role:read',       '查看角色',   '查看角色列表和详情',   'role',     'read',   '权限管理',13, 1),
-('role:create',     '创建角色',   '创建角色',             'role',     'create', '权限管理',14, 1),
-('role:update',     '编辑角色',   '编辑角色信息',         'role',     'update', '权限管理',15, 1),
-('role:delete',     '删除角色',   '删除角色',             'role',     'delete', '权限管理',16, 1),
+-- ==================== 订单管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('order:read',   '查看订单',   '查看订单列表和详情',            'order', 'read',   '订单管理', 61, 1),
+('order:create', '创建订单',   '创建订单',                      'order', 'create', '订单管理', 62, 1),
+('order:update', '编辑订单',   '编辑订单信息',                  'order', 'update', '订单管理', 63, 1),
+('order:cancel', '取消订单',   '取消订单',                      'order', 'cancel', '订单管理', 64, 1),
+('order:delete', '删除订单',   '删除订单',                      'order', 'delete', '订单管理', 65, 1);
 
-('inventory:read',   '查看库存',  '查看库存信息',        'inventory','read',   '库存管理',17, 1),
-('inventory:manage', '管理库存',  '入库/出库/调整库存',   'inventory','manage', '库存管理',18, 1),
+-- ==================== 购物车管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('cart:read',   '查看购物车',   '查看购物车内容',               'cart', 'read',   '购物车管理', 81, 1),
+('cart:create', '添加商品',     '添加商品到购物车',             'cart', 'create', '购物车管理', 82, 1),
+('cart:update', '编辑购物车',   '更新购物车商品信息',           'cart', 'update', '购物车管理', 83, 1),
+('cart:delete', '删除商品',     '删除购物车中的商品',           'cart', 'delete', '购物车管理', 84, 1);
 
-('category:read',   '查看分类',   '查看分类列表',        'category', 'read',   '分类管理',19, 1),
-('category:manage', '管理分类',   '创建/编辑/删除分类',   'category','manage', '分类管理',20, 1);
+-- ==================== 支付管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('payment:read',   '查看支付',   '查看支付记录和详情',          'payment', 'read',   '支付管理', 101, 1),
+('payment:create', '发起支付',   '发起支付请求',                'payment', 'create', '支付管理', 102, 1),
+('payment:update', '更新支付',   '更新支付状态',                'payment', 'update', '支付管理', 103, 1);
 
--- ==================== 角色数据 ====================
+-- ==================== 退款管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('refund:read',   '查看退款',   '查看退款记录和详情',           'refund', 'read',   '退款管理', 121, 1),
+('refund:create', '申请退款',   '创建退款申请',                 'refund', 'create', '退款管理', 122, 1),
+('refund:update', '处理退款',   '更新退款状态',                 'refund', 'update', '退款管理', 123, 1);
+
+-- ==================== 秒杀管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('flash:read',   '查看秒杀',   '查看秒杀活动列表和详情',        'flash', 'read',   '秒杀管理', 141, 1),
+('flash:create', '创建秒杀',   '创建秒杀活动',                  'flash', 'create', '秒杀管理', 142, 1),
+('flash:update', '编辑秒杀',   '编辑秒杀订单信息',              'flash', 'update', '秒杀管理', 143, 1),
+('flash:cancel', '取消秒杀',   '取消秒杀订单',                  'flash', 'cancel', '秒杀管理', 144, 1),
+('flash:buy',    '秒杀购买',   '参与秒杀购买',                  'flash', 'buy',    '秒杀管理', 145, 1),
+('flash:manage', '管理秒杀',   '秒杀加载库存/上架等操作',       'flash', 'manage', '秒杀管理', 146, 1);
+
+-- ==================== 评论管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('review:read',     '查看评论',   '查看评论列表和详情',         'review', 'read',     '评论管理', 161, 1),
+('review:create',   '发表评论',   '发表商品评论',               'review', 'create',   '评论管理', 162, 1),
+('review:delete',   '删除评论',   '删除评论',                   'review', 'delete',   '评论管理', 163, 1),
+('review:moderate', '审核评论',   '审核/回复评论',              'review', 'moderate', '评论管理', 164, 1);
+
+-- ==================== 通知管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('notification:read',   '查看通知',   '查看通知列表和详情',     'notification', 'read',   '通知管理', 181, 1),
+('notification:update', '标记已读',   '标记通知为已读',         'notification', 'update', '通知管理', 182, 1),
+('notification:delete', '删除通知',   '删除通知',               'notification', 'delete', '通知管理', 183, 1),
+('notification:send',   '发送通知',   '发送系统通知',           'notification', 'send',   '通知管理', 184, 1);
+
+-- ==================== 用户管理 ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('user:read',   '查看用户',   '查看用户列表和详情',            'user', 'read',   '用户管理', 201, 1),
+('user:create', '创建用户',   '创建用户',                      'user', 'create', '用户管理', 202, 1),
+('user:update', '编辑用户',   '编辑用户信息',                  'user', 'update', '用户管理', 203, 1),
+('user:delete', '删除用户',   '删除用户',                      'user', 'delete', '用户管理', 204, 1);
+
+-- ==================== 权限管理（角色） ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('role:read',   '查看角色',   '查看角色列表和详情',            'role', 'read',   '权限管理', 221, 1),
+('role:create', '创建角色',   '创建角色',                      'role', 'create', '权限管理', 222, 1),
+('role:update', '编辑角色',   '编辑角色信息',                  'role', 'update', '权限管理', 223, 1),
+('role:delete', '删除角色',   '删除角色',                      'role', 'delete', '权限管理', 224, 1);
+
+-- ========================================================================
+-- 角色数据
+-- ========================================================================
 INSERT INTO roles (name, display_name, description, status, sort, is_system) VALUES
 ('admin',  '管理员',  '系统管理员，拥有所有权限',      1, 1, 1),
 ('user',   '普通用户','普通用户，拥有基本操作权限',    1, 2, 1);
 
--- ==================== 角色-权限关联 ====================
--- admin 角色拥有所有权限（1-20）
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT 1, id FROM permissions;
+-- ========================================================================
+-- 角色-权限关联
+-- 使用子查询以名称关联，避免对 ID 的硬编码依赖，便于扩展维护
+-- ========================================================================
 
--- user 角色拥有基础权限
+-- admin 角色：拥有所有权限
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT 2, id FROM permissions WHERE name IN (
+SELECT (SELECT id FROM roles WHERE name = 'admin'), id FROM permissions;
+
+-- user 角色：拥有基础操作权限（浏览、下单、购物车、评论等）
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT (SELECT id FROM roles WHERE name = 'user'), id FROM permissions WHERE name IN (
+    -- 商品：可浏览
     'product:read',
+    -- 分类：可浏览
+    'category:read',
+    -- 库存：可查看
+    'inventory:read',
+    -- 订单：基础操作（查看/创建/取消，无权编辑删除他人订单）
     'order:read',
     'order:create',
     'order:cancel',
-    'category:read',
-    'inventory:read'
+    -- 购物车：完全管理（归属当前用户）
+    'cart:read',
+    'cart:create',
+    'cart:update',
+    'cart:delete',
+    -- 支付：查看和发起（归属当前用户）
+    'payment:read',
+    'payment:create',
+    -- 退款：查看和申请（归属当前用户）
+    'refund:read',
+    'refund:create',
+    -- 秒杀：浏览和购买
+    'flash:read',
+    'flash:buy',
+    -- 评论：查看/发表/删除自己评论
+    'review:read',
+    'review:create',
+    'review:delete',
+    -- 通知：查看和标记已读
+    'notification:read',
+    'notification:update',
+    -- 用户：查看自己和编辑自己信息
+    'user:read',
+    'user:update'
 );
 
--- ==================== 用户数据 ====================
+-- ========================================================================
+-- 用户数据
 -- 密码均为 "123456"，bcrypt hash（cost=10）
 -- 如需更换密码: go run ./cmd/genhash/ 生成新 hash 后替换
+-- ========================================================================
 
 -- 管理员 admin（密码: 123456）
 INSERT INTO users (status) VALUES (1);
 INSERT INTO user_infos (user_id, nickname) VALUES (1, '管理员');
 INSERT INTO user_identities (user_id, provider, identifier, credential, verified, meta) VALUES
 (1, 'password', 'admin', '$2a$10$HFzEUNEVKJQCZ4aPYVb/YONrhix2jwj8iiJWM5TUZdXM4wPdkEllC', 1, '{}');
-INSERT INTO user_roles (user_id, role_id) VALUES (1, 1);  -- admin 角色
+INSERT INTO user_roles (user_id, role_id) VALUES (1, (SELECT id FROM roles WHERE name = 'admin'));
 
 -- 普通用户 colin（密码: 123456）
 INSERT INTO users (status) VALUES (1);
 INSERT INTO user_infos (user_id, nickname) VALUES (2, 'Colin');
 INSERT INTO user_identities (user_id, provider, identifier, credential, verified, meta) VALUES
 (2, 'password', 'colin', '$2a$10$HFzEUNEVKJQCZ4aPYVb/YONrhix2jwj8iiJWM5TUZdXM4wPdkEllC', 1, '{}');
-INSERT INTO user_roles (user_id, role_id) VALUES (2, 2);  -- user 角色
+INSERT INTO user_roles (user_id, role_id) VALUES (2, (SELECT id FROM roles WHERE name = 'user'));
