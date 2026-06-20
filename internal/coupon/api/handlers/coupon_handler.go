@@ -43,6 +43,14 @@ func getCurrentUserID(c *gin.Context) int64 {
 }
 
 // CreateCoupon 创建优惠券模板
+// @Summary 创建优惠券模板
+// @Description 创建新的优惠券模板，支持满减券、折扣券、代金券
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Param coupon body dto.CreateCouponReq true "优惠券信息"
+// @Success 200 {object} response.Response{data=dto.CouponResponse}
+// @Router /api/v1/admin/coupons [post]
 func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 	var req dto.CreateCouponReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -86,6 +94,15 @@ func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 }
 
 // UpdateCoupon 更新优惠券模板
+// @Summary 更新优惠券模板
+// @Description 更新指定优惠券模板的信息
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Param id path int true "优惠券模板ID"
+// @Param coupon body dto.UpdateCouponReq true "更新信息"
+// @Success 200 {object} response.Response{data=dto.CouponResponse}
+// @Router /api/v1/admin/coupons/{id} [put]
 func (h *CouponHandler) UpdateCoupon(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -157,6 +174,14 @@ func (h *CouponHandler) UpdateCoupon(c *gin.Context) {
 }
 
 // GetCoupon 获取优惠券详情
+// @Summary 获取优惠券详情
+// @Description 根据ID获取优惠券模板详情
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Param id path int true "优惠券模板ID"
+// @Success 200 {object} response.Response{data=dto.CouponResponse}
+// @Router /api/v1/coupons/{id} [get]
 func (h *CouponHandler) GetCoupon(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -174,6 +199,15 @@ func (h *CouponHandler) GetCoupon(c *gin.Context) {
 }
 
 // ListCoupons 优惠券模板列表
+// @Summary 优惠券模板列表
+// @Description 分页查询优惠券模板列表
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页条数" default(20)
+// @Success 200 {object} response.Response{data=dto.CouponListResult}
+// @Router /api/v1/coupons [get]
 func (h *CouponHandler) ListCoupons(c *gin.Context) {
 	page, _ := strconv.ParseInt(c.DefaultQuery("page", "1"), 10, 64)
 	pageSize, _ := strconv.ParseInt(c.DefaultQuery("page_size", "20"), 10, 64)
@@ -202,6 +236,14 @@ func (h *CouponHandler) ListCoupons(c *gin.Context) {
 }
 
 // ClaimCoupon 领取优惠券
+// @Summary 领取优惠券
+// @Description 当前登录用户领取指定优惠券
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Param claim body dto.ClaimCouponReq true "领取请求"
+// @Success 200 {object} response.Response{data=dto.UserCouponResponse}
+// @Router /api/v1/coupons/claim [post]
 func (h *CouponHandler) ClaimCoupon(c *gin.Context) {
 	var req dto.ClaimCouponReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -221,6 +263,14 @@ func (h *CouponHandler) ClaimCoupon(c *gin.Context) {
 }
 
 // UseCoupon 使用优惠券
+// @Summary 使用优惠券
+// @Description 结算时使用优惠券，标记为已使用并返回抵扣金额
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Param use body dto.UseCouponReq true "使用请求"
+// @Success 200 {object} response.Response{data=map[string]interface{}}
+// @Router /api/v1/coupons/use [post]
 func (h *CouponHandler) UseCoupon(c *gin.Context) {
 	var req dto.UseCouponReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -243,6 +293,16 @@ func (h *CouponHandler) UseCoupon(c *gin.Context) {
 }
 
 // GetUserCoupons 获取用户优惠券列表
+// @Summary 获取用户优惠券列表
+// @Description 当前登录用户的优惠券列表，可按状态筛选
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Param status query string false "状态过滤：unused/used/expired"
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页条数" default(20)
+// @Success 200 {object} response.Response{data=dto.UserCouponListResult}
+// @Router /api/v1/coupons/mine [get]
 func (h *CouponHandler) GetUserCoupons(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	if userID <= 0 {
@@ -280,6 +340,13 @@ func (h *CouponHandler) GetUserCoupons(c *gin.Context) {
 }
 
 // GetUsableCoupons 获取用户可用优惠券
+// @Summary 获取用户可用优惠券
+// @Description 当前登录用户所有未使用且未过期的优惠券
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=[]dto.UserCouponResponse}
+// @Router /api/v1/coupons/usable [get]
 func (h *CouponHandler) GetUsableCoupons(c *gin.Context) {
 	userID := getCurrentUserID(c)
 
@@ -298,6 +365,14 @@ func (h *CouponHandler) GetUsableCoupons(c *gin.Context) {
 }
 
 // ValidateCoupon 预校验优惠券
+// @Summary 预校验优惠券
+// @Description 结算前校验优惠券是否可用，返回预估抵扣金额
+// @Tags 优惠券管理
+// @Accept json
+// @Produce json
+// @Param validate body object{user_coupon_id=int,order_amount=int} true "校验请求"
+// @Success 200 {object} response.Response{data=map[string]interface{}}
+// @Router /api/v1/coupons/validate [post]
 func (h *CouponHandler) ValidateCoupon(c *gin.Context) {
 	userID := getCurrentUserID(c)
 

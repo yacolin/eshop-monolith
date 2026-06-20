@@ -23,6 +23,14 @@ func NewPromotionHandler(promotionService *service.PromotionService) *PromotionH
 }
 
 // CreatePromotion 创建促销活动
+// @Summary 创建促销活动
+// @Description 创建新的促销活动（限时折扣/满减活动）
+// @Tags 促销管理
+// @Accept json
+// @Produce json
+// @Param promotion body dto.CreatePromotionReq true "促销活动信息"
+// @Success 200 {object} response.Response{data=dto.PromotionResponse}
+// @Router /api/v1/admin/promotions [post]
 func (h *PromotionHandler) CreatePromotion(c *gin.Context) {
 	var req dto.CreatePromotionReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -69,6 +77,15 @@ func (h *PromotionHandler) CreatePromotion(c *gin.Context) {
 }
 
 // UpdatePromotion 更新促销活动
+// @Summary 更新促销活动
+// @Description 更新指定促销活动的信息
+// @Tags 促销管理
+// @Accept json
+// @Produce json
+// @Param id path int true "促销活动ID"
+// @Param promotion body dto.UpdatePromotionReq true "更新信息"
+// @Success 200 {object} response.Response{data=dto.PromotionResponse}
+// @Router /api/v1/admin/promotions/{id} [put]
 func (h *PromotionHandler) UpdatePromotion(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -138,6 +155,14 @@ func (h *PromotionHandler) UpdatePromotion(c *gin.Context) {
 }
 
 // GetPromotion 获取促销活动详情
+// @Summary 获取促销活动详情
+// @Description 根据ID获取促销活动详情
+// @Tags 促销管理
+// @Accept json
+// @Produce json
+// @Param id path int true "促销活动ID"
+// @Success 200 {object} response.Response{data=dto.PromotionResponse}
+// @Router /api/v1/promotions/{id} [get]
 func (h *PromotionHandler) GetPromotion(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -155,6 +180,15 @@ func (h *PromotionHandler) GetPromotion(c *gin.Context) {
 }
 
 // ListPromotions 促销活动列表
+// @Summary 促销活动列表
+// @Description 分页查询促销活动列表
+// @Tags 促销管理
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页条数" default(20)
+// @Success 200 {object} response.Response{data=dto.PromotionListResult}
+// @Router /api/v1/promotions [get]
 func (h *PromotionHandler) ListPromotions(c *gin.Context) {
 	page, _ := strconv.ParseInt(c.DefaultQuery("page", "1"), 10, 64)
 	pageSize, _ := strconv.ParseInt(c.DefaultQuery("page_size", "20"), 10, 64)
@@ -183,6 +217,13 @@ func (h *PromotionHandler) ListPromotions(c *gin.Context) {
 }
 
 // GetActivePromotions 获取当前活动
+// @Summary 获取进行中的促销活动
+// @Description 获取所有当前正在进行的促销活动
+// @Tags 促销管理
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=[]dto.PromotionResponse}
+// @Router /api/v1/promotions/active [get]
 func (h *PromotionHandler) GetActivePromotions(c *gin.Context) {
 	activeList, err := h.promotionService.GetActivePromotions(c)
 	if err != nil {
@@ -199,6 +240,15 @@ func (h *PromotionHandler) GetActivePromotions(c *gin.Context) {
 }
 
 // UpdatePromotionStatus 更新促销活动状态
+// @Summary 更新促销活动状态
+// @Description 更新指定促销活动的状态（pending/active/finished/cancelled）
+// @Tags 促销管理
+// @Accept json
+// @Produce json
+// @Param id path int true "促销活动ID"
+// @Param status body object{status=string} true "目标状态"
+// @Success 200 {object} response.Response{data=map[string]string}
+// @Router /api/v1/admin/promotions/{id}/status [put]
 func (h *PromotionHandler) UpdatePromotionStatus(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -223,6 +273,15 @@ func (h *PromotionHandler) UpdatePromotionStatus(c *gin.Context) {
 }
 
 // LinkProducts 关联促销商品
+// @Summary 关联促销商品
+// @Description 为促销活动关联指定商品，会覆盖原有商品列表
+// @Tags 促销管理
+// @Accept json
+// @Produce json
+// @Param id path int true "促销活动ID"
+// @Param products body dto.LinkProductsReq true "商品关联信息"
+// @Success 200 {object} response.Response{data=map[string]string}
+// @Router /api/v1/admin/promotions/{id}/products [post]
 func (h *PromotionHandler) LinkProducts(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
@@ -245,6 +304,14 @@ func (h *PromotionHandler) LinkProducts(c *gin.Context) {
 }
 
 // GetPromotionProducts 获取促销关联商品
+// @Summary 获取促销关联商品
+// @Description 获取指定促销活动关联的所有商品
+// @Tags 促销管理
+// @Accept json
+// @Produce json
+// @Param id path int true "促销活动ID"
+// @Success 200 {object} response.Response{data=[]object}
+// @Router /api/v1/promotions/{id}/products [get]
 func (h *PromotionHandler) GetPromotionProducts(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {
