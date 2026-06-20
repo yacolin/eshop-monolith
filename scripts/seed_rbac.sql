@@ -127,8 +127,12 @@ INSERT INTO permissions (name, display_name, description, resource, action, cate
 -- 角色数据
 -- ========================================================================
 INSERT INTO roles (name, display_name, description, status, sort, is_system) VALUES
-('admin',  '管理员',  '系统管理员，拥有所有权限',      1, 1, 1),
-('user',   '普通用户','普通用户，拥有基本操作权限',    1, 2, 1);
+('admin',     '管理员',     '系统管理员，拥有所有权限',            1, 1,  1),
+('operator',  '运营人员',   '订单处理、退款审核、评论管理、通知发送', 1, 2,  1),
+('editor',    '内容编辑',   '商品/分类/秒杀活动内容维护',           1, 3,  1),
+('warehouse', '仓库管理员', '库存管理、订单发货处理',              1, 4,  1),
+('finance',   '财务人员',   '支付对账、退款审核处理',              1, 5,  1),
+('user',      '普通用户',   '普通用户，拥有基本操作权限',          1, 6,  1);
 
 -- ========================================================================
 -- 角色-权限关联
@@ -176,6 +180,104 @@ SELECT (SELECT id FROM roles WHERE name = 'user'), id FROM permissions WHERE nam
     -- 用户：查看自己和编辑自己信息
     'user:read',
     'user:update'
+);
+
+-- operator 角色：运营类操作（处理订单、退款审核、评论管理、通知推送）
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT (SELECT id FROM roles WHERE name = 'operator'), id FROM permissions WHERE name IN (
+    -- 商品：可查看
+    'product:read',
+    -- 分类：可查看
+    'category:read',
+    -- 库存：可查看
+    'inventory:read',
+    -- 订单：查看/编辑/取消（处理订单流转）
+    'order:read',
+    'order:update',
+    'order:cancel',
+    -- 支付：可查看
+    'payment:read',
+    -- 退款：查看和处理退款
+    'refund:read',
+    'refund:update',
+    -- 秒杀：可浏览
+    'flash:read',
+    -- 评论：审核/回复评论
+    'review:read',
+    'review:moderate',
+    -- 通知：管理（含发送系统通知）
+    'notification:read',
+    'notification:update',
+    'notification:send',
+    -- 用户：查看用户信息
+    'user:read'
+);
+
+-- editor 角色：内容维护（商品/分类/评论/秒杀活动）
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT (SELECT id FROM roles WHERE name = 'editor'), id FROM permissions WHERE name IN (
+    -- 商品：查看/创建/编辑（无权删除）
+    'product:read',
+    'product:create',
+    'product:update',
+    -- 分类：查看/创建/编辑（无权删除）
+    'category:read',
+    'category:create',
+    'category:update',
+    -- 库存：可查看
+    'inventory:read',
+    -- 订单：可查看
+    'order:read',
+    -- 秒杀：查看/创建/编辑/管理
+    'flash:read',
+    'flash:create',
+    'flash:update',
+    'flash:manage',
+    -- 评论：查看和审核
+    'review:read',
+    'review:moderate',
+    -- 通知：查看
+    'notification:read',
+    -- 用户：查看用户信息
+    'user:read'
+);
+
+-- warehouse 角色：库存管理与订单发货
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT (SELECT id FROM roles WHERE name = 'warehouse'), id FROM permissions WHERE name IN (
+    -- 商品：可查看
+    'product:read',
+    -- 分类：可查看
+    'category:read',
+    -- 库存：全部权限（创建/编辑/预订操作）
+    'inventory:read',
+    'inventory:create',
+    'inventory:update',
+    'inventory:reserve',
+    -- 订单：查看和更新状态（发货）
+    'order:read',
+    'order:update',
+    -- 通知：查看
+    'notification:read'
+);
+
+-- finance 角色：财务对账与退款审核
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT (SELECT id FROM roles WHERE name = 'finance'), id FROM permissions WHERE name IN (
+    -- 订单：可查看
+    'order:read',
+    -- 支付：查看和更新状态（对账）
+    'payment:read',
+    'payment:update',
+    -- 退款：查看和处理
+    'refund:read',
+    'refund:update',
+    -- 商品：可查看
+    'product:read',
+    -- 通知：查看
+    'notification:read',
+    -- 用户：查看用户信息
+    'user:read'
 );
 
 -- ========================================================================
