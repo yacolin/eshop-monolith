@@ -25,7 +25,7 @@ func NewPromotionHandler(promotionService *service.PromotionService) *PromotionH
 // CreatePromotion 创建促销活动
 // @Summary 创建促销活动
 // @Description 创建新的促销活动（限时折扣/满减活动）
-// @Tags 促销管理
+// @Tags promotions
 // @Accept json
 // @Produce json
 // @Param promotion body dto.CreatePromotionReq true "促销活动信息"
@@ -79,7 +79,7 @@ func (h *PromotionHandler) CreatePromotion(c *gin.Context) {
 // UpdatePromotion 更新促销活动
 // @Summary 更新促销活动
 // @Description 更新指定促销活动的信息
-// @Tags 促销管理
+// @Tags promotions
 // @Accept json
 // @Produce json
 // @Param id path int true "促销活动ID"
@@ -157,7 +157,7 @@ func (h *PromotionHandler) UpdatePromotion(c *gin.Context) {
 // GetPromotion 获取促销活动详情
 // @Summary 获取促销活动详情
 // @Description 根据ID获取促销活动详情
-// @Tags 促销管理
+// @Tags promotions
 // @Accept json
 // @Produce json
 // @Param id path int true "促销活动ID"
@@ -182,7 +182,7 @@ func (h *PromotionHandler) GetPromotion(c *gin.Context) {
 // ListPromotions 促销活动列表
 // @Summary 促销活动列表
 // @Description 分页查询促销活动列表
-// @Tags 促销管理
+// @Tags promotions
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
@@ -219,7 +219,7 @@ func (h *PromotionHandler) ListPromotions(c *gin.Context) {
 // GetActivePromotions 获取当前活动
 // @Summary 获取进行中的促销活动
 // @Description 获取所有当前正在进行的促销活动
-// @Tags 促销管理
+// @Tags promotions
 // @Accept json
 // @Produce json
 // @Success 200 {object} response.Response{data=[]dto.PromotionResponse}
@@ -242,7 +242,7 @@ func (h *PromotionHandler) GetActivePromotions(c *gin.Context) {
 // UpdatePromotionStatus 更新促销活动状态
 // @Summary 更新促销活动状态
 // @Description 更新指定促销活动的状态（pending/active/finished/cancelled）
-// @Tags 促销管理
+// @Tags promotions
 // @Accept json
 // @Produce json
 // @Param id path int true "促销活动ID"
@@ -275,7 +275,7 @@ func (h *PromotionHandler) UpdatePromotionStatus(c *gin.Context) {
 // LinkProducts 关联促销商品
 // @Summary 关联促销商品
 // @Description 为促销活动关联指定商品，会覆盖原有商品列表
-// @Tags 促销管理
+// @Tags promotions
 // @Accept json
 // @Produce json
 // @Param id path int true "促销活动ID"
@@ -306,7 +306,7 @@ func (h *PromotionHandler) LinkProducts(c *gin.Context) {
 // GetPromotionProducts 获取促销关联商品
 // @Summary 获取促销关联商品
 // @Description 获取指定促销活动关联的所有商品
-// @Tags 促销管理
+// @Tags promotions
 // @Accept json
 // @Produce json
 // @Param id path int true "促销活动ID"
