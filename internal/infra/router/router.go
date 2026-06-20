@@ -4,8 +4,11 @@ import (
 	"context"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	cartRoutes "eshop-monolith/internal/cart/api/routes"
+	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
+	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
 	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
 	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 	invRoutes "eshop-monolith/internal/inventory/api/routes"
@@ -79,6 +82,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	var orderSvc *orderSvcPkg.OrderService
 	var flashSvc *flashSvcPkg.FlashService
 	var productSvc *invSvcPkg.ProductService
+	var dashboardSvc *dashboardSvcPkg.DashboardService
 	var warmupDone atomic.Bool
 
 	// 健康检查
@@ -125,6 +129,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		userRoutes.RegisterRoleRoutes(v1, repos, db)
 		notifRoutes.RegisterNotificationRoutes(v1, repos, db, bus)
 		reviewRoutes.RegisterReviewRoutes(v1, repos, db, bus)
+		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, bus)
 
 		// WebSocket 路由
 		ws.RegisterWSRoutes(v1, wsHub)
@@ -149,6 +154,26 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 				logger.Info("Product cache warmup completed", "total", total)
 			}
 			warmupDone.Store(true)
+		}()
+	}
+	// 仪表盘缓存预热 + 定时刷新（每4分钟刷新，略短于5分钟 TTL 防止过期）
+	if dashboardSvc != nil {
+		go func() {
+			logger.Info("Starting dashboard cache warmup...")
+			if err := dashboardSvc.RefreshCache(context.Background()); err != nil {
+				logger.Error("Dashboard cache warmup failed", "error", err)
+			} else {
+				logger.Info("Dashboard cache warmup completed")
+			}
+
+			// 定时刷新
+			ticker := time.NewTicker(4 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				if err := dashboardSvc.RefreshCache(context.Background()); err != nil {
+					logger.Error("Dashboard cache refresh failed", "error", err)
+				}
+			}
 		}()
 	}
 	// 注册支付成功事件业务处理器（在 service 创建后, 通过闭包注入依赖）
