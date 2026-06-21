@@ -52,14 +52,15 @@ API (handler + dto) → Service → Domain (model + repo interface) ← Reposito
 | `api/routes/` | 路由注册 |
 | `service/` | 业务逻辑编排, 事务管理, 事件发布 |
 | `domain/models/` | GORM model, 主键用 `int64 autoIncrement` |
-| `domain/repositories/` | Repository 接口定义 |
+| `domain/repositories/` | Repository 接口 + GORM 实现（同一文件） |
 | `events/` | 领域事件结构体 |
 
 ### Cross-Module Patterns
 
-- **`internal/repository/db.go`**: `Repositories` 聚合所有模块的 repo 实现, 在 `main.go` 中初始化后注入路由
-- **`internal/eventbus/`**: 订阅/发布模式, 按模块拆分 handler 文件
-- **`internal/domain/shared/`**: 跨模块共享的领域模型（如 `ProductCategory`）和领域错误
+- **`internal/infra/repository/db.go`**: `Repositories` 聚合所有模块的 repo 实现, 在 `main.go` 中初始化后注入路由；`InitDB()` 中 `AutoMigrate` 注册所有 PO 模型
+- **`internal/infra/repository/models/`**: PO 持久化对象，每个模型含 `ToDomain()` / `FromDomain()` 方法
+- **`internal/infra/eventbus/`**: 订阅/发布模式, 按模块拆分 handler 文件
+- **`internal/infra/router/router.go`**: 路由总入口, 所有模块路由在此注册
 
 ### Shared Packages (`internal/pkg/`)
 
@@ -75,13 +76,22 @@ API (handler + dto) → Service → Domain (model + repo interface) ← Reposito
 
 ### Key Patterns
 
-- **错误处理**: handler 中调用 `c.Error(err)` → `ErrorHandler` 中间件自动分类(BizError/Validation/System)并返回对应响应
+- **错误处理**: handler 中调用 `c.Error(err)` → `ErrorHandler` 中间件自动分类:
+  - `*errcode.BizError` → 业务错误, 返回对应 code + message
+  - `validator.ValidationErrors` → 422 + 字段级错误详情
+  - `gorm.ErrRecordNotFound` → **自动转为 404**, Repository/Service 层不处理
+  - 其他 → 500 系统错误
+- **Repository 文件**: 接口 + 实现放在**同一文件**, 不拆分 `_impl.go`; 接口命名 `I`+小写首字母(`IcouponRepository`, `IorderRepository`)
+- **DTO 命名**: 请求用 `CreateXxxDTO` / `UpdateXxxDTO`, 响应用 `XxxResponse`, 列表用 `XxxListResult`
+- **导入顺序**: 标准库 → 第三方 → 内部包, 三组间空行分隔
 - **金额存储**: 统一以「分」为单位(int64), 避免浮点精度问题
 - **时间字段**: 使用 `utils.Timestamp` 类型, JSON 序列化为毫秒级时间戳
 - **表名**: GORM `TableName()` 返回蛇形复数 (orders, order_items)
 - **软删除**: `gorm.DeletedAt` 嵌入 model
 - **密码**: bcrypt (`utils.CryptPassword`)
-- **自动迁移**: `repository.InitDB` 中 `db.AutoMigrate()` 所有 model
+- **自动迁移**: `repository.InitDB` 中 `db.AutoMigrate()` 所有 PO 模型
+- **主键**: 全表统一 `int64 autoIncrement`, 无 UUID 主键
+- **Swagger**: @Tags 使用**英文小写复数** (`orders`、`coupons`、`promotions`)
 
 ### Entry Point
 
@@ -94,10 +104,11 @@ API (handler + dto) → Service → Domain (model + repo interface) ← Reposito
 
 ### 添加新模块步骤
 
-1. `internal/{module}/domain/models/` — 定义 model
-2. `internal/{module}/domain/repositories/` — 定义 repo 接口
-3. `internal/repository/db.go` — 实现 repo, 加入 `Repositories` struct, 注册 AutoMigrate
-4. `internal/{module}/service/` — 业务逻辑
-5. `internal/{module}/api/handlers/` + `api/dto/` — HTTP 层
-6. `internal/{module}/api/routes/` — 路由注册
-7. `internal/api/routes/router.go` 中挂载路由
+1. `internal/{module}/domain/models/` — 定义 model（每实体一个文件, 含 `TableName()`）
+2. `internal/{module}/domain/repositories/` — 定义 repo 接口 + GORM 实现（同一文件）
+3. `internal/infra/repository/models/` — 创建 PO 持久化对象（含 `ToDomain()` / `FromDomain()`）
+4. `internal/infra/repository/db.go` — 注册 AutoMigrate, 加入 `Repositories` struct
+5. `internal/{module}/service/` — 业务逻辑
+6. `internal/{module}/api/dto/` + `api/handlers/` — DTO + Handler
+7. `internal/{module}/api/routes/` — 路由注册
+8. `internal/infra/router/router.go` — 挂载路由, 如需与订单系统集成则传递 Service
