@@ -147,7 +147,7 @@ func (h *PermissionHandler) DeletePermission(c *gin.Context) {
 
 // ListPermissions 获取权限列表
 // @Summary 获取权限列表
-// @Description 获取权限列表，支持分页和筛选
+// @Description 获取权限列表，支持分页、筛选和排序
 // @Tags permissions
 // @Accept json
 // @Produce json
@@ -156,6 +156,8 @@ func (h *PermissionHandler) DeletePermission(c *gin.Context) {
 // @Param category query string false "分类"
 // @Param resource query string false "资源"
 // @Param role query string false "角色"
+// @Param sort_by query string false "排序字段（sort/created_at/name）" Enums(sort, created_at, name)
+// @Param order query string false "排序方向" Enums(asc, desc)
 // @Success 200 {object} response.Response{data=dto.ListPermissionsResponse}
 // @Router /api/v1/permissions [get]
 func (h *PermissionHandler) ListPermissions(c *gin.Context) {
@@ -166,18 +168,21 @@ func (h *PermissionHandler) ListPermissions(c *gin.Context) {
 	}
 	query.Normalize()
 
+	sortBy := query.SortBy
+	order := query.Order
+
 	var result *dto.ListPermissionsResponse
 	var err error
 
 	switch {
 	case query.Category != "":
-		result, err = h.permissionService.GetPermissionsByCategory(query.Category, query.Page, query.Size)
+		result, err = h.permissionService.GetPermissionsByCategory(query.Category, query.Page, query.Size, sortBy, order)
 	case query.Resource != "":
-		result, err = h.permissionService.GetPermissionsByResource(query.Resource, query.Page, query.Size)
+		result, err = h.permissionService.GetPermissionsByResource(query.Resource, query.Page, query.Size, sortBy, order)
 	case query.RoleID != 0:
-		result, err = h.permissionService.GetPermissionsByRoleID(query.RoleID, query.Page, query.Size)
+		result, err = h.permissionService.GetPermissionsByRoleID(query.RoleID, query.Page, query.Size, sortBy, order)
 	default:
-		result, err = h.permissionService.ListPermissions(query.Page, query.Size)
+		result, err = h.permissionService.ListPermissions(query.Page, query.Size, sortBy, order)
 	}
 
 	if err != nil {

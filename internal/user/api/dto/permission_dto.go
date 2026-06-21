@@ -70,6 +70,8 @@ type PermissionListQuery struct {
 	Category string `form:"category"`
 	Resource string `form:"resource"`
 	RoleID   int64  `form:"role_id"`
+	SortBy   string `form:"sort_by"`              // 排序字段：sort / created_at / name
+	Order    string `form:"order,default=asc"`    // 排序方向：asc / desc
 }
 
 type CheckPermissionsRequest struct {

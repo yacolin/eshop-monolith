@@ -17,7 +17,7 @@ type PermissionPO struct {
 	Resource    string         `gorm:"type:varchar(50);not null;index"`
 	Action      string         `gorm:"type:varchar(50);not null;index"`
 	Category    string         `gorm:"type:varchar(50)"`
-	Sort        int            `gorm:"type:int;default:0"`
+	Sort        int            `gorm:"type:int;default:0;index:idx_permissions_sort"`
 	Status      int            `gorm:"type:tinyint;default:1"`
 	CreatedAt   time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP()"`
 	UpdatedAt   time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP();onUpdate:CURRENT_TIMESTAMP()"`

@@ -3,6 +3,7 @@ package repositories
 import (
 	userModels "eshop-monolith/internal/user/domain/models"
 	"eshop-monolith/internal/infra/repository/models"
+	"eshop-monolith/pkg/query"
 
 	"gorm.io/gorm"
 )
@@ -14,11 +15,11 @@ type IpermissionRepository interface {
 	Update(permission *userModels.Permission) error
 	Delete(id int64) error
 
-	List(limit, offset int) ([]*userModels.Permission, int64, error)
-	ByCategory(category string, limit, offset int) ([]*userModels.Permission, int64, error)
-	ByResource(resource string, limit, offset int) ([]*userModels.Permission, int64, error)
-	ByRoleID(roleID int64, limit, offset int) ([]*userModels.Permission, int64, error)
-	ByStatus(status int, limit, offset int) ([]*userModels.Permission, int64, error)
+	List(limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error)
+	ByCategory(category string, limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error)
+	ByResource(resource string, limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error)
+	ByRoleID(roleID int64, limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error)
+	ByStatus(status int, limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error)
 
 	ExistsByName(name string) (bool, error)
 	GetPermissionsByRoleIDs(roleIDs []int64) ([]*userModels.Permission, error)
@@ -72,16 +73,18 @@ func (r *permissionRepository) Delete(id int64) error {
 	return r.db.Delete(&models.PermissionPO{}, "id = ?", id).Error
 }
 
-func (r *permissionRepository) List(limit, offset int) ([]*userModels.Permission, int64, error) {
+// List 返回权限列表，默认按 sort ASC, created_at DESC 排序
+func (r *permissionRepository) List(limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error) {
 	var pos []*models.PermissionPO
 	var total int64
 
-	query := r.db.Model(&models.PermissionPO{})
-	if err := query.Count(&total).Error; err != nil {
+	db := r.db.Model(&models.PermissionPO{})
+	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := query.Order("sort ASC, created_at DESC").Limit(limit).Offset(offset).Find(&pos).Error
+	db = query.ApplyOrder(db, sortBy, order, "sort ASC, created_at DESC")
+	err := db.Limit(limit).Offset(offset).Find(&pos).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -93,16 +96,18 @@ func (r *permissionRepository) List(limit, offset int) ([]*userModels.Permission
 	return permissions, total, err
 }
 
-func (r *permissionRepository) ByCategory(category string, limit, offset int) ([]*userModels.Permission, int64, error) {
+// ByCategory 按分类查询，默认按 sort ASC, created_at DESC 排序
+func (r *permissionRepository) ByCategory(category string, limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error) {
 	var pos []*models.PermissionPO
 	var total int64
 
-	query := r.db.Model(&models.PermissionPO{}).Where("category = ?", category)
-	if err := query.Count(&total).Error; err != nil {
+	db := r.db.Model(&models.PermissionPO{}).Where("category = ?", category)
+	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := query.Order("sort ASC, created_at DESC").Limit(limit).Offset(offset).Find(&pos).Error
+	db = query.ApplyOrder(db, sortBy, order, "sort ASC, created_at DESC")
+	err := db.Limit(limit).Offset(offset).Find(&pos).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -114,16 +119,18 @@ func (r *permissionRepository) ByCategory(category string, limit, offset int) ([
 	return permissions, total, err
 }
 
-func (r *permissionRepository) ByResource(resource string, limit, offset int) ([]*userModels.Permission, int64, error) {
+// ByResource 按资源查询，默认按 sort ASC, created_at DESC 排序
+func (r *permissionRepository) ByResource(resource string, limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error) {
 	var pos []*models.PermissionPO
 	var total int64
 
-	query := r.db.Model(&models.PermissionPO{}).Where("resource = ?", resource)
-	if err := query.Count(&total).Error; err != nil {
+	db := r.db.Model(&models.PermissionPO{}).Where("resource = ?", resource)
+	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := query.Order("sort ASC, created_at DESC").Limit(limit).Offset(offset).Find(&pos).Error
+	db = query.ApplyOrder(db, sortBy, order, "sort ASC, created_at DESC")
+	err := db.Limit(limit).Offset(offset).Find(&pos).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -141,16 +148,18 @@ func (r *permissionRepository) ExistsByName(name string) (bool, error) {
 	return count > 0, err
 }
 
-func (r *permissionRepository) ByStatus(status int, limit, offset int) ([]*userModels.Permission, int64, error) {
+// ByStatus 按状态查询，默认按 sort ASC, created_at DESC 排序
+func (r *permissionRepository) ByStatus(status int, limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error) {
 	var pos []*models.PermissionPO
 	var total int64
 
-	query := r.db.Model(&models.PermissionPO{}).Where("status = ?", status)
-	if err := query.Count(&total).Error; err != nil {
+	db := r.db.Model(&models.PermissionPO{}).Where("status = ?", status)
+	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := query.Order("sort ASC, created_at DESC").Limit(limit).Offset(offset).Find(&pos).Error
+	db = query.ApplyOrder(db, sortBy, order, "sort ASC, created_at DESC")
+	err := db.Limit(limit).Offset(offset).Find(&pos).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -162,21 +171,22 @@ func (r *permissionRepository) ByStatus(status int, limit, offset int) ([]*userM
 	return permissions, total, err
 }
 
-func (r *permissionRepository) ByRoleID(roleID int64, limit, offset int) ([]*userModels.Permission, int64, error) {
+// ByRoleID 按角色查询，默认按 permissions.sort ASC, permissions.created_at DESC 排序
+func (r *permissionRepository) ByRoleID(roleID int64, limit, offset int, sortBy, order string) ([]*userModels.Permission, int64, error) {
 	var pos []*models.PermissionPO
 	var total int64
 
-	query := r.db.Model(&models.PermissionPO{}).
+	db := r.db.Model(&models.PermissionPO{}).
 		Joins("JOIN role_permissions ON role_permissions.permission_id = permissions.id").
 		Where("role_permissions.role_id = ?", roleID).
 		Where("role_permissions.deleted_at IS NULL")
 
-	if err := query.Count(&total).Error; err != nil {
+	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := query.Order("permissions.sort ASC, permissions.created_at DESC").
-		Limit(limit).Offset(offset).Find(&pos).Error
+	db = query.ApplyOrder(db, sortBy, order, "permissions.sort ASC, permissions.created_at DESC")
+	err := db.Limit(limit).Offset(offset).Find(&pos).Error
 	if err != nil {
 		return nil, 0, err
 	}

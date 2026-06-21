@@ -18,10 +18,10 @@ type PermissionService interface {
 	UpdatePermission(id int64, req *dto.UpdatePermissionRequest) (*models.Permission, error)
 	DeletePermission(id int64) error
 
-	ListPermissions(page, pageSize int) (*dto.ListPermissionsResponse, error)
-	GetPermissionsByCategory(category string, page, pageSize int) (*dto.ListPermissionsResponse, error)
-	GetPermissionsByResource(resource string, page, pageSize int) (*dto.ListPermissionsResponse, error)
-	GetPermissionsByRoleID(roleID int64, page, pageSize int) (*dto.ListPermissionsResponse, error)
+	ListPermissions(page, pageSize int, sortBy, order string) (*dto.ListPermissionsResponse, error)
+	GetPermissionsByCategory(category string, page, pageSize int, sortBy, order string) (*dto.ListPermissionsResponse, error)
+	GetPermissionsByResource(resource string, page, pageSize int, sortBy, order string) (*dto.ListPermissionsResponse, error)
+	GetPermissionsByRoleID(roleID int64, page, pageSize int, sortBy, order string) (*dto.ListPermissionsResponse, error)
 
 	CheckPermissionsByRoleIDs(roleIDs []int64, permissionNames []string) (map[string]bool, error)
 	CheckUserPermissions(userID int64, permissionNames []string) (map[string]bool, error)
@@ -126,11 +126,10 @@ func (s *permissionService) UpdatePermission(id int64, req *dto.UpdatePermission
 }
 
 func (s *permissionService) DeletePermission(id int64) error {
-	// TODO: 检查是否有角色使用此权限
 	return s.permissionRepo.Delete(id)
 }
 
-func (s *permissionService) ListPermissions(page, pageSize int) (*dto.ListPermissionsResponse, error) {
+func (s *permissionService) ListPermissions(page, pageSize int, sortBy, order string) (*dto.ListPermissionsResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -139,7 +138,7 @@ func (s *permissionService) ListPermissions(page, pageSize int) (*dto.ListPermis
 	}
 
 	offset := (page - 1) * pageSize
-	permissions, total, err := s.permissionRepo.List(pageSize, offset)
+	permissions, total, err := s.permissionRepo.List(pageSize, offset, sortBy, order)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +151,7 @@ func (s *permissionService) ListPermissions(page, pageSize int) (*dto.ListPermis
 	}, nil
 }
 
-func (s *permissionService) GetPermissionsByCategory(category string, page, pageSize int) (*dto.ListPermissionsResponse, error) {
+func (s *permissionService) GetPermissionsByCategory(category string, page, pageSize int, sortBy, order string) (*dto.ListPermissionsResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -161,7 +160,7 @@ func (s *permissionService) GetPermissionsByCategory(category string, page, page
 	}
 
 	offset := (page - 1) * pageSize
-	permissions, total, err := s.permissionRepo.ByCategory(category, pageSize, offset)
+	permissions, total, err := s.permissionRepo.ByCategory(category, pageSize, offset, sortBy, order)
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +173,7 @@ func (s *permissionService) GetPermissionsByCategory(category string, page, page
 	}, nil
 }
 
-// Add dto.ListPermissionsResponse
-func (s *permissionService) GetPermissionsByResource(resource string, page, pageSize int) (*dto.ListPermissionsResponse, error) {
+func (s *permissionService) GetPermissionsByResource(resource string, page, pageSize int, sortBy, order string) (*dto.ListPermissionsResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -184,12 +182,11 @@ func (s *permissionService) GetPermissionsByResource(resource string, page, page
 	}
 
 	offset := (page - 1) * pageSize
-	permissions, total, err := s.permissionRepo.ByResource(resource, pageSize, offset)
+	permissions, total, err := s.permissionRepo.ByResource(resource, pageSize, offset, sortBy, order)
 	if err != nil {
 		return nil, err
 	}
 
-	// 添加dto前缀
 	return &dto.ListPermissionsResponse{
 		Permissions: permissions,
 		Total:       total,
@@ -198,8 +195,7 @@ func (s *permissionService) GetPermissionsByResource(resource string, page, page
 	}, nil
 }
 
-// Add dto.ListPermissionsResponse
-func (s *permissionService) GetPermissionsByRoleID(roleID int64, page, pageSize int) (*dto.ListPermissionsResponse, error) {
+func (s *permissionService) GetPermissionsByRoleID(roleID int64, page, pageSize int, sortBy, order string) (*dto.ListPermissionsResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -208,12 +204,11 @@ func (s *permissionService) GetPermissionsByRoleID(roleID int64, page, pageSize 
 	}
 
 	offset := (page - 1) * pageSize
-	permissions, total, err := s.permissionRepo.ByRoleID(roleID, pageSize, offset)
+	permissions, total, err := s.permissionRepo.ByRoleID(roleID, pageSize, offset, sortBy, order)
 	if err != nil {
 		return nil, err
 	}
 
-	// 添加dto前缀
 	return &dto.ListPermissionsResponse{
 		Permissions: permissions,
 		Total:       total,
