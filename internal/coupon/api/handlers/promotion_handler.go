@@ -28,11 +28,11 @@ func NewPromotionHandler(promotionService *service.PromotionService) *PromotionH
 // @Tags promotions
 // @Accept json
 // @Produce json
-// @Param promotion body dto.CreatePromotionReq true "促销活动信息"
+// @Param promotion body dto.CreatePromotionDTO true "促销活动信息"
 // @Success 200 {object} response.Response{data=dto.PromotionResponse}
 // @Router /api/v1/admin/promotions [post]
 func (h *PromotionHandler) CreatePromotion(c *gin.Context) {
-	var req dto.CreatePromotionReq
+	var req dto.CreatePromotionDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
@@ -49,7 +49,6 @@ func (h *PromotionHandler) CreatePromotion(c *gin.Context) {
 		return
 	}
 
-	// 验证规则格式
 	var ruleObj any
 	if err := json.Unmarshal([]byte(req.Rule), &ruleObj); err != nil {
 		c.Error(err)
@@ -83,7 +82,7 @@ func (h *PromotionHandler) CreatePromotion(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "促销活动ID"
-// @Param promotion body dto.UpdatePromotionReq true "更新信息"
+// @Param promotion body dto.UpdatePromotionDTO true "更新信息"
 // @Success 200 {object} response.Response{data=dto.PromotionResponse}
 // @Router /api/v1/admin/promotions/{id} [put]
 func (h *PromotionHandler) UpdatePromotion(c *gin.Context) {
@@ -93,7 +92,7 @@ func (h *PromotionHandler) UpdatePromotion(c *gin.Context) {
 		return
 	}
 
-	var req dto.UpdatePromotionReq
+	var req dto.UpdatePromotionDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
@@ -279,7 +278,7 @@ func (h *PromotionHandler) UpdatePromotionStatus(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "促销活动ID"
-// @Param products body dto.LinkProductsReq true "商品关联信息"
+// @Param products body dto.LinkProductsDTO true "商品关联信息"
 // @Success 200 {object} response.Response{data=map[string]string}
 // @Router /api/v1/admin/promotions/{id}/products [post]
 func (h *PromotionHandler) LinkProducts(c *gin.Context) {
@@ -289,7 +288,7 @@ func (h *PromotionHandler) LinkProducts(c *gin.Context) {
 		return
 	}
 
-	var req dto.LinkProductsReq
+	var req dto.LinkProductsDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return

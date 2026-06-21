@@ -48,11 +48,11 @@ func getCurrentUserID(c *gin.Context) int64 {
 // @Tags coupons
 // @Accept json
 // @Produce json
-// @Param coupon body dto.CreateCouponReq true "优惠券信息"
+// @Param coupon body dto.CreateCouponDTO true "优惠券信息"
 // @Success 200 {object} response.Response{data=dto.CouponResponse}
 // @Router /api/v1/admin/coupons [post]
 func (h *CouponHandler) CreateCoupon(c *gin.Context) {
-	var req dto.CreateCouponReq
+	var req dto.CreateCouponDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
@@ -100,7 +100,7 @@ func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "优惠券模板ID"
-// @Param coupon body dto.UpdateCouponReq true "更新信息"
+// @Param coupon body dto.UpdateCouponDTO true "更新信息"
 // @Success 200 {object} response.Response{data=dto.CouponResponse}
 // @Router /api/v1/admin/coupons/{id} [put]
 func (h *CouponHandler) UpdateCoupon(c *gin.Context) {
@@ -110,7 +110,7 @@ func (h *CouponHandler) UpdateCoupon(c *gin.Context) {
 		return
 	}
 
-	var req dto.UpdateCouponReq
+	var req dto.UpdateCouponDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
@@ -241,11 +241,11 @@ func (h *CouponHandler) ListCoupons(c *gin.Context) {
 // @Tags coupons
 // @Accept json
 // @Produce json
-// @Param claim body dto.ClaimCouponReq true "领取请求"
+// @Param claim body dto.ClaimCouponDTO true "领取请求"
 // @Success 200 {object} response.Response{data=dto.UserCouponResponse}
 // @Router /api/v1/coupons/claim [post]
 func (h *CouponHandler) ClaimCoupon(c *gin.Context) {
-	var req dto.ClaimCouponReq
+	var req dto.ClaimCouponDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
@@ -268,11 +268,11 @@ func (h *CouponHandler) ClaimCoupon(c *gin.Context) {
 // @Tags coupons
 // @Accept json
 // @Produce json
-// @Param use body dto.UseCouponReq true "使用请求"
-// @Success 200 {object} response.Response{data=map[string]interface{}}
+// @Param use body dto.UseCouponDTO true "使用请求"
+// @Success 200 {object} response.Response{data=map[string]any}
 // @Router /api/v1/coupons/use [post]
 func (h *CouponHandler) UseCoupon(c *gin.Context) {
-	var req dto.UseCouponReq
+	var req dto.UseCouponDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
@@ -306,7 +306,6 @@ func (h *CouponHandler) UseCoupon(c *gin.Context) {
 func (h *CouponHandler) GetUserCoupons(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	if userID <= 0 {
-		// 如果没登录，尝试从路径参数获取
 		if parsed, err := utils.ParseIntParam(c, "user_id"); err == nil {
 			userID = parsed
 		}
@@ -371,7 +370,7 @@ func (h *CouponHandler) GetUsableCoupons(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param validate body object{user_coupon_id=int,order_amount=int} true "校验请求"
-// @Success 200 {object} response.Response{data=map[string]interface{}}
+// @Success 200 {object} response.Response{data=map[string]any}
 // @Router /api/v1/coupons/validate [post]
 func (h *CouponHandler) ValidateCoupon(c *gin.Context) {
 	userID := getCurrentUserID(c)

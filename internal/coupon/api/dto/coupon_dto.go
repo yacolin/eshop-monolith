@@ -33,8 +33,8 @@ type CouponListResult struct {
 	List  []CouponResponse `json:"list"`
 }
 
-// CreateCouponReq 创建优惠券请求
-type CreateCouponReq struct {
+// CreateCouponDTO 创建优惠券请求
+type CreateCouponDTO struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 	CouponType  string `json:"coupon_type" binding:"required,oneof=fixed percentage voucher"`
@@ -50,8 +50,8 @@ type CreateCouponReq struct {
 	ValidDays   int    `json:"valid_days"`
 }
 
-// UpdateCouponReq 更新优惠券请求
-type UpdateCouponReq struct {
+// UpdateCouponDTO 更新优惠券请求
+type UpdateCouponDTO struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Scope       string `json:"scope" binding:"oneof=global category product"`
@@ -66,13 +66,13 @@ type UpdateCouponReq struct {
 	Status      string `json:"status" binding:"oneof=active inactive"`
 }
 
-// ClaimCouponReq 领取优惠券请求
-type ClaimCouponReq struct {
+// ClaimCouponDTO 领取优惠券请求
+type ClaimCouponDTO struct {
 	CouponID int64 `json:"coupon_id" binding:"required"`
 }
 
-// UseCouponReq 使用优惠券请求
-type UseCouponReq struct {
+// UseCouponDTO 使用优惠券请求
+type UseCouponDTO struct {
 	UserCouponID int64  `json:"user_coupon_id" binding:"required"`
 	OrderNo      string `json:"order_no" binding:"required"`
 	OrderAmount  int64  `json:"order_amount" binding:"required,min=1"`

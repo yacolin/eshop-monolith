@@ -27,12 +27,12 @@ type TimeDiscountRule struct {
 // PromotionService 促销活动服务
 type PromotionService struct {
 	db               *gorm.DB
-	promotionRepo    repositories.IPromotionRepository
-	promotionProdRepo repositories.IPromotionProductRepository
+	promotionRepo    repositories.IpromotionRepository
+	promotionProdRepo repositories.IpromotionProductRepository
 	bus              *eventbus.Bus
 }
 
-func NewPromotionService(db *gorm.DB, promotionRepo repositories.IPromotionRepository, promotionProdRepo repositories.IPromotionProductRepository, bus *eventbus.Bus) *PromotionService {
+func NewPromotionService(db *gorm.DB, promotionRepo repositories.IpromotionRepository, promotionProdRepo repositories.IpromotionProductRepository, bus *eventbus.Bus) *PromotionService {
 	return &PromotionService{
 		db:               db,
 		promotionRepo:    promotionRepo,
@@ -56,9 +56,6 @@ func (s *PromotionService) UpdatePromotion(ctx context.Context, promotion *model
 	if err != nil {
 		return err
 	}
-	if existing == nil {
-		return errcode.ErrNotFound
-	}
 	if existing.Status == models.PromotionStatusFinished || existing.Status == models.PromotionStatusCancelled {
 		return errcode.ErrInvalidParams
 	}
@@ -70,9 +67,6 @@ func (s *PromotionService) GetPromotion(ctx context.Context, id int64) (*models.
 	promotion, err := s.promotionRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
-	}
-	if promotion == nil {
-		return nil, errcode.ErrNotFound
 	}
 	return promotion, nil
 }
@@ -130,9 +124,6 @@ func (s *PromotionService) GetProductPromotion(ctx context.Context, productID in
 	for _, p := range pp {
 		promotion, err := s.promotionRepo.FindByID(ctx, p.PromotionID)
 		if err != nil {
-			continue
-		}
-		if promotion == nil {
 			continue
 		}
 		// 检查活动是否在进行中

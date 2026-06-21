@@ -27,8 +27,8 @@ type PromotionListResult struct {
 	List  []PromotionResponse `json:"list"`
 }
 
-// CreatePromotionReq 创建促销活动请求
-type CreatePromotionReq struct {
+// CreatePromotionDTO 创建促销活动请求
+type CreatePromotionDTO struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 	PromoType   string `json:"promo_type" binding:"required,oneof=time_discount full_reduce"`
@@ -40,8 +40,8 @@ type CreatePromotionReq struct {
 	SortOrder   int    `json:"sort_order"`
 }
 
-// UpdatePromotionReq 更新促销活动请求
-type UpdatePromotionReq struct {
+// UpdatePromotionDTO 更新促销活动请求
+type UpdatePromotionDTO struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Scope       string `json:"scope" binding:"oneof=all category product"`
@@ -53,8 +53,8 @@ type UpdatePromotionReq struct {
 	SortOrder   int    `json:"sort_order"`
 }
 
-// LinkProductsReq 关联促销商品请求
-type LinkProductsReq struct {
+// LinkProductsDTO 关联促销商品请求
+type LinkProductsDTO struct {
 	ProductIDs []int64 `json:"product_ids" binding:"required,min=1"`
 	Discount   int64   `json:"discount" binding:"required"`
 }

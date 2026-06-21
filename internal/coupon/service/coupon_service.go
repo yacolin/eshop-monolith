@@ -12,7 +12,6 @@ import (
 	"eshop-monolith/internal/coupon/domain/repositories"
 	"eshop-monolith/internal/coupon/events"
 	"eshop-monolith/internal/infra/eventbus"
-	"eshop-monolith/pkg/errcode"
 
 	"gorm.io/gorm"
 )
@@ -20,12 +19,12 @@ import (
 // CouponService 优惠券服务
 type CouponService struct {
 	db             *gorm.DB
-	couponRepo     repositories.ICouponRepository
-	userCouponRepo repositories.IUserCouponRepository
+	couponRepo     repositories.IcouponRepository
+	userCouponRepo repositories.IuserCouponRepository
 	bus            *eventbus.Bus
 }
 
-func NewCouponService(db *gorm.DB, couponRepo repositories.ICouponRepository, userCouponRepo repositories.IUserCouponRepository, bus *eventbus.Bus) *CouponService {
+func NewCouponService(db *gorm.DB, couponRepo repositories.IcouponRepository, userCouponRepo repositories.IuserCouponRepository, bus *eventbus.Bus) *CouponService {
 	return &CouponService{
 		db:             db,
 		couponRepo:     couponRepo,
@@ -47,9 +46,6 @@ func (s *CouponService) UpdateCoupon(ctx context.Context, coupon *models.Coupon)
 	if err != nil {
 		return err
 	}
-	if existing == nil {
-		return errcode.ErrNotFound
-	}
 	// 保留原有剩余数量
 	coupon.RemainStock = existing.RemainStock
 	return s.couponRepo.Update(ctx, coupon)
@@ -60,9 +56,6 @@ func (s *CouponService) GetCoupon(ctx context.Context, id int64) (*models.Coupon
 	coupon, err := s.couponRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
-	}
-	if coupon == nil {
-		return nil, errcode.ErrNotFound
 	}
 	return coupon, nil
 }
@@ -78,13 +71,10 @@ func (s *CouponService) ClaimCoupon(ctx context.Context, userID int64, couponID 
 	var userCoupon *models.UserCoupon
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 1. 查询优惠券模板（带锁）
+		// 1. 查询优惠券模板
 		coupon, err := s.couponRepo.FindByIDWithTx(tx, couponID)
 		if err != nil {
 			return err
-		}
-		if coupon == nil {
-			return errcode.ErrNotFound
 		}
 		if !coupon.IsValid() {
 			return errors.New("coupon is not available")
@@ -107,7 +97,7 @@ func (s *CouponService) ClaimCoupon(ctx context.Context, userID int64, couponID 
 			}
 		}
 
-		// 4. 扣减库存（原子操作）
+		// 4. 扣减库存
 		rowsAffected := tx.Model(&models.Coupon{}).Where("id = ? AND remain_stock > 0", couponID).
 			UpdateColumn("remain_stock", gorm.Expr("remain_stock - 1")).RowsAffected
 		if rowsAffected == 0 {
@@ -167,9 +157,6 @@ func (s *CouponService) UseCoupon(ctx context.Context, userCouponID int64, userI
 		if err != nil {
 			return err
 		}
-		if uc == nil {
-			return errcode.ErrNotFound
-		}
 		if uc.UserID != userID {
 			return errors.New("coupon does not belong to this user")
 		}
@@ -184,9 +171,6 @@ func (s *CouponService) UseCoupon(ctx context.Context, userCouponID int64, userI
 		coupon, err := s.couponRepo.FindByIDWithTx(tx, uc.CouponID)
 		if err != nil {
 			return err
-		}
-		if coupon == nil {
-			return errcode.ErrNotFound
 		}
 
 		// 3. 计算实际抵扣金额
@@ -234,9 +218,6 @@ func (s *CouponService) ValidateCoupon(ctx context.Context, userCouponID int64, 
 	if err != nil {
 		return 0, err
 	}
-	if uc == nil {
-		return 0, errcode.ErrNotFound
-	}
 	if uc.UserID != userID {
 		return 0, errors.New("coupon does not belong to this user")
 	}
@@ -250,9 +231,6 @@ func (s *CouponService) ValidateCoupon(ctx context.Context, userCouponID int64, 
 	coupon, err := s.couponRepo.FindByID(ctx, uc.CouponID)
 	if err != nil {
 		return 0, err
-	}
-	if coupon == nil {
-		return 0, errcode.ErrNotFound
 	}
 
 	return calculateDiscount(coupon, orderAmount)
@@ -272,8 +250,7 @@ func calculateDiscount(coupon *models.Coupon, orderAmount int64) (int64, error) 
 
 	case models.CouponTypePercentage:
 		// 折扣券：按百分比打折
-		discount := orderAmount * coupon.Value / 10000 // Value 存的是百分比*100
-		// 如果有最大抵扣限制
+		discount := orderAmount * coupon.Value / 10000
 		if coupon.MaxDiscount > 0 && discount > coupon.MaxDiscount {
 			discount = coupon.MaxDiscount
 		}
@@ -295,7 +272,6 @@ func generateCouponCode() (string, error) {
 		return "", err
 	}
 	n := new(big.Int).SetBytes(b)
-	// 取模确保10位数字
 	code := n.Mod(n, big.NewInt(10000000000)).Int64()
 	return fmt.Sprintf("%010d", code), nil
 }
