@@ -99,6 +99,8 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&repoModels.UserCouponPO{},
 		&repoModels.PromotionPO{},
 		&repoModels.PromotionProductPO{},
+
+			&repoModels.NotificationPO{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}

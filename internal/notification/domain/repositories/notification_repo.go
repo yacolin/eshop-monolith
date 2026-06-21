@@ -4,26 +4,33 @@ import (
 	"context"
 	"time"
 
+	"gorm.io/gorm"
+
 	"eshop-monolith/internal/notification/domain/models"
 	infraModels "eshop-monolith/internal/infra/repository/models"
 	"eshop-monolith/pkg/utils"
-
-	"gorm.io/gorm"
 )
 
-// NotificationRepository 通知仓储
+// InotificationRepository 通知仓储接口
+type InotificationRepository interface {
+	Create(ctx context.Context, n *models.Notification) error
+	FindByID(ctx context.Context, id int64) (*models.Notification, error)
+	ListByUserID(ctx context.Context, userID int64, page, size int) ([]models.Notification, int64, error)
+	GetUnreadCount(ctx context.Context, userID int64) (int64, error)
+	MarkAsRead(ctx context.Context, id, userID int64) error
+	MarkAllAsRead(ctx context.Context, userID int64) error
+	Delete(ctx context.Context, id, userID int64) error
+	DeleteByUserID(ctx context.Context, userID int64) error
+}
+
+// NotificationRepository 通知仓储实现
 type NotificationRepository struct {
 	db *gorm.DB
 }
 
 // NewNotificationRepository 创建通知仓储
-func NewNotificationRepository(db *gorm.DB) *NotificationRepository {
+func NewNotificationRepository(db *gorm.DB) InotificationRepository {
 	return &NotificationRepository{db: db}
-}
-
-// AutoMigrate 自动迁移表结构
-func (r *NotificationRepository) AutoMigrate() error {
-	return r.db.AutoMigrate(&infraModels.NotificationPO{})
 }
 
 // Create 创建通知
@@ -37,8 +44,8 @@ func (r *NotificationRepository) Create(ctx context.Context, n *models.Notificat
 	return nil
 }
 
-// GetByID 根据 ID 获取通知
-func (r *NotificationRepository) GetByID(ctx context.Context, id int64) (*models.Notification, error) {
+// FindByID 根据 ID 获取通知
+func (r *NotificationRepository) FindByID(ctx context.Context, id int64) (*models.Notification, error) {
 	var po infraModels.NotificationPO
 	if err := r.db.WithContext(ctx).First(&po, "id = ?", id).Error; err != nil {
 		return nil, err
@@ -85,7 +92,7 @@ func (r *NotificationRepository) MarkAsRead(ctx context.Context, id, userID int6
 	now := time.Now()
 	return r.db.WithContext(ctx).Model(&infraModels.NotificationPO{}).
 		Where("id = ? AND (user_id = ? OR user_id = 0)", id, userID).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"is_read": true,
 			"read_at": now,
 		}).Error
@@ -96,7 +103,7 @@ func (r *NotificationRepository) MarkAllAsRead(ctx context.Context, userID int64
 	now := time.Now()
 	return r.db.WithContext(ctx).Model(&infraModels.NotificationPO{}).
 		Where("(user_id = ? OR user_id = 0) AND is_read = ?", userID, false).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"is_read": true,
 			"read_at": now,
 		}).Error

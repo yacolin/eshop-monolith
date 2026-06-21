@@ -3,10 +3,10 @@ package models
 import (
 	"time"
 
-	domain "eshop-monolith/internal/notification/domain/models"
-	"eshop-monolith/pkg/utils"
-
 	"gorm.io/gorm"
+
+	notifModels "eshop-monolith/internal/notification/domain/models"
+	"eshop-monolith/pkg/utils"
 )
 
 // NotificationPO 通知持久化对象
@@ -26,13 +26,13 @@ type NotificationPO struct {
 func (NotificationPO) TableName() string { return "notifications" }
 
 // ToDomain 转换为领域模型
-func (po *NotificationPO) ToDomain() *domain.Notification {
-	n := &domain.Notification{
+func (po *NotificationPO) ToDomain() *notifModels.Notification {
+	n := &notifModels.Notification{
 		ID:        po.ID,
 		UserID:    po.UserID,
 		Title:     po.Title,
 		Content:   po.Content,
-		Type:      domain.NotificationType(po.Type),
+		Type:      notifModels.NotificationType(po.Type),
 		IsRead:    po.IsRead,
 		CreatedAt: utils.Timestamp(po.CreatedAt),
 		UpdatedAt: utils.Timestamp(po.UpdatedAt),
@@ -45,7 +45,7 @@ func (po *NotificationPO) ToDomain() *domain.Notification {
 }
 
 // NotificationFromDomain 从领域模型创建 PO
-func NotificationFromDomain(n *domain.Notification) *NotificationPO {
+func NotificationFromDomain(n *notifModels.Notification) *NotificationPO {
 	po := &NotificationPO{
 		ID:        n.ID,
 		UserID:    n.UserID,

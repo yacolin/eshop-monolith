@@ -6,6 +6,7 @@ import (
 	"eshop-monolith/internal/notification/api/handlers"
 	"eshop-monolith/internal/notification/domain/repositories"
 	"eshop-monolith/internal/notification/service"
+	usermw "eshop-monolith/internal/user/middleware"
 	"eshop-monolith/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -15,10 +16,6 @@ import (
 // RegisterNotificationRoutes 注册通知相关路由
 func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) {
 	notifRepo := repositories.NewNotificationRepository(db)
-	if err := notifRepo.AutoMigrate(); err != nil {
-		panic("failed to auto migrate notification tables: " + err.Error())
-	}
-
 	notifSvc := service.NewNotificationService(notifRepo)
 	notifHandler := handlers.NewNotificationHandler(notifSvc)
 
@@ -37,5 +34,6 @@ func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositor
 	}
 
 	// 系统通知发送（需要管理员权限）
-	notify.POST("/system", notifHandler.SendSystemNotification)
+	roleCfg := usermw.NewRequireRoleConfig(repos.Role)
+	notify.POST("/system", usermw.RequireAdmin(roleCfg), notifHandler.SendSystemNotification)
 }

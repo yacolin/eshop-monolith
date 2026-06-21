@@ -18,11 +18,11 @@ import (
 
 // NotificationService 通知服务
 type NotificationService struct {
-	repo *repositories.NotificationRepository
+	repo repositories.InotificationRepository
 }
 
 // NewNotificationService 创建通知服务
-func NewNotificationService(repo *repositories.NotificationRepository) *NotificationService {
+func NewNotificationService(repo repositories.InotificationRepository) *NotificationService {
 	return &NotificationService{repo: repo}
 }
 
@@ -114,8 +114,18 @@ func (s *NotificationService) RegisterHandlers(bus *eventbus.Bus) {
 	bus.Subscribe("inventory.InventoryLowEvent", s.handleInventoryLow)
 }
 
+// parseCustomerID 将订单中的 CustomerID (string) 转为 int64
+func parseCustomerID(customerID string) int64 {
+	id, err := strconv.ParseInt(customerID, 10, 64)
+	if err != nil {
+		logger.Warn("解析 CustomerID 失败", "customer_id", customerID)
+		return 0
+	}
+	return id
+}
+
 // handleOrderPaid 订单支付成功
-func (s *NotificationService) handleOrderPaid(event interface{}) {
+func (s *NotificationService) handleOrderPaid(event any) {
 	e, ok := event.(orderEvents.OrderPaidEvent)
 	if !ok {
 		return
@@ -134,7 +144,7 @@ func (s *NotificationService) handleOrderPaid(event interface{}) {
 }
 
 // handleOrderShipped 订单发货
-func (s *NotificationService) handleOrderShipped(event interface{}) {
+func (s *NotificationService) handleOrderShipped(event any) {
 	e, ok := event.(orderEvents.OrderShippedEvent)
 	if !ok {
 		return
@@ -153,7 +163,7 @@ func (s *NotificationService) handleOrderShipped(event interface{}) {
 }
 
 // handleOrderDelivered 订单已签收
-func (s *NotificationService) handleOrderDelivered(event interface{}) {
+func (s *NotificationService) handleOrderDelivered(event any) {
 	e, ok := event.(orderEvents.OrderDeliveredEvent)
 	if !ok {
 		return
@@ -172,7 +182,7 @@ func (s *NotificationService) handleOrderDelivered(event interface{}) {
 }
 
 // handleOrderCancelled 订单已取消
-func (s *NotificationService) handleOrderCancelled(event interface{}) {
+func (s *NotificationService) handleOrderCancelled(event any) {
 	e, ok := event.(orderEvents.OrderCancelledEvent)
 	if !ok {
 		return
@@ -191,7 +201,7 @@ func (s *NotificationService) handleOrderCancelled(event interface{}) {
 }
 
 // handleFlashOrderCreated 闪购订单创建
-func (s *NotificationService) handleFlashOrderCreated(event interface{}) {
+func (s *NotificationService) handleFlashOrderCreated(event any) {
 	e, ok := event.(flashEvents.FlashOrderCreatedEvent)
 	if !ok {
 		return
@@ -209,7 +219,7 @@ func (s *NotificationService) handleFlashOrderCreated(event interface{}) {
 }
 
 // handleFlashOrderPaid 闪购订单支付成功
-func (s *NotificationService) handleFlashOrderPaid(event interface{}) {
+func (s *NotificationService) handleFlashOrderPaid(event any) {
 	e, ok := event.(flashEvents.FlashOrderPaidEvent)
 	if !ok {
 		return
@@ -227,7 +237,7 @@ func (s *NotificationService) handleFlashOrderPaid(event interface{}) {
 }
 
 // handleFlashOrderCancelled 闪购订单取消
-func (s *NotificationService) handleFlashOrderCancelled(event interface{}) {
+func (s *NotificationService) handleFlashOrderCancelled(event any) {
 	e, ok := event.(flashEvents.FlashOrderCancelledEvent)
 	if !ok {
 		return
@@ -245,13 +255,13 @@ func (s *NotificationService) handleFlashOrderCancelled(event interface{}) {
 }
 
 // handleRefundCreated 退款已受理
-func (s *NotificationService) handleRefundCreated(event interface{}) {
+func (s *NotificationService) handleRefundCreated(event any) {
 	// 退款事件中没有用户 ID，需要查订单；简化处理：记录日志
 	logger.Info("退款已受理", "event", event)
 }
 
 // handleRefundFailed 退款失败
-func (s *NotificationService) handleRefundFailed(event interface{}) {
+func (s *NotificationService) handleRefundFailed(event any) {
 	e, ok := event.(paymentEvents.RefundFailedEvent)
 	if !ok {
 		return
@@ -260,7 +270,7 @@ func (s *NotificationService) handleRefundFailed(event interface{}) {
 }
 
 // handleInventoryLow 库存预警（推送给管理员 userID=0 表示全体管理员）
-func (s *NotificationService) handleInventoryLow(event interface{}) {
+func (s *NotificationService) handleInventoryLow(event any) {
 	e, ok := event.(inventoryEvents.InventoryLowEvent)
 	if !ok {
 		return
@@ -272,14 +282,4 @@ func (s *NotificationService) handleInventoryLow(event interface{}) {
 	if err != nil {
 		logger.Error("创建库存预警通知失败", "product_id", e.ProductID, "error", err)
 	}
-}
-
-// parseCustomerID 将订单中的 CustomerID (string) 转为 int64
-func parseCustomerID(customerID string) int64 {
-	id, err := strconv.ParseInt(customerID, 10, 64)
-	if err != nil {
-		logger.Warn("解析 CustomerID 失败", "customer_id", customerID)
-		return 0
-	}
-	return id
 }

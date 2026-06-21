@@ -24,6 +24,15 @@ func NewNotificationHandler(svc *service.NotificationService) *NotificationHandl
 }
 
 // ListNotifications 获取通知列表（分页）
+// @Summary 通知列表
+// @Description 分页查询当前用户的通知列表
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页条数" default(20)
+// @Success 200 {object} response.Response{data=dto.NotificationListResult}
+// @Router /api/v1/notifications [get]
 func (h *NotificationHandler) ListNotifications(c *gin.Context) {
 	userID, err := getCurrentUserID(c)
 	if err != nil {
@@ -31,7 +40,7 @@ func (h *NotificationHandler) ListNotifications(c *gin.Context) {
 		return
 	}
 
-	var req dto.ListNotificationReq
+	var req dto.NotificationListQuery
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.Error(err)
 		return
@@ -45,13 +54,20 @@ func (h *NotificationHandler) ListNotifications(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, &dto.NotificationListResp{
+	response.Success(c, &dto.NotificationListResult{
 		Total: result.Total,
-		List:  dto.ToNotificationRespList(result.List),
+		List:  dto.ToNotificationResponseList(result.List),
 	})
 }
 
 // GetUnreadCount 获取未读通知数
+// @Summary 未读通知数
+// @Description 获取当前用户的未读通知数量
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=dto.UnreadCountResponse}
+// @Router /api/v1/notifications/unread [get]
 func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
 	userID, err := getCurrentUserID(c)
 	if err != nil {
@@ -65,10 +81,18 @@ func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, &dto.UnreadCountResp{Count: count})
+	response.Success(c, &dto.UnreadCountResponse{Count: count})
 }
 
 // MarkAsRead 标记单条通知为已读
+// @Summary 标记已读
+// @Description 标记指定通知为已读
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Param id path int true "通知ID"
+// @Success 200 {object} response.Response
+// @Router /api/v1/notifications/{id}/read [put]
 func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
 	userID, err := getCurrentUserID(c)
 	if err != nil {
@@ -91,6 +115,13 @@ func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
 }
 
 // MarkAllAsRead 标记所有通知为已读
+// @Summary 全部已读
+// @Description 标记当前用户所有通知为已读
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response
+// @Router /api/v1/notifications/read-all [put]
 func (h *NotificationHandler) MarkAllAsRead(c *gin.Context) {
 	userID, err := getCurrentUserID(c)
 	if err != nil {
@@ -107,6 +138,14 @@ func (h *NotificationHandler) MarkAllAsRead(c *gin.Context) {
 }
 
 // DeleteNotification 删除通知
+// @Summary 删除通知
+// @Description 删除指定通知
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Param id path int true "通知ID"
+// @Success 200 {object} response.Response
+// @Router /api/v1/notifications/{id} [delete]
 func (h *NotificationHandler) DeleteNotification(c *gin.Context) {
 	userID, err := getCurrentUserID(c)
 	if err != nil {
@@ -129,8 +168,16 @@ func (h *NotificationHandler) DeleteNotification(c *gin.Context) {
 }
 
 // SendSystemNotification 发送系统通知（管理员接口）
+// @Summary 发送系统通知
+// @Description 发送系统通知给指定用户（管理员接口）
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Param body body dto.SendSystemNotificationDTO true "系统通知参数"
+// @Success 200 {object} response.Response
+// @Router /api/v1/notifications/system [post]
 func (h *NotificationHandler) SendSystemNotification(c *gin.Context) {
-	var req dto.SendSystemNotificationReq
+	var req dto.SendSystemNotificationDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return

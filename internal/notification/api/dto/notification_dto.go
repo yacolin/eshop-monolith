@@ -6,26 +6,26 @@ import (
 	"eshop-monolith/pkg/utils"
 )
 
-// ListNotificationReq 通知列表请求
-type ListNotificationReq struct {
+// NotificationListQuery 通知列表请求
+type NotificationListQuery struct {
 	query.Pagination
 }
 
-// NotificationResp 通知响应
-type NotificationResp struct {
-	ID        int64                `json:"id"`
-	UserID    int64                `json:"user_id"`
-	Title     string               `json:"title"`
-	Content   string               `json:"content"`
+// NotificationResponse 通知响应
+type NotificationResponse struct {
+	ID        int64                  `json:"id"`
+	UserID    int64                  `json:"user_id"`
+	Title     string                 `json:"title"`
+	Content   string                 `json:"content"`
 	Type      models.NotificationType `json:"type"`
-	IsRead    bool                 `json:"is_read"`
-	ReadAt    *utils.Timestamp     `json:"read_at,omitempty"`
-	CreatedAt utils.Timestamp      `json:"created_at"`
+	IsRead    bool                   `json:"is_read"`
+	ReadAt    *utils.Timestamp       `json:"read_at,omitempty"`
+	CreatedAt utils.Timestamp        `json:"created_at"`
 }
 
-// ToNotificationResp 领域模型转响应
-func ToNotificationResp(n *models.Notification) *NotificationResp {
-	resp := &NotificationResp{
+// ToNotificationResponse 领域模型转响应
+func ToNotificationResponse(n *models.Notification) *NotificationResponse {
+	resp := &NotificationResponse{
 		ID:        n.ID,
 		UserID:    n.UserID,
 		Title:     n.Title,
@@ -41,29 +41,29 @@ func ToNotificationResp(n *models.Notification) *NotificationResp {
 	return resp
 }
 
-// ToNotificationRespList 领域模型列表转响应列表
-func ToNotificationRespList(list []*models.Notification) []*NotificationResp {
-	resp := make([]*NotificationResp, len(list))
+// ToNotificationResponseList 领域模型列表转响应列表
+func ToNotificationResponseList(list []*models.Notification) []*NotificationResponse {
+	resp := make([]*NotificationResponse, len(list))
 	for i, n := range list {
-		resp[i] = ToNotificationResp(n)
+		resp[i] = ToNotificationResponse(n)
 	}
 	return resp
 }
 
-// NotificationListResp 通知列表响应（带分页）
-type NotificationListResp struct {
-	Total int64               `json:"total"`
-	List  []*NotificationResp `json:"list"`
+// NotificationListResult 通知列表响应（带分页）
+type NotificationListResult struct {
+	Total int64                  `json:"total"`
+	List  []*NotificationResponse `json:"list"`
 }
 
-// UnreadCountResp 未读计数响应
-type UnreadCountResp struct {
+// UnreadCountResponse 未读计数响应
+type UnreadCountResponse struct {
 	Count int64 `json:"count"`
 }
 
-// SendSystemNotificationReq 发送系统通知请求
-type SendSystemNotificationReq struct {
-	UserID int64  `json:"user_id" binding:"gte=0"` // 0 表示全体
-	Title  string `json:"title" binding:"required,min=1,max=200"`
+// SendSystemNotificationDTO 发送系统通知请求
+type SendSystemNotificationDTO struct {
+	UserID  int64  `json:"user_id" binding:"gte=0"` // 0 表示全体
+	Title   string `json:"title" binding:"required,min=1,max=200"`
 	Content string `json:"content" binding:"required,min=1"`
 }
