@@ -19,15 +19,17 @@ type CartService struct {
 	cartRepo         repositories.IcartRepository
 	inventoryService *invService.InventoryService
 	productService   *invService.ProductService
+	skuService       *invService.SkuService
 	bus              *eventbus.Bus
 }
 
 // NewCartService 创建购物车服务实例
-func NewCartService(cartRepo repositories.IcartRepository, inventoryService *invService.InventoryService, productService *invService.ProductService, bus *eventbus.Bus) *CartService {
+func NewCartService(cartRepo repositories.IcartRepository, inventoryService *invService.InventoryService, productService *invService.ProductService, skuService *invService.SkuService, bus *eventbus.Bus) *CartService {
 	return &CartService{
 		cartRepo:         cartRepo,
 		inventoryService: inventoryService,
 		productService:   productService,
+		skuService:       skuService,
 		bus:              bus,
 	}
 }
@@ -74,30 +76,29 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 		return nil, err
 	}
 
-	// 检查商品是否存在且有库存
-	product, err := s.productService.GetProductByID(ctx, req.ProductID)
+	// 验证 SKU 是否存在
+	sku, err := s.skuService.GetSku(ctx, req.SkuID)
 	if err != nil {
 		return nil, err
 	}
 
 	// 检查库存
-	stock, err := s.inventoryService.GetInventoryBySkuID(ctx, req.ProductID)
+	stock, err := s.inventoryService.GetInventoryBySkuID(ctx, req.SkuID)
 	if err != nil {
 		return nil, err
 	}
-
 	if stock.Quantity < req.Quantity {
 		return nil, errors.New("insufficient stock")
 	}
 
-	// 检查购物车中是否已有该商品
-	existingItem, err := s.cartRepo.GetItemByCartAndProduct(ctx, cart.ID, req.ProductID, req.SKU)
+	// 检查购物车中是否已有相同 SKU
+	existingItem, err := s.cartRepo.GetItemByCartAndSku(ctx, cart.ID, req.SkuID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
 	if existingItem != nil {
-		// 已有该商品，更新数量
+		// 已有该 SKU，更新数量
 		existingItem.Quantity += req.Quantity
 		err = s.cartRepo.UpdateItem(ctx, existingItem)
 		if err != nil {
@@ -109,7 +110,8 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 			CartID:      cart.ID,
 			UserID:      cart.UserID,
 			ItemID:      existingItem.ID,
-			ProductID:   req.ProductID,
+			SkuID:       existingItem.SkuID,
+			ProductID:   existingItem.ProductID,
 			OldQuantity: existingItem.Quantity - req.Quantity,
 			NewQuantity: existingItem.Quantity,
 			Price:       existingItem.Price,
@@ -118,10 +120,11 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 		// 新增购物车项
 		newItem := &models.CartItem{
 			CartID:    cart.ID,
-			ProductID: req.ProductID,
+			SkuID:     req.SkuID,
+			ProductID: sku.ProductID,
 			Quantity:  req.Quantity,
-			Price:     product.MinPrice,
-			SKU:       req.SKU,
+			Price:     sku.Price,
+			SKU:       sku.SKUCode,
 		}
 		err = s.cartRepo.AddItem(ctx, newItem)
 		if err != nil {
@@ -132,9 +135,10 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 		s.bus.Publish(events.CartItemAddedEvent{
 			CartID:    cart.ID,
 			UserID:    cart.UserID,
-			ProductID: req.ProductID,
-			Quantity:  req.Quantity,
-			Price:     product.MinPrice,
+			SkuID:     newItem.SkuID,
+			ProductID: newItem.ProductID,
+			Quantity:  newItem.Quantity,
+			Price:     newItem.Price,
 		})
 	}
 
@@ -173,7 +177,7 @@ func (s *CartService) UpdateCartItem(ctx context.Context, userID int64, sessionI
 	}
 
 	// 检查库存
-	stock, err := s.inventoryService.GetInventoryBySkuID(ctx, targetItem.ProductID)
+	stock, err := s.inventoryService.GetInventoryBySkuID(ctx, targetItem.SkuID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +201,7 @@ func (s *CartService) UpdateCartItem(ctx context.Context, userID int64, sessionI
 		CartID:      cart.ID,
 		UserID:      cart.UserID,
 		ItemID:      itemID,
+		SkuID:       targetItem.SkuID,
 		ProductID:   targetItem.ProductID,
 		OldQuantity: oldQuantity,
 		NewQuantity: req.Quantity,
@@ -248,6 +253,7 @@ func (s *CartService) RemoveCartItem(ctx context.Context, userID int64, sessionI
 		CartID:    cart.ID,
 		UserID:    cart.UserID,
 		ItemID:    itemID,
+		SkuID:     removedItem.SkuID,
 		ProductID: removedItem.ProductID,
 		Quantity:  removedItem.Quantity,
 		Price:     removedItem.Price,
@@ -352,20 +358,21 @@ func (s *CartService) toCartResponse(ctx context.Context, cart *models.Cart) (*d
 	}
 
 	for _, item := range cart.Items {
-		// 获取产品信息
-		product, err := s.productService.GetProductByID(ctx, item.ProductID)
+		sku, err := s.skuService.GetSku(ctx, item.SkuID)
 		if err != nil {
 			continue
 		}
-
-		// 获取库存信息
-		stock, err := s.inventoryService.GetInventoryBySkuID(ctx, item.ProductID)
+		product, err := s.productService.GetProductByID(ctx, sku.ProductID)
 		if err != nil {
 			continue
 		}
-
+		stock, err := s.inventoryService.GetInventoryBySkuID(ctx, item.SkuID)
+		if err != nil {
+			continue
+		}
 		itemResponse := dto.CartItemResponse{
 			ID:          item.ID,
+			SkuID:       item.SkuID,
 			ProductID:   item.ProductID,
 			Quantity:    item.Quantity,
 			Price:       item.Price,
@@ -373,11 +380,9 @@ func (s *CartService) toCartResponse(ctx context.Context, cart *models.Cart) (*d
 			ProductName: product.Name,
 			Stock:       stock.Quantity,
 		}
-
 		response.Items = append(response.Items, itemResponse)
 		response.TotalItems += item.Quantity
 		response.TotalPrice += item.Price * int64(item.Quantity)
 	}
-
 	return response, nil
 }

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"eshop-monolith/internal/cart/api/handlers"
 	"eshop-monolith/internal/cart/service"
@@ -11,7 +12,7 @@ import (
 )
 
 // RegisterCartRoutes 注册购物车相关路由
-func RegisterCartRoutes(router *gin.RouterGroup, repos *repository.Repositories) {
+func RegisterCartRoutes(router *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB) {
 	// 创建事件总线实例
 	bus := eventbus.NewBus()
 
@@ -21,8 +22,11 @@ func RegisterCartRoutes(router *gin.RouterGroup, repos *repository.Repositories)
 	// 创建产品服务实例
 	productService := invService.NewProductService(repos.Product, repos.Inventory, repos.Sku, bus, nil, repos.Redis)
 
+	// 创建 SKU 服务实例
+	skuService := invService.NewSkuService(repos.Sku, repos.Product, bus, db)
+
 	// 创建购物车服务实例
-	cartService := service.NewCartService(repos.Cart, inventoryService, productService, bus)
+	cartService := service.NewCartService(repos.Cart, inventoryService, productService, skuService, bus)
 
 	// 创建购物车处理器实例
 	cartHandler := handlers.NewCartHandler(cartService)

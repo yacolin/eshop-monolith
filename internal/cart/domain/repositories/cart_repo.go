@@ -42,8 +42,8 @@ type IcartRepository interface {
 	// DeleteItem 删除购物车项
 	DeleteItem(ctx context.Context, id int64) error
 
-	// GetItemByCartAndProduct 根据购物车ID和产品ID获取购物车项
-	GetItemByCartAndProduct(ctx context.Context, cartID, productID int64, sku string) (*cartModels.CartItem, error)
+	// GetItemByCartAndSku 根据购物车ID和SKU ID获取购物车项
+	GetItemByCartAndSku(ctx context.Context, cartID, skuID int64) (*cartModels.CartItem, error)
 }
 
 // CartRepository 购物车仓储实现
@@ -178,14 +178,10 @@ func (r *CartRepository) DeleteItem(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&models.CartItemPO{}, id).Error
 }
 
-// GetItemByCartAndProduct 根据购物车ID和产品ID获取购物车项
-func (r *CartRepository) GetItemByCartAndProduct(ctx context.Context, cartID, productID int64, sku string) (*cartModels.CartItem, error) {
+// GetItemByCartAndSku 根据购物车ID和SKU ID获取购物车项
+func (r *CartRepository) GetItemByCartAndSku(ctx context.Context, cartID, skuID int64) (*cartModels.CartItem, error) {
 	var po models.CartItemPO
-	db := r.db.WithContext(ctx).Where("cart_id = ? AND product_id = ?", cartID, productID)
-	if sku != "" {
-		db = db.Where("sku = ?", sku)
-	}
-	err := db.First(&po).Error
+	err := r.db.WithContext(ctx).Where("cart_id = ? AND sku_id = ?", cartID, skuID).First(&po).Error
 	if err != nil {
 		return nil, err
 	}

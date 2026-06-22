@@ -6,9 +6,8 @@ import (
 
 // AddToCartDTO 添加商品到购物车请求
 type AddToCartDTO struct {
-	ProductID int64  `json:"product_id" binding:"required"`
-	Quantity  int    `json:"quantity" binding:"required,min=1"`
-	SKU       string `json:"sku"`
+	SkuID    int64 `json:"sku_id" binding:"required"`
+	Quantity int   `json:"quantity" binding:"required,min=1"`
 }
 
 // UpdateCartItemDTO 更新购物车项请求
@@ -19,6 +18,7 @@ type UpdateCartItemDTO struct {
 // CartItemResponse 购物车项响应
 type CartItemResponse struct {
 	ID          int64  `json:"id"`
+	SkuID       int64  `json:"sku_id"`
 	ProductID   int64  `json:"product_id"`
 	Quantity    int    `json:"quantity"`
 	Price       int64  `json:"price"` // 商品单价，单位：分

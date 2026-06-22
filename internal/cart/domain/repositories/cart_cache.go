@@ -186,17 +186,17 @@ func (r *CachedCartRepository) DeleteItem(ctx context.Context, id int64) error {
 	return nil
 }
 
-// GetItemByCartAndProduct 根据购物车和商品获取购物车项（优先走缓存）
-func (r *CachedCartRepository) GetItemByCartAndProduct(ctx context.Context, cartID, productID int64, sku string) (*cartModels.CartItem, error) {
+// GetItemByCartAndSku 根据购物车和SKU获取购物车项（优先走缓存）
+func (r *CachedCartRepository) GetItemByCartAndSku(ctx context.Context, cartID, skuID int64) (*cartModels.CartItem, error) {
 	cart, err := r.getCartFromCache(ctx, cartID)
 	if err == nil {
 		for _, item := range cart.Items {
-			if item.ProductID == productID && (sku == "" || item.SKU == sku) {
+			if item.SkuID == skuID {
 				return &item, nil
 			}
 		}
 		return nil, gorm.ErrRecordNotFound
 	}
 
-	return r.inner.GetItemByCartAndProduct(ctx, cartID, productID, sku)
+	return r.inner.GetItemByCartAndSku(ctx, cartID, skuID)
 }

@@ -128,7 +128,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, bus, couponSvc)
 		userRoutes.RegisterUserRoutes(v1, repos)
 		payRoutes.RegisterPaymentRoutes(v1, repos, bus, db)
-		cartRoutes.RegisterCartRoutes(v1, repos)
+		cartRoutes.RegisterCartRoutes(v1, repos, db)
 		flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, bus)
 		userRoutes.RegisterAuthRoutes(v1, repos, db)
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
