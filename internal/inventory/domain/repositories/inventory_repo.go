@@ -299,6 +299,10 @@ func (r *InventoryRepository) applyQueryConditions(ctx context.Context, q dto.In
 	if q.ProductName != "" {
 		db = db.Where("products.name LIKE ?", "%"+q.ProductName+"%")
 	}
+	if q.SkuName != "" {
+		db = db.Joins("JOIN skus ON inventories.sku_id = skus.id")
+		db = db.Where("skus.name LIKE ?", "%"+q.SkuName+"%")
+	}
 	if q.SKU != "" {
 		db = db.Where("products.sku = ?", q.SKU)
 	}

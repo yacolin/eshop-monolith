@@ -3,12 +3,14 @@ package dto
 import (
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/pkg/query"
+	"eshop-monolith/pkg/utils"
 )
 
 // InventoryListQuery 库存列表查询参数
 type InventoryListQuery struct {
 	query.Pagination
 	ProductName string `form:"product_name"`      // 产品名称模糊搜索
+	SkuName     string `form:"sku_name"`          // SKU名称模糊搜索
 	SKU         string `form:"sku"`               // SKU精确搜索
 	Status      string `form:"status"`            // 库存状态
 	LowStock    *bool  `form:"low_stock"`         // 是否低库存
@@ -77,4 +79,23 @@ type ReleaseInventoryDTO struct {
 type AdjustInventoryDTO struct {
 	SkuID int64 `json:"sku_id" binding:"required"`
 	Quantity  int   `json:"quantity" binding:"required"` // 正数增加, 负数减少
+}
+
+// InventoryEnrichedItem 库存列表 enriched 单项
+type InventoryEnrichedItem struct {
+	ID        int64           `json:"id"`
+	SkuID     int64           `json:"sku_id"`
+	SkuName   string          `json:"sku_name"`
+	Quantity  int             `json:"quantity"`
+	Status    string          `json:"status"`
+	Reserved  int             `json:"reserved"`
+	Threshold int             `json:"threshold"`
+	CreatedAt utils.Timestamp `json:"created_at"`
+	UpdatedAt utils.Timestamp `json:"updated_at"`
+}
+
+// InventoryEnrichedResult 库存列表 enriched 结果
+type InventoryEnrichedResult struct {
+	Total int64                   `json:"total"`
+	List  []InventoryEnrichedItem `json:"list"`
 }

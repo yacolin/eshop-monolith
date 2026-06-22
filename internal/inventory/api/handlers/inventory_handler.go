@@ -51,6 +51,36 @@ func (h *InventoryHandler) ListInventories(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// ListInventoriesEnriched 列出所有库存（含 SKU 名称）
+// @Summary 列出所有库存（含 SKU 名称）
+// @Description 获取所有库存的列表，每条记录附带 SKU 名称，用于列表展示增强
+// @Tags inventories
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页条数" default(10)
+// @Param sku_name query string false "SKU名称模糊搜索"
+// @Param sku query string false "SKU精确搜索"
+// @Success 200 {object} response.Response{data=dto.InventoryEnrichedResult}
+// @Router /api/v1/inventories/enriched [get]
+func (h *InventoryHandler) ListInventoriesEnriched(c *gin.Context) {
+	var q dto.InventoryListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
+		return
+	}
+
+	(&q).Normalize()
+
+	result, err := h.inventoryService.ListInventoriesEnriched(c, q)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result)
+}
+
 // CreateInventory 创建库存
 // @Summary 创建库存
 // @Description 创建一个新的库存记录

@@ -14,15 +14,17 @@ import (
 
 // InventoryService 库存服务
 type InventoryService struct {
-	repo repositories.IinventoryRepository
-	bus  *eventbus.Bus
+	repo    repositories.IinventoryRepository
+	skuRepo repositories.IskuRepository
+	bus     *eventbus.Bus
 }
 
 // NewInventoryService 创建库存服务
-func NewInventoryService(repo repositories.IinventoryRepository, bus *eventbus.Bus) *InventoryService {
+func NewInventoryService(repo repositories.IinventoryRepository, skuRepo repositories.IskuRepository, bus *eventbus.Bus) *InventoryService {
 	return &InventoryService{
-		repo: repo,
-		bus:  bus,
+		repo:    repo,
+		skuRepo: skuRepo,
+		bus:     bus,
 	}
 }
 
@@ -120,6 +122,56 @@ func (s *InventoryService) ReleaseInventory(ctx context.Context, req *dto.Releas
 	})
 
 	return nil
+}
+
+// ListInventoriesEnriched 列出所有库存（含 SKU 名称）
+func (s *InventoryService) ListInventoriesEnriched(ctx context.Context, q dto.InventoryListQuery) (*dto.InventoryEnrichedResult, error) {
+	offset := (q.Page - 1) * q.Size
+	list, err := s.repo.ListInventories(ctx, q, offset, q.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	total, err := s.repo.CountInventories(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	// 收集所有 SkuID 批量查询 SKU 名称
+	skuIDs := make([]int64, len(list))
+	for i, inv := range list {
+		skuIDs[i] = inv.SkuID
+	}
+
+	skuNameMap := make(map[int64]string, len(list))
+	if len(skuIDs) > 0 {
+		skus, err := s.skuRepo.FindByIDs(ctx, skuIDs)
+		if err == nil {
+			for _, sku := range skus {
+				skuNameMap[sku.ID] = sku.Name
+			}
+		}
+	}
+
+	enrichedList := make([]dto.InventoryEnrichedItem, len(list))
+	for i, inv := range list {
+		enrichedList[i] = dto.InventoryEnrichedItem{
+			ID:        inv.ID,
+			SkuID:     inv.SkuID,
+			SkuName:   skuNameMap[inv.SkuID],
+			Quantity:  inv.Quantity,
+			Status:    inv.Status,
+			Reserved:  inv.Reserved,
+			Threshold: inv.Threshold,
+			CreatedAt: inv.CreatedAt,
+			UpdatedAt: inv.UpdatedAt,
+		}
+	}
+
+	return &dto.InventoryEnrichedResult{
+		Total: total,
+		List:  enrichedList,
+	}, nil
 }
 
 // CheckInventory 检查库存

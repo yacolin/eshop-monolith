@@ -12,6 +12,7 @@ import (
 type IskuRepository interface {
 	Create(ctx context.Context, sku *domain.Sku) error
 	FindByID(ctx context.Context, id int64) (*domain.Sku, error)
+	FindByIDs(ctx context.Context, ids []int64) ([]domain.Sku, error)
 	FindByProductID(ctx context.Context, productID int64) ([]domain.Sku, error)
 	Update(ctx context.Context, sku *domain.Sku) error
 	Delete(ctx context.Context, id int64) error
@@ -38,6 +39,21 @@ func (r *SkuRepository) FindByID(ctx context.Context, id int64) (*domain.Sku, er
 		return nil, err
 	}
 	return po.ToDomain(), nil
+}
+
+func (r *SkuRepository) FindByIDs(ctx context.Context, ids []int64) ([]domain.Sku, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var pos []models.SkuPO
+	if err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&pos).Error; err != nil {
+		return nil, err
+	}
+	skus := make([]domain.Sku, len(pos))
+	for i, po := range pos {
+		skus[i] = *po.ToDomain()
+	}
+	return skus, nil
 }
 
 func (r *SkuRepository) FindByProductID(ctx context.Context, productID int64) ([]domain.Sku, error) {

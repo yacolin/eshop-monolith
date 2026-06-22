@@ -11,12 +11,13 @@ import (
 )
 
 func RegisterInventoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, bus *eventbus.Bus) {
-	inventoryService := service.NewInventoryService(repos.Inventory, bus)
+	inventoryService := service.NewInventoryService(repos.Inventory, repos.Sku, bus)
 	inventoryHandler := handlers.NewInventoryHandler(inventoryService)
 
 	inventories := v1.Group("/inventories")
 	{
 		inventories.GET("", inventoryHandler.ListInventories)
+		inventories.GET("/enriched", inventoryHandler.ListInventoriesEnriched)
 		inventories.GET("/sku/:skuId", inventoryHandler.GetInventoryBySkuID)
 	}
 
