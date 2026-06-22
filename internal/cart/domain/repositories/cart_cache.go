@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+
 	"eshop-monolith/internal/cart/api/dto"
 	cartModels "eshop-monolith/internal/cart/domain/models"
 	"eshop-monolith/internal/infra/repository/models"
-
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 )
 
 const (
@@ -22,14 +22,14 @@ const (
 // 读路径：cache-aside，先查 Redis ⇒ 未命中则回源 DB ⇒ 回填缓存
 // 写路径：先写 DB ⇒ 删除 data 缓存（索引 key 不删，下次读自动刷新）
 type CachedCartRepository struct {
-	inner CartRepository
+	inner IcartRepository
 	rdb   *redis.Client
 	db    *gorm.DB // 仅用于 DeleteItem 时查找 cart_id
 }
 
 // NewCachedCartRepository 创建购物车缓存仓储
 // rdb 为 nil 时跳过缓存，直接委托给 inner，方便本地开发/测试
-func NewCachedCartRepository(inner CartRepository, rdb *redis.Client, db *gorm.DB) CartRepository {
+func NewCachedCartRepository(inner IcartRepository, rdb *redis.Client, db *gorm.DB) IcartRepository {
 	if rdb == nil {
 		return inner
 	}

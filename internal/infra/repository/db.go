@@ -134,7 +134,7 @@ type Repositories struct {
 	LoginHistory userRepos.IloginHistoryRepository
 	Role         userRepos.IroleRepository
 	Permission   userRepos.IpermissionRepository
-	Cart         cartRepos.CartRepository
+	Cart         cartRepos.IcartRepository
 	Payment      paymentRepos.IPaymentRepository
 }
 

@@ -3,15 +3,15 @@ package repositories
 import (
 	"context"
 
+	"gorm.io/gorm"
+
 	"eshop-monolith/internal/cart/api/dto"
 	cartModels "eshop-monolith/internal/cart/domain/models"
 	"eshop-monolith/internal/infra/repository/models"
-
-	"gorm.io/gorm"
 )
 
-// CartRepository 购物车仓储接口
-type CartRepository interface {
+// IcartRepository 购物车仓储接口
+type IcartRepository interface {
 	// GetByUserID 根据用户ID获取购物车
 	GetByUserID(ctx context.Context, userID int64) (*cartModels.Cart, error)
 
@@ -46,18 +46,18 @@ type CartRepository interface {
 	GetItemByCartAndProduct(ctx context.Context, cartID, productID int64, sku string) (*cartModels.CartItem, error)
 }
 
-// CartRepositoryImpl 购物车仓储实现
-type CartRepositoryImpl struct {
+// CartRepository 购物车仓储实现
+type CartRepository struct {
 	db *gorm.DB
 }
 
 // NewCartRepository 创建购物车仓储实例
-func NewCartRepository(db *gorm.DB) CartRepository {
-	return &CartRepositoryImpl{db: db}
+func NewCartRepository(db *gorm.DB) IcartRepository {
+	return &CartRepository{db: db}
 }
 
 // GetByUserID 根据用户ID获取购物车
-func (r *CartRepositoryImpl) GetByUserID(ctx context.Context, userID int64) (*cartModels.Cart, error) {
+func (r *CartRepository) GetByUserID(ctx context.Context, userID int64) (*cartModels.Cart, error) {
 	var po models.CartPO
 	err := r.db.WithContext(ctx).First(&po, "user_id = ?", userID).Error
 	if err != nil {
@@ -72,7 +72,7 @@ func (r *CartRepositoryImpl) GetByUserID(ctx context.Context, userID int64) (*ca
 }
 
 // GetBySessionID 根据会话ID获取购物车
-func (r *CartRepositoryImpl) GetBySessionID(ctx context.Context, sessionID string) (*cartModels.Cart, error) {
+func (r *CartRepository) GetBySessionID(ctx context.Context, sessionID string) (*cartModels.Cart, error) {
 	var po models.CartPO
 	err := r.db.WithContext(ctx).First(&po, "session_id = ?", sessionID).Error
 	if err != nil {
@@ -87,7 +87,7 @@ func (r *CartRepositoryImpl) GetBySessionID(ctx context.Context, sessionID strin
 }
 
 // Create 创建购物车
-func (r *CartRepositoryImpl) Create(ctx context.Context, cart *cartModels.Cart) error {
+func (r *CartRepository) Create(ctx context.Context, cart *cartModels.Cart) error {
 	po := models.CartFromDomain(cart)
 	if err := r.db.WithContext(ctx).Create(po).Error; err != nil {
 		return err
@@ -97,18 +97,18 @@ func (r *CartRepositoryImpl) Create(ctx context.Context, cart *cartModels.Cart) 
 }
 
 // Update 更新购物车
-func (r *CartRepositoryImpl) Update(ctx context.Context, cart *cartModels.Cart) error {
+func (r *CartRepository) Update(ctx context.Context, cart *cartModels.Cart) error {
 	po := models.CartFromDomain(cart)
 	return r.db.WithContext(ctx).Save(po).Error
 }
 
 // Delete 删除购物车
-func (r *CartRepositoryImpl) Delete(ctx context.Context, id int64) error {
+func (r *CartRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&models.CartPO{}, id).Error
 }
 
 // ListByQuery 根据查询参数获取购物车列表
-func (r *CartRepositoryImpl) ListByQuery(ctx context.Context, q dto.CartListQuery, offset, limit int) ([]cartModels.Cart, error) {
+func (r *CartRepository) ListByQuery(ctx context.Context, q dto.CartListQuery, offset, limit int) ([]cartModels.Cart, error) {
 	var pos []models.CartPO
 	// 构建查询条件
 	db := r.db.WithContext(ctx)
@@ -139,7 +139,7 @@ func (r *CartRepositoryImpl) ListByQuery(ctx context.Context, q dto.CartListQuer
 }
 
 // CountByQuery 根据查询参数统计购物车数量
-func (r *CartRepositoryImpl) CountByQuery(ctx context.Context, q dto.CartListQuery) (int64, error) {
+func (r *CartRepository) CountByQuery(ctx context.Context, q dto.CartListQuery) (int64, error) {
 	var count int64
 	// 构建查询条件
 	db := r.db.WithContext(ctx).Model(&models.CartPO{})
@@ -158,7 +158,7 @@ func (r *CartRepositoryImpl) CountByQuery(ctx context.Context, q dto.CartListQue
 }
 
 // AddItem 添加购物车项
-func (r *CartRepositoryImpl) AddItem(ctx context.Context, item *cartModels.CartItem) error {
+func (r *CartRepository) AddItem(ctx context.Context, item *cartModels.CartItem) error {
 	po := models.CartItemFromDomain(item)
 	if err := r.db.WithContext(ctx).Create(po).Error; err != nil {
 		return err
@@ -168,18 +168,18 @@ func (r *CartRepositoryImpl) AddItem(ctx context.Context, item *cartModels.CartI
 }
 
 // UpdateItem 更新购物车项
-func (r *CartRepositoryImpl) UpdateItem(ctx context.Context, item *cartModels.CartItem) error {
+func (r *CartRepository) UpdateItem(ctx context.Context, item *cartModels.CartItem) error {
 	po := models.CartItemFromDomain(item)
 	return r.db.WithContext(ctx).Save(po).Error
 }
 
 // DeleteItem 删除购物车项
-func (r *CartRepositoryImpl) DeleteItem(ctx context.Context, id int64) error {
+func (r *CartRepository) DeleteItem(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&models.CartItemPO{}, id).Error
 }
 
 // GetItemByCartAndProduct 根据购物车ID和产品ID获取购物车项
-func (r *CartRepositoryImpl) GetItemByCartAndProduct(ctx context.Context, cartID, productID int64, sku string) (*cartModels.CartItem, error) {
+func (r *CartRepository) GetItemByCartAndProduct(ctx context.Context, cartID, productID int64, sku string) (*cartModels.CartItem, error) {
 	var po models.CartItemPO
 	db := r.db.WithContext(ctx).Where("cart_id = ? AND product_id = ?", cartID, productID)
 	if sku != "" {

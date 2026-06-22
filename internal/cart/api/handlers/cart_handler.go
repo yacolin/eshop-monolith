@@ -3,13 +3,13 @@ package handlers
 import (
 	"strconv"
 
+	"github.com/gin-gonic/gin"
+
 	"eshop-monolith/internal/cart/api/dto"
 	"eshop-monolith/internal/cart/service"
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
-
-	"github.com/gin-gonic/gin"
 )
 
 // CartHandler 购物车处理器
@@ -46,7 +46,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 		return
 	}
 
-	cart, err := h.cartService.GetCart(c, userID, sessionID)
+	cart, err := h.cartService.GetCart(c.Request.Context(), userID, sessionID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -84,7 +84,7 @@ func (h *CartHandler) AddToCart(c *gin.Context) {
 		return
 	}
 
-	cart, err := h.cartService.AddToCart(c, userID, sessionID, &req)
+	cart, err := h.cartService.AddToCart(c.Request.Context(), userID, sessionID, &req)
 	if err != nil {
 		c.Error(err)
 		return
@@ -129,7 +129,7 @@ func (h *CartHandler) UpdateCartItem(c *gin.Context) {
 		return
 	}
 
-	cart, err := h.cartService.UpdateCartItem(c, userID, sessionID, itemID, &req)
+	cart, err := h.cartService.UpdateCartItem(c.Request.Context(), userID, sessionID, itemID, &req)
 	if err != nil {
 		c.Error(err)
 		return
@@ -167,7 +167,7 @@ func (h *CartHandler) RemoveCartItem(c *gin.Context) {
 		return
 	}
 
-	cart, err := h.cartService.RemoveCartItem(c, userID, sessionID, itemID)
+	cart, err := h.cartService.RemoveCartItem(c.Request.Context(), userID, sessionID, itemID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -198,7 +198,7 @@ func (h *CartHandler) ClearCart(c *gin.Context) {
 		return
 	}
 
-	err := h.cartService.ClearCart(c, userID, sessionID)
+	err := h.cartService.ClearCart(c.Request.Context(), userID, sessionID)
 	if err != nil {
 		c.Error(err)
 		return

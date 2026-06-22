@@ -1,13 +1,13 @@
 package routes
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"eshop-monolith/internal/cart/api/handlers"
 	"eshop-monolith/internal/cart/service"
 	"eshop-monolith/internal/infra/eventbus"
-	invService "eshop-monolith/internal/inventory/service"
 	"eshop-monolith/internal/infra/repository"
-
-	"github.com/gin-gonic/gin"
+	invService "eshop-monolith/internal/inventory/service"
 )
 
 // RegisterCartRoutes 注册购物车相关路由

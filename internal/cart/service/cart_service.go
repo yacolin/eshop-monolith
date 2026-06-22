@@ -4,27 +4,26 @@ import (
 	"context"
 	"errors"
 
+	"gorm.io/gorm"
+
 	"eshop-monolith/internal/cart/api/dto"
 	"eshop-monolith/internal/cart/domain/models"
 	"eshop-monolith/internal/cart/domain/repositories"
 	"eshop-monolith/internal/cart/events"
 	"eshop-monolith/internal/infra/eventbus"
 	invService "eshop-monolith/internal/inventory/service"
-
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 // CartService 购物车服务
 type CartService struct {
-	cartRepo         repositories.CartRepository
+	cartRepo         repositories.IcartRepository
 	inventoryService *invService.InventoryService
 	productService   *invService.ProductService
 	bus              *eventbus.Bus
 }
 
 // NewCartService 创建购物车服务实例
-func NewCartService(cartRepo repositories.CartRepository, inventoryService *invService.InventoryService, productService *invService.ProductService, bus *eventbus.Bus) *CartService {
+func NewCartService(cartRepo repositories.IcartRepository, inventoryService *invService.InventoryService, productService *invService.ProductService, bus *eventbus.Bus) *CartService {
 	return &CartService{
 		cartRepo:         cartRepo,
 		inventoryService: inventoryService,
@@ -34,8 +33,7 @@ func NewCartService(cartRepo repositories.CartRepository, inventoryService *invS
 }
 
 // GetCart 获取购物车
-func (s *CartService) GetCart(c *gin.Context, userID int64, sessionID string) (*dto.CartResponse, error) {
-	ctx := c.Request.Context()
+func (s *CartService) GetCart(ctx context.Context, userID int64, sessionID string) (*dto.CartResponse, error) {
 	var cart *models.Cart
 	var err error
 
@@ -69,8 +67,7 @@ func (s *CartService) GetCart(c *gin.Context, userID int64, sessionID string) (*
 }
 
 // AddToCart 添加商品到购物车
-func (s *CartService) AddToCart(c *gin.Context, userID int64, sessionID string, req *dto.AddToCartDTO) (*dto.CartResponse, error) {
-	ctx := c.Request.Context()
+func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID string, req *dto.AddToCartDTO) (*dto.CartResponse, error) {
 	// 获取或创建购物车
 	cart, err := s.getOrCreateCart(ctx, userID, sessionID)
 	if err != nil {
@@ -155,8 +152,7 @@ func (s *CartService) AddToCart(c *gin.Context, userID int64, sessionID string, 
 }
 
 // UpdateCartItem 更新购物车项
-func (s *CartService) UpdateCartItem(c *gin.Context, userID int64, sessionID string, itemID int64, req *dto.UpdateCartItemDTO) (*dto.CartResponse, error) {
-	ctx := c.Request.Context()
+func (s *CartService) UpdateCartItem(ctx context.Context, userID int64, sessionID string, itemID int64, req *dto.UpdateCartItemDTO) (*dto.CartResponse, error) {
 	// 获取购物车
 	cart, err := s.getCart(ctx, userID, sessionID)
 	if err != nil {
@@ -218,8 +214,7 @@ func (s *CartService) UpdateCartItem(c *gin.Context, userID int64, sessionID str
 }
 
 // RemoveCartItem 删除购物车项
-func (s *CartService) RemoveCartItem(c *gin.Context, userID int64, sessionID string, itemID int64) (*dto.CartResponse, error) {
-	ctx := c.Request.Context()
+func (s *CartService) RemoveCartItem(ctx context.Context, userID int64, sessionID string, itemID int64) (*dto.CartResponse, error) {
 	// 获取购物车
 	cart, err := s.getCart(ctx, userID, sessionID)
 	if err != nil {
@@ -269,8 +264,7 @@ func (s *CartService) RemoveCartItem(c *gin.Context, userID int64, sessionID str
 }
 
 // ClearCart 清空购物车
-func (s *CartService) ClearCart(c *gin.Context, userID int64, sessionID string) error {
-	ctx := c.Request.Context()
+func (s *CartService) ClearCart(ctx context.Context, userID int64, sessionID string) error {
 	// 获取购物车
 	cart, err := s.getCart(ctx, userID, sessionID)
 	if err != nil {
