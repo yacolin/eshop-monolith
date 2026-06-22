@@ -723,11 +723,8 @@ def generate_products(categories):
         ],
     }
 
-    # Products table in current monolith model has no category_id relation.
-    # But we keep a non-persisted `category_hint` to generate product_categories links.
-
-    # Fixed target number of sample products.
-    target_count = 1000
+    # Products table is now SPU (no price/sku, only min_price).
+    # We generate SPU entries, then create SKUs separately.
 
     # Build base (cat_name, prod_data) combinations from product_samples.
     base_entries = []
@@ -737,40 +734,17 @@ def generate_products(categories):
             for prod_data in product_samples[cat_name]:
                 base_entries.append((cat_name, prod_data))
 
-    # Insert base entries first.
+    # Generate SPUs — each base entry becomes one Product (SPU) with min_price
     for cat_name, prod_data in base_entries:
-        products.append(
-            {
-                "id": None,
-                "name": prod_data["name"],
-                "description": f"{prod_data['description']} (Category hint: {cat_name})",
-                # Not persisted to DB; only used for generating product_categories links.
-                "category_hint": cat_name,
-                # Price in cents (e.g., $10.00 to $500.00)
-                "price": random.randint(1000, 50000),
-                "sku": f"PS-{str(uuid.uuid4()).split('-')[0].upper()}",
-                "created_at": mysql_utc_now(),
-                "updated_at": mysql_utc_now(),
-            }
-        )
-
-    # If we still need more, generate variants based on base entries.
-    while len(products) < target_count and base_entries:
-        cat_name, prod_data = random.choice(base_entries)
-        variant_idx = len(products) + 1
-        products.append(
-            {
-                "id": None,
-                "name": f"{prod_data['name']} (Variant {variant_idx})",
-                "description": f"{prod_data['description']} - variant {variant_idx} (Category hint: {cat_name})",
-                # Not persisted to DB; only used for generating product_categories links.
-                "category_hint": cat_name,
-                "price": random.randint(500, 80000),
-                "sku": f"PSV-{str(uuid.uuid4()).split('-')[0].upper()}",
-                "created_at": mysql_utc_now(),
-                "updated_at": mysql_utc_now(),
-            }
-        )
+        products.append({
+            "id": None,
+            "name": prod_data["name"],
+            "description": prod_data["description"],
+            "category_hint": cat_name,
+            "min_price": random.randint(1000, 50000),
+            "created_at": mysql_utc_now(),
+            "updated_at": mysql_utc_now(),
+        })
 
     return products
 
@@ -819,21 +793,19 @@ def generate_product_categories_links(products, categories, min_categories=1, ma
     return product_categories
 
 
-def generate_inventory(products):
-    """Generate sample inventory records"""
+def generate_inventory(skus):
+    """Generate sample inventory records (per SKU)"""
     inventory = []
 
-    for product in products:
+    for sku in skus:
         inv_record = {
-            "product_id": product["id"],
+            "sku_id": sku["id"],
             "quantity": random.randint(0, 100),
-            # Reserved items
             "reserved": random.randint(0, min(10, random.randint(0, 100))),
-            "threshold": 10,  # Low stock threshold
+            "threshold": 10,
             "created_at": mysql_utc_now(),
             "updated_at": mysql_utc_now(),
         }
-        # Calculate status based on quantity and threshold
         if inv_record["quantity"] <= 0:
             inv_record["status"] = "outofstock"
         elif inv_record["quantity"] <= inv_record["threshold"]:
@@ -844,6 +816,147 @@ def generate_inventory(products):
         inventory.append(inv_record)
 
     return inventory
+
+
+# ─── SPU/SKU variant helpers ──────────────────────────────────────────
+
+SKU_SPECS = {
+    "Smartphones": {
+        "dimensions": [
+            {"name": "系列", "options": ["标准版", "Pro", "Pro Max"]},
+            {"name": "内存", "options": ["128GB", "256GB", "512GB"]},
+            {"name": "颜色", "options": ["深空黑", "银色"]},
+        ],
+    },
+    "Laptops": {
+        "dimensions": [
+            {"name": "内存", "options": ["16GB", "32GB"]},
+            {"name": "硬盘", "options": ["512GB", "1TB"]},
+        ],
+    },
+    "Shoes": {
+        "dimensions": [
+            {"name": "尺码", "options": ["39", "40", "41", "42", "43"]},
+            {"name": "颜色", "options": ["黑色", "白色"]},
+        ],
+    },
+}
+
+
+def generate_skus(spus):
+    """Generate SKU entries for each SPU (variant categories get multiple SKUs)"""
+    import itertools
+    skus = []
+    for spu in spus:
+        hint = spu.get("category_hint")
+        spec_template = SKU_SPECS.get(hint)
+        base_price = spu.get("min_price", 2999)
+
+        if spec_template:
+            dims = spec_template["dimensions"]
+            keys = [d["name"] for d in dims]
+            values = [d["options"] for d in dims]
+            for combo in itertools.product(*values):
+                spec = dict(zip(keys, combo))
+                sku_name = " ".join([spu["name"]] + [str(v) for v in combo])
+                sku_code = "SKU-{}".format(str(uuid.uuid4()).split("-")[0].upper())
+                price = base_price + random.randint(0, 20000)
+                skus.append({
+                    "id": None, "product_id": spu["id"],
+                    "name": sku_name, "price": price,
+                    "sku_code": sku_code,
+                    "spec": json.dumps(spec, ensure_ascii=False),
+                    "created_at": spu["created_at"], "updated_at": spu["updated_at"],
+                })
+        else:
+            sku_code = "SKU-{}".format(str(uuid.uuid4()).split("-")[0].upper())
+            skus.append({
+                "id": None, "product_id": spu["id"],
+                "name": spu["name"], "price": base_price,
+                "sku_code": sku_code, "spec": None,
+                "created_at": spu["created_at"], "updated_at": spu["updated_at"],
+            })
+    return skus
+
+
+def insert_skus(connection, skus):
+    """Insert SKUs into the database"""
+    with connection.cursor() as cursor:
+        for sku in skus:
+            sql = """
+            INSERT INTO skus (product_id, name, price, sku_code, spec, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            try:
+                cursor.execute(sql, (
+                    sku["product_id"], sku["name"], sku["price"],
+                    sku["sku_code"], sku["spec"],
+                    sku["created_at"], sku["updated_at"],
+                ))
+                sku["id"] = cursor.lastrowid
+            except Exception as e:
+                print(f"Error inserting SKU {sku['name']}: {e}")
+        connection.commit()
+    print(f"Inserted {len(skus)} SKUs into the database")
+
+
+def insert_attributes(connection):
+    """Insert attribute definitions and values into the database"""
+    attrs = [
+        {"name": "系列", "values": ["标准版", "Pro", "Pro Max"]},
+        {"name": "内存", "values": ["128GB", "256GB", "512GB", "1TB"]},
+        {"name": "颜色", "values": ["深空黑", "银色", "金色", "深蓝色"]},
+        {"name": "CPU", "values": ["标准版", "高性能版"]},
+        {"name": "硬盘", "values": ["512GB", "1TB"]},
+        {"name": "尺码", "values": ["39", "40", "41", "42", "43"]},
+    ]
+    with connection.cursor() as cursor:
+        for attr in attrs:
+            cursor.execute(
+                "INSERT INTO attribute_attributes (name, sort_order) VALUES (%s, 0)",
+                (attr["name"],),
+            )
+            attr_id = cursor.lastrowid
+            for idx, val in enumerate(attr["values"]):
+                cursor.execute(
+                    "INSERT INTO attribute_values (attribute_id, value, sort_order) VALUES (%s, %s, %s)",
+                    (attr_id, val, idx),
+                )
+        connection.commit()
+    print(f"Inserted {len(attrs)} attributes with their values into the database")
+
+
+def insert_sku_attributes(connection, skus):
+    """Link SKUs to their attribute values based on spec JSON"""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT id, name FROM attribute_attributes")
+        attr_map = {}
+        for row in cursor.fetchall():
+            attr_map[row['name']] = {"id": row['id'], "values": {}}
+        cursor.execute("SELECT id, attribute_id, value FROM attribute_values")
+        for row in cursor.fetchall():
+            for info in attr_map.values():
+                if info["id"] == row['attribute_id']:
+                    info["values"][row['value']] = row['id']
+                    break
+        count = 0
+        for sku in skus:
+            if not sku.get("spec"):
+                continue
+            try:
+                spec = json.loads(sku["spec"])
+            except (json.JSONDecodeError, TypeError):
+                continue
+            for key, val in spec.items():
+                if key in attr_map and val in attr_map[key]["values"]:
+                    vid = attr_map[key]["values"][val]
+                    cursor.execute(
+                        "INSERT IGNORE INTO sku_attributes (sku_id, attribute_id, attribute_value_id) VALUES (%s, %s, %s)",
+                        (sku["id"], attr_map[key]["id"], vid),
+                    )
+                    count += 1
+        connection.commit()
+    print(f"Inserted {count} sku-attribute links into the database")
 
 
 def connect_to_database():
@@ -920,25 +1033,23 @@ def insert_categories(connection, categories):
 
 
 def insert_products(connection, products):
-    """Insert products into the database"""
+    """Insert SPUs (products table) into the database"""
     with connection.cursor() as cursor:
         for product in products:
+            sku_val = f"SP-{str(uuid.uuid4()).split('-')[0].upper()}"
             sql = """
-            INSERT INTO products (name, description, price, sku, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO products (name, description, price, sku, spu_id, spec, min_price, created_at, updated_at)
+            VALUES (%s, %s, 0, %s, 0, NULL, %s, %s, %s)
             """
             try:
-                cursor.execute(
-                    sql,
-                    (
-                        product["name"],
-                        product["description"],
-                        product["price"],
-                        product["sku"],
-                        product["created_at"],
-                        product["updated_at"],
-                    ),
-                )
+                cursor.execute(sql, (
+                    product["name"],
+                    product["description"],
+                    sku_val,
+                    product["min_price"],
+                    product["created_at"],
+                    product["updated_at"],
+                ))
                 product["id"] = cursor.lastrowid
             except Exception as e:
                 print(f"Error inserting product {product['name']}: {e}")
@@ -951,12 +1062,12 @@ def insert_inventory(connection, inventory):
     with connection.cursor() as cursor:
         for inv in inventory:
             sql = """
-            INSERT INTO inventories (product_id, quantity, status, reserved, threshold, created_at, updated_at)
+            INSERT INTO inventories (sku_id, quantity, status, reserved, threshold, created_at, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
             try:
                 cursor.execute(sql, (
-                    inv["product_id"],
+                    inv["sku_id"],
                     inv["quantity"],
                     inv["status"],
                     inv["reserved"],
@@ -966,7 +1077,7 @@ def insert_inventory(connection, inventory):
                 ))
             except Exception as e:
                 print(
-                    f"Error inserting inventory for product {inv['product_id']}: {e}")
+                    f"Error inserting inventory for SKU {inv['sku_id']}: {e}")
         connection.commit()
     print(f"Inserted {len(inventory)} inventory records into the database")
 
@@ -1023,13 +1134,14 @@ def insert_order_items(connection, order_items):
     with connection.cursor() as cursor:
         for item in order_items:
             sql = """
-            INSERT INTO order_items (order_id, product_id, quantity, unit_price, amount, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO order_items (order_id, product_id, sku_id, quantity, unit_price, amount, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
             try:
                 cursor.execute(sql, (
                     item["order_id"],
                     item["product_id"],
+                    item["sku_id"],
                     item["quantity"],
                     item["unit_price"],
                     item["amount"],
@@ -1050,9 +1162,8 @@ def generate_order_no():
     return f"ORD{now}{r:04d}"
 
 
-def generate_orders(products, num_orders=300):
-    """Generate sample orders with order_no"""
-    # Customer IDs (matching varchar(36) column — short strings)
+def generate_orders(skus, num_orders=300):
+    """Generate sample orders with order_no (order items reference SKUs)"""
     customer_ids = ["1", "2", "3", "4", "5"]
 
     order_statuses = ["pending", "paid", "paid", "shipped", "delivered", "delivered", "cancelled"]
@@ -1063,20 +1174,21 @@ def generate_orders(products, num_orders=300):
         customer_id = random.choice(customer_ids)
         status = random.choice(order_statuses)
         num_items = random.randint(1, 4)
-        selected_products = random.sample(products, min(num_items, len(products)))
+        selected_skus = random.sample(skus, min(num_items, len(skus)))
 
         total_amount = 0
         items = []
-        for prod in selected_products:
+        for sku in selected_skus:
             qty = random.randint(1, 3)
-            amount = prod["price"] * qty
+            amount = sku["price"] * qty
             total_amount += amount
             items.append({
                 "id": None,
-                "order_id": None,  # filled after insert
-                "product_id": str(prod["id"]),
+                "order_id": None,
+                "product_id": str(sku["product_id"]),
+                "sku_id": sku["id"],
                 "quantity": qty,
-                "unit_price": prod["price"],
+                "unit_price": sku["price"],
                 "amount": amount,
                 "created_at": now_ts,
                 "updated_at": now_ts,
@@ -1114,19 +1226,14 @@ def clean_database(connection):
         "cart_items",
         "refunds",
         "payment_transactions",
-        "auth_tokens",
-        "user_infos",
-        "user_identities",
-        "user_roles",
-        "role_permissions",
         "orders",
         "carts",
         "payments",
         "notifications",
-        "login_histories",
-        "permissions",
-        "roles",
-        "users",
+        "sku_attributes",
+        "skus",
+        "attribute_values",
+        "attribute_attributes",
         "inventories",
         "product_categories",
         "products",
@@ -1253,45 +1360,65 @@ def main():
         clean_database(connection)
         print("Existing data cleaned.\n")
 
-    # Seed RBAC data (roles + permissions) — required for user registration
-    seed_rbac_data(connection)
+    # Seed RBAC data — skip if already exists
+    try:
+        seed_rbac_data(connection)
+    except Exception:
+        print("RBAC data already exists, skipping seed.")
 
-    # Generate data
+    # ── Generate SPUs (products table) ──────────────────────────────────
     categories = generate_categories()
-    products = generate_products(categories)
+    spus = generate_products(categories)
 
-    # Insert data into database
     insert_categories(connection, categories)
-    insert_products(connection, products)
+    insert_products(connection, spus)
+    insert_attributes(connection)
 
-    # Insert many-to-many product-category relationships
-    product_categories = generate_product_categories_links(products, categories)
+    # ── Generate SKUs from SPUs ─────────────────────────────────────────
+    skus = generate_skus(spus)
+    insert_skus(connection, skus)
+    insert_sku_attributes(connection, skus)
+
+    # ── Product-category associations ───────────────────────────────────
+    product_categories = generate_product_categories_links(spus, categories)
+    if not product_categories:
+        print("WARN: product_categories empty, assigning random categories...")
+        valid_cats = [c for c in categories if c.get("id") is not None]
+        for spu in spus:
+            if spu.get("id") is None:
+                continue
+            cat = random.choice(valid_cats)
+            product_categories.append({
+                "product_id": spu["id"], "category_id": cat["id"],
+            })
     insert_product_categories(connection, product_categories)
 
-    inventory = generate_inventory(products)
+    # ── Inventory (per SKU) ─────────────────────────────────────────────
+    inventory = generate_inventory(skus)
     insert_inventory(connection, inventory)
 
-    # Generate and insert orders (after products have IDs assigned)
-    orders = generate_orders(products)
+    # ── Orders (reference SKUs) ─────────────────────────────────────────
+    orders = generate_orders(skus)
     insert_orders(connection, orders)
     order_items = generate_order_items(orders)
     insert_order_items(connection, order_items)
 
-    # Close the database connection
+    # Close connection
     connection.close()
 
-    # Optionally save to JSON files as well
+    # ── Save to JSON ────────────────────────────────────────────────────
     output_dir = os.path.join(os.path.dirname(__file__), "..", "sample_data")
     os.makedirs(output_dir, exist_ok=True)
 
     save_to_json(categories, os.path.join(output_dir, "categories.json"))
-    save_to_json(products, os.path.join(output_dir, "products.json"))
+    save_to_json(spus, os.path.join(output_dir, "spus.json"))
+    save_to_json(skus, os.path.join(output_dir, "skus.json"))
     save_to_json(inventory, os.path.join(output_dir, "inventory.json"))
 
-    # Also create a combined file
     combined_data = {
         "categories": categories,
-        "products": products,
+        "spus": spus,
+        "skus": skus,
         "product_categories": product_categories,
         "inventory": inventory,
         "orders": orders,
@@ -1303,7 +1430,8 @@ def main():
     print("\nSample data generation and insertion complete!")
     print(f"Inserted:")
     print(f"- {len(categories)} categories")
-    print(f"- {len(products)} products")
+    print(f"- {len(spus)} SPUs")
+    print(f"- {len(skus)} SKUs")
     print(f"- {len(product_categories)} product-category associations")
     print(f"- {len(inventory)} inventory records")
     print(f"- {len(orders)} orders")
