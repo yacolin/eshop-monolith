@@ -153,7 +153,7 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		LoginHistory: userRepos.NewLoginHistoryRepository(db),
 		Role:         userRepos.NewRoleRepository(db),
 		Permission:   userRepos.NewPermissionRepository(db),
-		Cart:         cartRepos.NewCartRepository(db),
+		Cart:         cartRepos.NewCachedCartRepository(cartRepos.NewCartRepository(db), redisClient, db),
 		Payment:      paymentRepos.NewPaymentRepository(db),
 	}
 }
