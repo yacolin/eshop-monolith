@@ -1234,6 +1234,7 @@ def clean_database(connection):
         "skus",
         "attribute_values",
         "attribute_attributes",
+        "spus",
         "inventories",
         "product_categories",
         "products",
