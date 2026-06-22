@@ -24,7 +24,7 @@ const (
 //   取消(释放):    reserved -= N               — 退坑, 库存归还
 type Inventory struct {
 	ID        int64  `json:"id"`
-	ProductID int64  `json:"product_id"`
+	SkuID int64  `json:"sku_id"`
 	Quantity  int    `json:"quantity"`   // 实际物理库存。卖出一件减一
 	Status    string `json:"status"`     // 库存状态: instock / lowstock / outofstock
 	Reserved  int    `json:"reserved"`   // 已预订(下单未支付)数量。下单+1, 支付/取消-1

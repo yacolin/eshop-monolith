@@ -8,10 +8,9 @@ import (
 
 // CachedProductItem 精简缓存 DTO，仅包含列表展示所需字段
 type CachedProductItem struct {
-	ID    int64  `json:"id"`
-	Name  string `json:"name"`
-	Price int64  `json:"price"`
-	SKU   string `json:"sku"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	MinPrice int64  `json:"min_price"`
 }
 
 // ProductListQuery 商品列表查询参数
@@ -34,8 +33,6 @@ type ProductListResult struct {
 type CreateProductDTO struct {
 	Name        string  `json:"name" binding:"required,max=255"`
 	Description string  `json:"description" binding:"max=65535"`
-	Price       int64   `json:"price" binding:"required,gt=0"`
-	SKU         string  `json:"sku" binding:"required,max=100"`
 	CategoryIDs []int64 `json:"category_ids" binding:"omitempty,dive,gt=0"`
 }
 
@@ -43,7 +40,6 @@ type CreateProductDTO struct {
 type UpdateProductDTO struct {
 	Name        *string `json:"name" binding:"omitempty,max=255"`
 	Description *string `json:"description" binding:"omitempty,max=65535"`
-	Price       *int64  `json:"price" binding:"omitempty,gt=0"`
 	CategoryIDs []int64 `json:"category_ids" binding:"omitempty,dive,gt=0"`
 }
 
@@ -53,14 +49,33 @@ type ProductCategoryBrief struct {
 	Name string `json:"name"`
 }
 
+// ProductResponse 产品简要响应
+type ProductResponse struct {
+	ID          int64           `json:"id"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	MinPrice    int64           `json:"min_price"`
+	CreatedAt   utils.Timestamp `json:"created_at"`
+	UpdatedAt   utils.Timestamp `json:"updated_at"`
+}
+
+// ProductToResponse 将领域模型转换为响应 DTO
+func ProductToResponse(p *models.Product) ProductResponse {
+	return ProductResponse{
+		ID: p.ID, Name: p.Name, Description: p.Description,
+		MinPrice:  p.MinPrice,
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
+
 // ProductDetailDTO 产品详情（聚合产品和库存信息，字段平摊）
 type ProductDetailDTO struct {
 	ID          int64                  `json:"id"`
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
-	Price       int64                  `json:"price"`
-	SKU         string                 `json:"sku"`
+	MinPrice    int64                  `json:"min_price"`
 	Categories  []ProductCategoryBrief `json:"categories"`
+	Skus        []SkuResponse          `json:"skus,omitempty"`
 	Quantity    int                    `json:"quantity"`
 	Status      string                 `json:"status"`
 	Reserved    int                    `json:"reserved"`
@@ -69,13 +84,18 @@ type ProductDetailDTO struct {
 	UpdatedAt   utils.Timestamp        `json:"updated_at"`
 }
 
+// ProductWithSkusResponse 产品详情（含 SKU 列表）
+type ProductWithSkusResponse struct {
+	Product ProductResponse `json:"product"`
+	Skus    []SkuResponse   `json:"skus"`
+}
+
 // ProductWithCategoryDTO 产品列表项（含分类信息）
 type ProductWithCategoryDTO struct {
 	ID          int64                  `json:"id"`
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
-	Price       int64                  `json:"price"`
-	SKU         string                 `json:"sku"`
+	MinPrice    int64                  `json:"min_price"`
 	Categories  []ProductCategoryBrief `json:"categories"`
 	CreatedAt   utils.Timestamp        `json:"created_at"`
 	UpdatedAt   utils.Timestamp        `json:"updated_at"`

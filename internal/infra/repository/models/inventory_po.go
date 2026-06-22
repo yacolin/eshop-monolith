@@ -11,7 +11,7 @@ import (
 // InventoryPO 库存持久化对象
 type InventoryPO struct {
 	ID        int64          `gorm:"primaryKey;autoIncrement"`
-	ProductID int64          `gorm:"uniqueIndex"`
+	SkuID int64          `gorm:"uniqueIndex"`
 	Quantity  int            `gorm:"not null;default:0"`
 	Status    string         `gorm:"type:varchar(20);not null;default:'instock'"`
 	Reserved  int            `gorm:"not null;default:0"`
@@ -42,7 +42,7 @@ func (po *InventoryPO) BeforeCreate(tx *gorm.DB) error {
 func (po *InventoryPO) ToDomain() *domain.Inventory {
 	return &domain.Inventory{
 		ID:        po.ID,
-		ProductID: po.ProductID,
+		SkuID: po.SkuID,
 		Quantity:  po.Quantity,
 		Status:    po.Status,
 		Reserved:  po.Reserved,
@@ -55,7 +55,7 @@ func (po *InventoryPO) ToDomain() *domain.Inventory {
 func InventoryFromDomain(inv *domain.Inventory) *InventoryPO {
 	return &InventoryPO{
 		ID:        inv.ID,
-		ProductID: inv.ProductID,
+		SkuID: inv.SkuID,
 		Quantity:  inv.Quantity,
 		Status:    inv.Status,
 		Reserved:  inv.Reserved,

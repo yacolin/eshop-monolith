@@ -131,6 +131,39 @@ func (h *ProductHandler) GetProductWithCategory(c *gin.Context) {
 	response.Success(c, product)
 }
 
+// GetProductWithSkus 获取产品详情（含所有 SKU）
+// @Summary 获取产品详情（含 SKU）
+// @Tags products
+// @Produce json
+// @Param id path int true "产品ID"
+// @Success 200 {object} response.Response{data=dto.ProductWithSkusResponse}
+// @Router /api/v1/products/{id}/detail [get]
+func (h *ProductHandler) GetProductWithSkus(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	product, err := h.productService.GetProductByID(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	skus, err := h.productService.GetSkusByProductID(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	skuResponses := make([]dto.SkuResponse, len(skus))
+	for i, sku := range skus {
+		skuResponses[i] = dto.SkuToResponse(&sku)
+	}
+	response.Success(c, dto.ProductWithSkusResponse{
+		Product: dto.ProductToResponse(product),
+		Skus:    skuResponses,
+	})
+}
+
 // GetProductDetail 获取产品详情（聚合库存信息）
 // @Summary 获取产品详情（含库存）
 // @Description 根据产品ID获取产品详情，包含产品信息和库存信息

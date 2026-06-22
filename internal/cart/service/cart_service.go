@@ -81,7 +81,7 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 	}
 
 	// 检查库存
-	stock, err := s.inventoryService.GetInventoryByProductID(ctx, req.ProductID)
+	stock, err := s.inventoryService.GetInventoryBySkuID(ctx, req.ProductID)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 			CartID:    cart.ID,
 			ProductID: req.ProductID,
 			Quantity:  req.Quantity,
-			Price:     product.Price,
+			Price:     product.MinPrice,
 			SKU:       req.SKU,
 		}
 		err = s.cartRepo.AddItem(ctx, newItem)
@@ -134,7 +134,7 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 			UserID:    cart.UserID,
 			ProductID: req.ProductID,
 			Quantity:  req.Quantity,
-			Price:     product.Price,
+			Price:     product.MinPrice,
 		})
 	}
 
@@ -173,7 +173,7 @@ func (s *CartService) UpdateCartItem(ctx context.Context, userID int64, sessionI
 	}
 
 	// 检查库存
-	stock, err := s.inventoryService.GetInventoryByProductID(ctx, targetItem.ProductID)
+	stock, err := s.inventoryService.GetInventoryBySkuID(ctx, targetItem.ProductID)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (s *CartService) toCartResponse(ctx context.Context, cart *models.Cart) (*d
 		}
 
 		// 获取库存信息
-		stock, err := s.inventoryService.GetInventoryByProductID(ctx, item.ProductID)
+		stock, err := s.inventoryService.GetInventoryBySkuID(ctx, item.ProductID)
 		if err != nil {
 			continue
 		}

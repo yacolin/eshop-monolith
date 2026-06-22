@@ -119,6 +119,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		invRoutes.RegisterCategoryRoutes(v1, repos, bus)
 		productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, bus)
 		invRoutes.RegisterInventoryRoutes(v1, repos, bus)
+		invRoutes.RegisterSkuRoutes(v1, repos, db, bus)
 
 		// 优惠券系统（需先于订单初始化，用于结算时优惠校验）
 		couponSvc := couponRoutes.RegisterCouponRoutes(v1, repos, db, bus)

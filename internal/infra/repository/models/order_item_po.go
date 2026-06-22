@@ -11,6 +11,7 @@ import (
 type OrderItemPO struct {
 	ID        int64          `gorm:"primaryKey;autoIncrement"`
 	OrderID   int64          `gorm:"type:bigint;not null;index"`
+	SkuID     int64          `gorm:"index;default:0"`
 	ProductID string         `gorm:"type:varchar(36);not null"`
 	Quantity  int            `gorm:"not null"`
 	UnitPrice int64          `gorm:"type:bigint;not null"`
@@ -26,6 +27,7 @@ func (po *OrderItemPO) ToDomain() *domain.OrderItem {
 	return &domain.OrderItem{
 		ID:        po.ID,
 		OrderID:   po.OrderID,
+		SkuID:     po.SkuID,
 		ProductID: po.ProductID,
 		Quantity:  po.Quantity,
 		UnitPrice: po.UnitPrice,
@@ -37,6 +39,7 @@ func OrderItemFromDomain(item *domain.OrderItem) *OrderItemPO {
 	return &OrderItemPO{
 		ID:        item.ID,
 		OrderID:   item.OrderID,
+		SkuID:     item.SkuID,
 		ProductID: item.ProductID,
 		Quantity:  item.Quantity,
 		UnitPrice: item.UnitPrice,

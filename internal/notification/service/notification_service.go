@@ -277,9 +277,9 @@ func (s *NotificationService) handleInventoryLow(event any) {
 	}
 	_, err := s.CreateNotification(context.Background(), 0,
 		"库存预警",
-		fmt.Sprintf("商品 %s 库存不足，当前库存 %d，阈值 %d", e.ProductID, e.Quantity, e.Threshold),
+		fmt.Sprintf("商品 %s 库存不足，当前库存 %d，阈值 %d", e.SkuID, e.Quantity, e.Threshold),
 		models.NotificationTypeSystem)
 	if err != nil {
-		logger.Error("创建库存预警通知失败", "product_id", e.ProductID, "error", err)
+		logger.Error("创建库存预警通知失败", "sku_id", e.SkuID, "error", err)
 	}
 }

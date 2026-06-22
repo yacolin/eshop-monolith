@@ -19,6 +19,7 @@ func (Cart) TableName() string {
 // CartItem 购物车项模型
 type CartItem struct {
 	ID        int64     `json:"id"`
+	SkuID     int64     `json:"sku_id"`
 	CartID    int64     `json:"cart_id"`
 	ProductID int64     `json:"product_id"`
 	Quantity  int       `json:"quantity"`

@@ -69,6 +69,8 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	// 自动迁移表结构
 	if err := db.AutoMigrate(
 		&repoModels.CategoryPO{},
+		&repoModels.AttributePO{},
+		&repoModels.AttributeValuePO{},
 		&repoModels.ProductPO{},
 		&repoModels.InventoryPO{},
 
@@ -100,7 +102,10 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&repoModels.PromotionPO{},
 		&repoModels.PromotionProductPO{},
 
-			&repoModels.NotificationPO{},
+			&repoModels.SkuPO{},
+		&repoModels.SkuAttributePO{},
+
+		&repoModels.NotificationPO{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
@@ -136,6 +141,7 @@ type Repositories struct {
 	Permission   userRepos.IpermissionRepository
 	Cart         cartRepos.IcartRepository
 	Payment      paymentRepos.IPaymentRepository
+	Sku          invRepos.IskuRepository
 }
 
 // // NewRepositories 创建仓储集合
@@ -155,5 +161,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Permission:   userRepos.NewPermissionRepository(db),
 		Cart:         cartRepos.NewCachedCartRepository(cartRepos.NewCartRepository(db), redisClient, db),
 		Payment:      paymentRepos.NewPaymentRepository(db),
+		Sku:          invRepos.NewSkuRepository(db),
 	}
 }

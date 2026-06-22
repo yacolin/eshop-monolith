@@ -4,7 +4,6 @@ package events
 type ProductCreatedEvent struct {
 	ProductID  int64  `json:"product_id"`
 	Name       string `json:"name"`
-	Price      int64  `json:"price"`
 	CategoryID int64  `json:"category_id"`
 }
 
@@ -12,7 +11,6 @@ type ProductCreatedEvent struct {
 type ProductUpdatedEvent struct {
 	ProductID  int64  `json:"product_id"`
 	Name       string `json:"name"`
-	Price      int64  `json:"price"`
 	CategoryID int64  `json:"category_id"`
 }
 

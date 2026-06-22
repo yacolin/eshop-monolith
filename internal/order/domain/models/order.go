@@ -42,6 +42,7 @@ func (Order) TableName() string {
 type OrderItem struct {
 	ID        int64  `json:"id"`
 	OrderID   int64  `json:"order_id"`
+	SkuID     int64  `json:"sku_id"`
 	ProductID string `json:"product_id"`
 	Quantity  int    `json:"quantity"`
 	UnitPrice int64  `json:"unit_price"` // 单价，单位：分

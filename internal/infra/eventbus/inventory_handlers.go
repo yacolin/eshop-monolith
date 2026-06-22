@@ -18,7 +18,7 @@ func handleInventoryReserved(event interface{}) {
 	if !ok {
 		return
 	}
-	logger.Info("Inventory reserved", "product_id", e.ProductID, "quantity", e.Quantity)
+	logger.Info("Inventory reserved", "sku_id", e.SkuID, "quantity", e.Quantity)
 	// 这里可以添加库存预警检查等逻辑
 }
 
@@ -28,7 +28,7 @@ func handleInventoryReleased(event interface{}) {
 	if !ok {
 		return
 	}
-	logger.Info("Inventory released", "product_id", e.ProductID, "quantity", e.Quantity)
+	logger.Info("Inventory released", "sku_id", e.SkuID, "quantity", e.Quantity)
 	// 这里可以添加库存更新逻辑
 }
 
@@ -38,6 +38,6 @@ func handleInventoryLow(event interface{}) {
 	if !ok {
 		return
 	}
-	logger.Warn("Inventory low", "product_id", e.ProductID, "quantity", e.Quantity, "threshold", e.Threshold)
+	logger.Warn("Inventory low", "sku_id", e.SkuID, "quantity", e.Quantity, "threshold", e.Threshold)
 	// 这里可以添加补货提醒等逻辑
 }

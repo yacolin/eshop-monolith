@@ -28,8 +28,8 @@ func NewInventoryService(repo repositories.IinventoryRepository, bus *eventbus.B
 
 // CreateInventoryRequest 创建库存请求
 type CreateInventoryRequest struct {
-	ProductID int64 `json:"product_id"`
-	Quantity  int   `json:"quantity"`
+	SkuID    int64 `json:"sku_id"`
+	Quantity int   `json:"quantity"`
 }
 
 // UpdateInventoryRequest 更新库存请求
@@ -42,7 +42,7 @@ func (s *InventoryService) CreateInventory(ctx context.Context, req *dto.CreateI
 
 	// 创建库存
 	inv := &models.Inventory{
-		ProductID: req.ProductID,
+		SkuID:     req.SkuID,
 		Quantity:  req.Quantity,
 		Threshold: req.Threshold,
 	}
@@ -57,9 +57,9 @@ func (s *InventoryService) CreateInventory(ctx context.Context, req *dto.CreateI
 	return inv, nil
 }
 
-// GetInventoryByProductID 根据产品ID获取库存
-func (s *InventoryService) GetInventoryByProductID(ctx context.Context, productID int64) (*models.Inventory, error) {
-	inventory, err := s.repo.FindInventoryByProductID(ctx, productID)
+// GetInventoryBySkuID 根据SKU ID获取库存
+func (s *InventoryService) GetInventoryBySkuID(ctx context.Context, skuID int64) (*models.Inventory, error) {
+	inventory, err := s.repo.FindInventoryBySkuID(ctx, skuID)
 	if err != nil {
 		return nil, errcode.ErrNotFound
 	}
@@ -67,9 +67,9 @@ func (s *InventoryService) GetInventoryByProductID(ctx context.Context, productI
 }
 
 // UpdateInventory 更新库存
-func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64, req *dto.UpdateInventoryDTO) (*models.Inventory, error) {
+func (s *InventoryService) UpdateInventory(ctx context.Context, skuID int64, req *dto.UpdateInventoryDTO) (*models.Inventory, error) {
 	// 获取库存
-	inv, err := s.repo.FindInventoryByProductID(ctx, productID)
+	inv, err := s.repo.FindInventoryBySkuID(ctx, skuID)
 	if err != nil {
 		return nil, err
 	}
@@ -94,14 +94,14 @@ func (s *InventoryService) UpdateInventory(ctx context.Context, productID int64,
 
 // ReserveInventory 预占库存
 func (s *InventoryService) ReserveInventory(ctx context.Context, req *dto.ReserveInventoryDTO) error {
-	if err := s.repo.ReserveInventory(ctx, req.ProductID, req.Quantity); err != nil {
+	if err := s.repo.ReserveInventory(ctx, req.SkuID, req.Quantity); err != nil {
 		return err
 	}
 
 	// 发布库存预占事件
 	s.bus.Publish(events.InventoryReservedEvent{
-		ProductID: fmt.Sprintf("%d", req.ProductID),
-		Quantity:  req.Quantity,
+		SkuID:    fmt.Sprintf("%d", req.SkuID),
+		Quantity: req.Quantity,
 	})
 
 	return nil
@@ -109,22 +109,22 @@ func (s *InventoryService) ReserveInventory(ctx context.Context, req *dto.Reserv
 
 // ReleaseInventory 释放库存
 func (s *InventoryService) ReleaseInventory(ctx context.Context, req *dto.ReleaseInventoryDTO) error {
-	if err := s.repo.ReleaseInventory(ctx, req.ProductID, req.Quantity); err != nil {
+	if err := s.repo.ReleaseInventory(ctx, req.SkuID, req.Quantity); err != nil {
 		return err
 	}
 
 	// 发布库存释放事件
 	s.bus.Publish(events.InventoryReleasedEvent{
-		ProductID: fmt.Sprintf("%d", req.ProductID),
-		Quantity:  req.Quantity,
+		SkuID:    fmt.Sprintf("%d", req.SkuID),
+		Quantity: req.Quantity,
 	})
 
 	return nil
 }
 
 // CheckInventory 检查库存
-func (s *InventoryService) CheckInventory(ctx context.Context, productID int64) (*models.Inventory, error) {
-	return s.repo.FindInventoryByProductID(ctx, productID)
+func (s *InventoryService) CheckInventory(ctx context.Context, skuID int64) (*models.Inventory, error) {
+	return s.repo.FindInventoryBySkuID(ctx, skuID)
 }
 
 // ListInventories 列出所有库存

@@ -14,7 +14,7 @@ import (
 
 func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) *service.ProductService {
 	productRepo := repositories.NewProductRepository(db)
-	productService := service.NewProductService(productRepo, repos.Inventory, bus, db, repos.Redis)
+	productService := service.NewProductService(productRepo, repos.Inventory, repos.Sku, bus, db, repos.Redis)
 	productHandler := handlers.NewProductHandler(productService)
 
 	products := v1.Group("/products")
@@ -26,7 +26,7 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 		products.GET("/cache/:id", productHandler.GetCachedProduct)
 		products.POST("/cache/warmup", productHandler.WarmupCache)
 		products.GET("/:id", productHandler.GetProduct)
-		products.GET("/:id/detail", productHandler.GetProductDetail)
+		products.GET("/:id/detail", productHandler.GetProductWithSkus)
 		products.GET("/:id/enriched", productHandler.GetProductWithCategory)
 		products.GET("/enriched", productHandler.ListProductsWithCategory)
 		products.GET("/category/:category_id", productHandler.ListProductsByCategory)

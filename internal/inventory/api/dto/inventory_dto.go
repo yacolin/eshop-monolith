@@ -31,7 +31,7 @@ type InventoryListResult struct {
 //
 // 可用库存 = quantity - reserved (决定能否继续下单)
 type CreateInventoryDTO struct {
-	ProductID int64 `json:"product_id" binding:"required"`
+	SkuID int64 `json:"sku_id" binding:"required"`
 	Quantity  int   `json:"quantity" binding:"required,min=0"`  // 初始物理库存量
 	Threshold int   `json:"threshold" binding:"min=0"`          // 低库存预警阈值(默认0)
 }
@@ -53,7 +53,7 @@ type UpdateInventoryDTO struct {
 //    效果:  可用库存减少, 但实际库存不变。
 //    回滚:  取消订单时由 ReleaseInventoryDTO 释放。
 type ReserveInventoryDTO struct {
-	ProductID int64 `json:"product_id" binding:"required"`
+	SkuID int64 `json:"sku_id" binding:"required"`
 	Quantity  int   `json:"quantity" binding:"required,min=1"` // 预占数量
 }
 
@@ -64,7 +64,7 @@ type ReserveInventoryDTO struct {
 //    效果:  可用库存恢复, 实际库存不变。
 //    触发:  订单取消/退款时调用。
 type ReleaseInventoryDTO struct {
-	ProductID int64 `json:"product_id" binding:"required"`
+	SkuID int64 `json:"sku_id" binding:"required"`
 	Quantity  int   `json:"quantity" binding:"required,min=1"` // 释放数量
 }
 
@@ -75,6 +75,6 @@ type ReleaseInventoryDTO struct {
 //   负数: 减少库存(如报损、盘亏)
 //   注意: 订单支付流程不经过此接口, 走 DeductInventory。
 type AdjustInventoryDTO struct {
-	ProductID int64 `json:"product_id" binding:"required"`
+	SkuID int64 `json:"sku_id" binding:"required"`
 	Quantity  int   `json:"quantity" binding:"required"` // 正数增加, 负数减少
 }

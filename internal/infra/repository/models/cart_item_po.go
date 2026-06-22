@@ -10,6 +10,7 @@ import (
 // CartItemPO 购物车项持久化对象
 type CartItemPO struct {
 	ID        int64     `gorm:"primaryKey;autoIncrement"`
+	SkuID     int64     `gorm:"index;default:0"`
 	CartID    int64     `gorm:"index;not null"`
 	ProductID int64     `gorm:"index;not null"`
 	Quantity  int       `gorm:"not null;default:1"`
@@ -24,6 +25,7 @@ func (CartItemPO) TableName() string { return "cart_items" }
 func (po *CartItemPO) ToDomain() *cartDomain.CartItem {
 	return &cartDomain.CartItem{
 		ID:        po.ID,
+		SkuID:     po.SkuID,
 		CartID:    po.CartID,
 		ProductID: po.ProductID,
 		Quantity:  po.Quantity,
@@ -37,6 +39,7 @@ func (po *CartItemPO) ToDomain() *cartDomain.CartItem {
 func CartItemFromDomain(item *cartDomain.CartItem) *CartItemPO {
 	return &CartItemPO{
 		ID:        item.ID,
+		SkuID:     item.SkuID,
 		CartID:    item.CartID,
 		ProductID: item.ProductID,
 		Quantity:  item.Quantity,

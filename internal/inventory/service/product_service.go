@@ -98,6 +98,7 @@ func (h *hotKeyCounter) reset(id int64) {
 type ProductService struct {
 	repo          repositories.IproductRepository
 	inventoryRepo repositories.IinventoryRepository
+	skuRepo       repositories.IskuRepository
 	bus           *eventbus.Bus
 	db            *gorm.DB
 	rdb           *redis.Client
@@ -111,6 +112,7 @@ type ProductService struct {
 func NewProductService(
 	repo repositories.IproductRepository,
 	inventoryRepo repositories.IinventoryRepository,
+	skuRepo repositories.IskuRepository,
 	bus *eventbus.Bus,
 	db *gorm.DB,
 	rdb *redis.Client,
@@ -118,6 +120,7 @@ func NewProductService(
 	return &ProductService{
 		repo:          repo,
 		inventoryRepo: inventoryRepo,
+		skuRepo:       skuRepo,
 		bus:           bus,
 		db:            db,
 		rdb:           rdb,
@@ -157,10 +160,9 @@ func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 
 	for _, p := range products {
 		item := dto.CachedProductItem{
-			ID:    p.ID,
-			Name:  p.Name,
-			Price: p.Price,
-			SKU:   p.SKU,
+			ID:       p.ID,
+			Name:     p.Name,
+			MinPrice: p.MinPrice,
 		}
 		items = append(items, item)
 		ids = append(ids, p.ID)
@@ -255,10 +257,9 @@ func (s *ProductService) ListCachedProductsByCursor(ctx context.Context, q dto.P
 		items := make([]dto.CachedProductItem, len(dbResult.List))
 		for i, p := range dbResult.List {
 			items[i] = dto.CachedProductItem{
-				ID:    p.ID,
-				Name:  p.Name,
-				Price: p.Price,
-				SKU:   p.SKU,
+				ID:       p.ID,
+				Name:     p.Name,
+				MinPrice: p.MinPrice,
 			}
 		}
 		return &dto.ProductCacheCursorResult{
@@ -340,10 +341,9 @@ func (s *ProductService) GetCachedProductByID(ctx context.Context, id int64) (*d
 				return nil, errcode.ErrProductNotFound
 			}
 			dbItem = &dto.CachedProductItem{
-				ID:    product.ID,
-				Name:  product.Name,
-				Price: product.Price,
-				SKU:   product.SKU,
+				ID:       product.ID,
+				Name:     product.Name,
+				MinPrice: product.MinPrice,
 			}
 			s.localCache.setSingle(id, dbItem)
 			s.metrics.observeDuration("db", time.Since(start).Seconds())
@@ -394,7 +394,7 @@ func (s *ProductService) GetProductWithInventory(ctx context.Context, id int64) 
 	}()
 
 	go func() {
-		inv, err := s.inventoryRepo.FindInventoryByProductID(ctx, id)
+		inv, err := s.inventoryRepo.FindInventoryBySkuID(ctx, id)
 		invCh <- invResult{inventory: inv, err: err}
 	}()
 
@@ -408,8 +408,7 @@ func (s *ProductService) GetProductWithInventory(ctx context.Context, id int64) 
 		ID:          pr.product.ID,
 		Name:        pr.product.Name,
 		Description: pr.product.Description,
-		Price:       pr.product.Price,
-		SKU:         pr.product.SKU,
+		MinPrice:    pr.product.MinPrice,
 		CreatedAt:   pr.product.CreatedAt,
 		UpdatedAt:   pr.product.UpdatedAt,
 	}
@@ -491,8 +490,7 @@ func (s *ProductService) GetProductWithCategory(ctx context.Context, id int64) (
 		ID:          product.ID,
 		Name:        product.Name,
 		Description: product.Description,
-		Price:       product.Price,
-		SKU:         product.SKU,
+		MinPrice:    product.MinPrice,
 		CreatedAt:   product.CreatedAt,
 		UpdatedAt:   product.UpdatedAt,
 	}
@@ -516,8 +514,7 @@ func (s *ProductService) ListProductsWithCategory(ctx context.Context, q dto.Pro
 			ID:          p.ID,
 			Name:        p.Name,
 			Description: p.Description,
-			Price:       p.Price,
-			SKU:         p.SKU,
+			MinPrice:    p.MinPrice,
 			CreatedAt:   p.CreatedAt,
 			UpdatedAt:   p.UpdatedAt,
 		}
@@ -543,8 +540,6 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 	newProduct := &models.Product{
 		Name:        req.Name,
 		Description: req.Description,
-		Price:       req.Price,
-		SKU:         req.SKU,
 	}
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -578,7 +573,6 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 	s.bus.Publish(events.ProductCreatedEvent{
 		ProductID:  newProduct.ID,
 		Name:       newProduct.Name,
-		Price:      newProduct.Price,
 		CategoryID: categoryIDValue,
 	})
 
@@ -587,6 +581,11 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 
 func (s *ProductService) GetProductByID(ctx context.Context, id int64) (*models.Product, error) {
 	return s.repo.FindByID(ctx, id)
+}
+
+// GetSkusByProductID 根据产品ID查询所有SKU
+func (s *ProductService) GetSkusByProductID(ctx context.Context, productID int64) ([]models.Sku, error) {
+	return s.skuRepo.FindByProductID(ctx, productID)
 }
 
 func (s *ProductService) GetProductBySKU(ctx context.Context, sku string) (*models.Product, error) {
@@ -626,9 +625,6 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 	if req.Description != nil {
 		existingProduct.Description = *req.Description
 	}
-	if req.Price != nil {
-		existingProduct.Price = *req.Price
-	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(existingProduct).Error; err != nil {
@@ -663,7 +659,6 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 	s.bus.Publish(events.ProductUpdatedEvent{
 		ProductID:  existingProduct.ID,
 		Name:       existingProduct.Name,
-		Price:      existingProduct.Price,
 		CategoryID: categoryIDValue,
 	})
 

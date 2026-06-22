@@ -30,14 +30,14 @@ func recalcStatus(po *models.InventoryPO) {
 type IinventoryRepository interface {
 	// CreateInventory 创建库存
 	CreateInventory(ctx context.Context, inv *invModels.Inventory) error
-	// FindInventoryByProductID 根据产品ID查询库存
-	FindInventoryByProductID(ctx context.Context, productID int64) (*invModels.Inventory, error)
+	// FindInventoryBySkuID 根据SKU ID查询库存
+	FindInventoryBySkuID(ctx context.Context, skuID int64) (*invModels.Inventory, error)
 	// ReserveInventory 预占库存
-	ReserveInventory(ctx context.Context, productID int64, quantity int) error
+	ReserveInventory(ctx context.Context, skuID int64, quantity int) error
 	// ReleaseInventory 释放库存
-	ReleaseInventory(ctx context.Context, productID int64, quantity int) error
+	ReleaseInventory(ctx context.Context, skuID int64, quantity int) error
 	// DeductInventory 扣减库存
-	DeductInventory(ctx context.Context, productID int64, quantity int) error
+	DeductInventory(ctx context.Context, skuID int64, quantity int) error
 	// UpdateInventory 更新库存
 	UpdateInventory(ctx context.Context, inv *invModels.Inventory) error
 	// ListInventories 列出所有库存
@@ -75,10 +75,10 @@ func (r *InventoryRepository) GetInventoryByID(ctx context.Context, id string) (
 	return po.ToDomain(), nil
 }
 
-// FindInventoryByProductID 根据产品ID查询库存
-func (r *InventoryRepository) FindInventoryByProductID(ctx context.Context, productID int64) (*invModels.Inventory, error) {
+// FindInventoryBySkuID 根据SKU ID查询库存
+func (r *InventoryRepository) FindInventoryBySkuID(ctx context.Context, skuID int64) (*invModels.Inventory, error) {
 	var po models.InventoryPO
-	err := r.db.WithContext(ctx).First(&po, "product_id = ?", productID).Error
+	err := r.db.WithContext(ctx).First(&po, "sku_id = ?", skuID).Error
 	if err != nil {
 		return nil, err
 	}
@@ -86,11 +86,11 @@ func (r *InventoryRepository) FindInventoryByProductID(ctx context.Context, prod
 }
 
 // ReserveInventory 预占库存
-func (r *InventoryRepository) ReserveInventory(ctx context.Context, productID int64, quantity int) error {
+func (r *InventoryRepository) ReserveInventory(ctx context.Context, skuID int64, quantity int) error {
 	// 使用事务保证原子性
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var po models.InventoryPO
-		if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
+		if err := tx.First(&po, "sku_id = ?", skuID).Error; err != nil {
 			return err
 		}
 
@@ -107,11 +107,11 @@ func (r *InventoryRepository) ReserveInventory(ctx context.Context, productID in
 }
 
 // ReleaseInventory 释放库存
-func (r *InventoryRepository) ReleaseInventory(ctx context.Context, productID int64, quantity int) error {
+func (r *InventoryRepository) ReleaseInventory(ctx context.Context, skuID int64, quantity int) error {
 	// 使用事务保证原子性
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var po models.InventoryPO
-		if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
+		if err := tx.First(&po, "sku_id = ?", skuID).Error; err != nil {
 			return err
 		}
 
@@ -128,9 +128,9 @@ func (r *InventoryRepository) ReleaseInventory(ctx context.Context, productID in
 }
 
 // ReserveWithTx 在已有事务内预占库存（不自行提交/回滚）
-func (r *InventoryRepository) ReserveWithTx(tx *gorm.DB, productID int64, quantity int) error {
+func (r *InventoryRepository) ReserveWithTx(tx *gorm.DB, skuID int64, quantity int) error {
 	var po models.InventoryPO
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "product_id = ?", productID).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "sku_id = ?", skuID).Error; err != nil {
 		return err
 	}
 	if po.Quantity-po.Reserved < quantity {
@@ -142,9 +142,9 @@ func (r *InventoryRepository) ReserveWithTx(tx *gorm.DB, productID int64, quanti
 }
 
 // DeductWithTx 在已有事务内扣减库存（不自行提交/回滚）
-func (r *InventoryRepository) DeductWithTx(tx *gorm.DB, productID int64, quantity int) error {
+func (r *InventoryRepository) DeductWithTx(tx *gorm.DB, skuID int64, quantity int) error {
 	var po models.InventoryPO
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "product_id = ?", productID).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "sku_id = ?", skuID).Error; err != nil {
 		return err
 	}
 	if po.Reserved < quantity {
@@ -157,9 +157,9 @@ func (r *InventoryRepository) DeductWithTx(tx *gorm.DB, productID int64, quantit
 }
 
 // ReleaseWithTx 在已有事务内释放库存（不自行提交/回滚）
-func (r *InventoryRepository) ReleaseWithTx(tx *gorm.DB, productID int64, quantity int) error {
+func (r *InventoryRepository) ReleaseWithTx(tx *gorm.DB, skuID int64, quantity int) error {
 	var po models.InventoryPO
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "product_id = ?", productID).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "sku_id = ?", skuID).Error; err != nil {
 		return err
 	}
 	if po.Reserved < quantity {
@@ -171,9 +171,9 @@ func (r *InventoryRepository) ReleaseWithTx(tx *gorm.DB, productID int64, quanti
 }
 
 // RestoreWithTx 在已有事务内恢复已扣减库存（用于支付后退款场景）
-func (r *InventoryRepository) RestoreWithTx(tx *gorm.DB, productID int64, quantity int) error {
+func (r *InventoryRepository) RestoreWithTx(tx *gorm.DB, skuID int64, quantity int) error {
 	var po models.InventoryPO
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "product_id = ?", productID).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&po, "sku_id = ?", skuID).Error; err != nil {
 		return err
 	}
 	po.Quantity += quantity
@@ -190,11 +190,11 @@ func (r *InventoryRepository) UpdateInventory(ctx context.Context, inv *invModel
 }
 
 // DeductInventory 扣减库存（确认订单时使用）
-func (r *InventoryRepository) DeductInventory(ctx context.Context, productID int64, quantity int) error {
+func (r *InventoryRepository) DeductInventory(ctx context.Context, skuID int64, quantity int) error {
 	// 使用事务保证原子性
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var po models.InventoryPO
-		if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
+		if err := tx.First(&po, "sku_id = ?", skuID).Error; err != nil {
 			return err
 		}
 
@@ -212,11 +212,11 @@ func (r *InventoryRepository) DeductInventory(ctx context.Context, productID int
 }
 
 // IncreaseInventory 增加库存（取消订单或入库时使用）
-func (r *InventoryRepository) IncreaseInventory(ctx context.Context, productID int64, quantity int) error {
+func (r *InventoryRepository) IncreaseInventory(ctx context.Context, skuID int64, quantity int) error {
 	// 使用事务保证原子性
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var po models.InventoryPO
-		if err := tx.First(&po, "product_id = ?", productID).Error; err != nil {
+		if err := tx.First(&po, "sku_id = ?", skuID).Error; err != nil {
 			return err
 		}
 
@@ -294,7 +294,7 @@ func (r *InventoryRepository) CountInventories(ctx context.Context, q dto.Invent
 // applyQueryConditions 应用查询条件（不包含排序）
 func (r *InventoryRepository) applyQueryConditions(ctx context.Context, q dto.InventoryListQuery) *gorm.DB {
 	db := r.db.WithContext(ctx).Model(&models.InventoryPO{})
-	db = db.Joins("JOIN products ON inventories.product_id = products.id")
+	db = db.Joins("JOIN products ON inventories.sku_id = products.id")
 
 	if q.ProductName != "" {
 		db = db.Where("products.name LIKE ?", "%"+q.ProductName+"%")
