@@ -115,3 +115,29 @@ type ProductCursorResult struct {
 	NextCursor int64            `json:"next_cursor"`  // 下一页游标值（无更多数据时为 0）
 	HasMore    bool             `json:"has_more"`     // 是否还有更多数据
 }
+
+// ProductCacheCursorQuery 缓存游标查询参数
+type ProductCacheCursorQuery struct {
+	Cursor     int64  `form:"cursor"`               // 游标（上一页最后一条的 ID，首次查询传 0）
+	Size       int    `form:"size,default=20"`      // 每页条数
+	CategoryID *int64 `form:"category_id"`          // 分类ID筛选
+}
+
+func (q *ProductCacheCursorQuery) Normalize() {
+	if q.Size <= 0 {
+		q.Size = 20
+	}
+	if q.Size > 100 {
+		q.Size = 100
+	}
+	if q.Cursor < 0 {
+		q.Cursor = 0
+	}
+}
+
+// ProductCacheCursorResult 缓存游标结果
+type ProductCacheCursorResult struct {
+	List       []CachedProductItem `json:"list"`
+	NextCursor int64               `json:"next_cursor"`
+	HasMore    bool                `json:"has_more"`
+}

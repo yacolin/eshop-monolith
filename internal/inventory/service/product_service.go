@@ -49,6 +49,18 @@ local values = redis.call("MGET", unpack(keys))
 return {total, values}
 `)
 
+var zrangeByScoreScript = redis.NewScript(`
+	local ids = redis.call("ZRANGEBYSCORE", KEYS[1], "(" .. ARGV[1], "+inf", "LIMIT", 0, ARGV[2])
+	local total = redis.call("ZCARD", KEYS[1])
+	if #ids == 0 then return {total, {}, 0} end
+	local keys = {}
+	for i, id in ipairs(ids) do
+		keys[i] = ARGV[3] .. id
+	end
+	local values = redis.call("MGET", unpack(keys))
+	return {total, values, ids[#ids]}
+`)
+
 type hotKeyCounter struct {
 	mu       sync.Mutex
 	counters map[int64]*hotKeyEntry
@@ -224,6 +236,75 @@ func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductLi
 	listResult := &query.ListResult[dto.CachedProductItem]{List: products, Total: total}
 	s.localCache.setList(cacheKey, listResult)
 	return listResult, nil
+}
+
+// ListCachedProductsByCursor 基于游标从缓存查询产品列表（深分页优化）
+// 当指定 category_id 等筛选条件时自动降级到 DB 游标查询
+func (s *ProductService) ListCachedProductsByCursor(ctx context.Context, q dto.ProductCacheCursorQuery) (*dto.ProductCacheCursorResult, error) {
+	// 有筛选条件时降级到 DB 游标
+	if q.CategoryID != nil {
+		dbQ := dto.ProductCursorQuery{
+			Cursor:     q.Cursor,
+			Size:       q.Size,
+			CategoryID: q.CategoryID,
+		}
+		dbResult, err := s.ListProductsByCursor(ctx, dbQ)
+		if err != nil {
+			return nil, err
+		}
+		items := make([]dto.CachedProductItem, len(dbResult.List))
+		for i, p := range dbResult.List {
+			items[i] = dto.CachedProductItem{
+				ID:    p.ID,
+				Name:  p.Name,
+				Price: p.Price,
+				SKU:   p.SKU,
+			}
+		}
+		return &dto.ProductCacheCursorResult{
+			List:       items,
+			NextCursor: dbResult.NextCursor,
+			HasMore:    dbResult.HasMore,
+		}, nil
+	}
+
+	ctxBg := context.Background()
+	limit := q.Size + 1
+
+	result, err := zrangeByScoreScript.Run(ctxBg, s.rdb, []string{productCacheZSet}, q.Cursor, limit, productInfoPrefix).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	values, ok := result.([]any)
+	if !ok || len(values) != 3 {
+		return &dto.ProductCacheCursorResult{}, nil
+	}
+
+	items, _ := values[1].([]any)
+	products := make([]dto.CachedProductItem, 0, len(items))
+	for _, data := range items {
+		if data == nil {
+			continue
+		}
+		var p dto.CachedProductItem
+		if err := sonic.Unmarshal([]byte(data.(string)), &p); err != nil {
+			continue
+		}
+		products = append(products, p)
+	}
+
+	res := &dto.ProductCacheCursorResult{}
+	if len(products) > q.Size {
+		res.List = products[:q.Size]
+		res.NextCursor = products[q.Size-1].ID
+		res.HasMore = true
+	} else {
+		res.List = products
+		res.NextCursor = 0
+		res.HasMore = false
+	}
+	return res, nil
 }
 
 func (s *ProductService) GetCachedProductByID(ctx context.Context, id int64) (*dto.CachedProductItem, error) {

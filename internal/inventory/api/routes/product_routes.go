@@ -22,6 +22,7 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 		products.GET("", productHandler.ListProducts)
 		products.GET("/cursor", productHandler.ListProductsByCursor)
 		products.GET("/cache", productHandler.ListCachedProducts)
+		products.GET("/cache-cursor", productHandler.ListCachedProductsByCursor)
 		products.GET("/cache/:id", productHandler.GetCachedProduct)
 		products.POST("/cache/warmup", productHandler.WarmupCache)
 		products.GET("/:id", productHandler.GetProduct)
@@ -35,7 +36,6 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 	auth := v1.Group("/products")
 	auth.Use(middleware.JWTAuth())
 	{
-		// auth.POST("/cache/warmup", productHandler.WarmupCache)
 		auth.POST("", productHandler.CreateProduct)
 		auth.PUT("/:id", productHandler.UpdateProduct)
 		auth.DELETE("/:id", productHandler.DeleteProduct)

@@ -337,6 +337,32 @@ func (h *ProductHandler) ListProductsByCursor(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// ListCachedProductsByCursor 基于游标从缓存分页查询商品
+// @Summary 基于游标从缓存查询商品
+// @Description 从 Redis 缓存中基于游标分页读取商品列表
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param cursor query int false "游标（上一页最后一条的 ID，首次查询传 0）" default(0)
+// @Param size query int false "每页条数" default(20)
+// @Param category_id query int false "分类ID筛选"
+// @Success 200 {object} response.Response{data=dto.ProductCacheCursorResult}
+// @Router /api/v1/products/cache-cursor [get]
+func (h *ProductHandler) ListCachedProductsByCursor(c *gin.Context) {
+	var q dto.ProductCacheCursorQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
+		return
+	}
+	q.Normalize()
+	result, err := h.productService.ListCachedProductsByCursor(c.Request.Context(), q)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
 // GetCachedProduct 从缓存中查询单个商品
 // @Summary 从缓存查询商品
 // @Description 从 Redis 缓存中根据 ID 查询单个商品
