@@ -26,12 +26,13 @@ func RegisterFlashRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db
 		flash.POST("/activities/:id/load-stock", flashHandler.LoadStock)
 		flash.POST("/buy", flashHandler.FlashBuy)
 		flash.GET("/activities", flashHandler.ListActivities)
+		flash.GET("/activities-cursor", flashHandler.ListActivitiesByCursor)
 		flash.GET("/activities/:id", flashHandler.GetActivity)
 		flash.GET("/orders/:id", flashHandler.GetOrder)
 		flash.POST("/orders/:id/confirm", flashHandler.ConfirmOrder)
 		flash.POST("/orders/:id/cancel", flashHandler.CancelOrder)
 		flash.GET("/users/:user_id/orders", flashHandler.GetUserOrders)
-		}
+	}
 
 	return flashService
 }

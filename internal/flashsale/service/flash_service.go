@@ -114,6 +114,27 @@ func (s *FlashService) ListActivities(ctx context.Context) ([]models.FlashActivi
 	return s.repo.ListActivities(ctx)
 }
 
+// ListActivitiesByCursor 基于游标分页查询活动列表（深分页优化）
+func (s *FlashService) ListActivitiesByCursor(ctx context.Context, q dto.ActivityCursorQuery) (*dto.ActivityCursorResult, error) {
+	limit := q.Size + 1
+	list, err := s.repo.ListActivitiesByCursor(ctx, q, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &dto.ActivityCursorResult{}
+	if len(list) > q.Size {
+		result.List = list[:q.Size]
+		result.NextCursor = list[q.Size-1].ID
+		result.HasMore = true
+	} else {
+		result.List = list
+		result.NextCursor = 0
+		result.HasMore = false
+	}
+	return result, nil
+}
+
 func (s *FlashService) GetOrder(ctx context.Context, orderID int64) (*models.FlashOrder, error) {
 	return s.repo.GetOrder(ctx, orderID)
 }

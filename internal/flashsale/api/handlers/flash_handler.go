@@ -90,6 +90,32 @@ func (h *FlashHandler) ListActivities(c *gin.Context) {
 	response.Success(c, activities)
 }
 
+// ListActivitiesByCursor 基于游标分页查询活动列表
+// @Summary 基于游标分页查询活动列表
+// @Description 使用游标分页代替传统 OFFSET 分页，解决深分页性能问题
+// @Tags flash_activities
+// @Accept json
+// @Produce json
+// @Param cursor query int false "游标（上一页最后一条的 ID，首次查询传 0）" default(0)
+// @Param size query int false "每页条数" default(20)
+// @Param status query string false "筛选状态：pending/active/finished"
+// @Success 200 {object} response.Response{data=dto.ActivityCursorResult}
+// @Router /api/v1/flash/activities/cursor [get]
+func (h *FlashHandler) ListActivitiesByCursor(c *gin.Context) {
+	var q dto.ActivityCursorQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
+		return
+	}
+	q.Normalize()
+	result, err := h.flashService.ListActivitiesByCursor(c.Request.Context(), q)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
 func (h *FlashHandler) GetOrder(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {

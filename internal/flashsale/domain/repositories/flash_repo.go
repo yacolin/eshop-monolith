@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"eshop-monolith/internal/flashsale/api/dto"
 	"eshop-monolith/internal/flashsale/domain/models"
 	infraModels "eshop-monolith/internal/infra/repository/models"
 
@@ -38,6 +39,27 @@ func (r *FlashRepository) GetActivity(ctx context.Context, id int64) (*models.Fl
 func (r *FlashRepository) ListActivities(ctx context.Context) ([]models.FlashActivity, error) {
 	var pos []infraModels.FlashActivityPO
 	if err := r.db.WithContext(ctx).Order("start_time desc").Find(&pos).Error; err != nil {
+		return nil, err
+	}
+	activities := make([]models.FlashActivity, len(pos))
+	for i, po := range pos {
+		activities[i] = *po.ToDomain()
+	}
+	return activities, nil
+}
+
+// ListActivitiesByCursor 基于游标查询活动列表（深分页优化）
+func (r *FlashRepository) ListActivitiesByCursor(ctx context.Context, q dto.ActivityCursorQuery, limit int) ([]models.FlashActivity, error) {
+	var pos []infraModels.FlashActivityPO
+	db := r.db.WithContext(ctx).Model(&infraModels.FlashActivityPO{})
+	if q.Cursor > 0 {
+		db = db.Where("id > ?", q.Cursor)
+	}
+	if q.Status != "" {
+		db = db.Where("status = ?", q.Status)
+	}
+	err := db.Order("id asc").Limit(limit).Find(&pos).Error
+	if err != nil {
 		return nil, err
 	}
 	activities := make([]models.FlashActivity, len(pos))
