@@ -14,17 +14,19 @@ import (
 
 // InventoryService 库存服务
 type InventoryService struct {
-	repo    repositories.IinventoryRepository
-	skuRepo repositories.IskuRepository
-	bus     *eventbus.Bus
+	repo        repositories.IinventoryRepository
+	skuRepo     repositories.IskuRepository
+	productRepo repositories.IproductRepository
+	bus         *eventbus.Bus
 }
 
 // NewInventoryService 创建库存服务
-func NewInventoryService(repo repositories.IinventoryRepository, skuRepo repositories.IskuRepository, bus *eventbus.Bus) *InventoryService {
+func NewInventoryService(repo repositories.IinventoryRepository, skuRepo repositories.IskuRepository, productRepo repositories.IproductRepository, bus *eventbus.Bus) *InventoryService {
 	return &InventoryService{
-		repo:    repo,
-		skuRepo: skuRepo,
-		bus:     bus,
+		repo:        repo,
+		skuRepo:     skuRepo,
+		productRepo: productRepo,
+		bus:         bus,
 	}
 }
 
@@ -142,7 +144,7 @@ func (s *InventoryService) ReleaseInventory(ctx context.Context, req *dto.Releas
 	return nil
 }
 
-// ListInventoriesEnriched 列出所有库存（含 SKU 名称）
+// ListInventoriesEnriched 列出所有库存（含 SKU 名称和产品信息）
 func (s *InventoryService) ListInventoriesEnriched(ctx context.Context, q dto.InventoryListQuery) (*dto.InventoryEnrichedResult, error) {
 	offset := (q.Page - 1) * q.Size
 	list, err := s.repo.ListInventories(ctx, q, offset, q.Size)
@@ -155,34 +157,58 @@ func (s *InventoryService) ListInventoriesEnriched(ctx context.Context, q dto.In
 		return nil, err
 	}
 
-	// 收集所有 SkuID 批量查询 SKU 名称
+	// 收集所有 SkuID 批量查询 SKU 信息
 	skuIDs := make([]int64, len(list))
 	for i, inv := range list {
 		skuIDs[i] = inv.SkuID
 	}
 
-	skuNameMap := make(map[int64]string, len(list))
+	skuMap := make(map[int64]*models.Sku, len(list))
 	if len(skuIDs) > 0 {
 		skus, err := s.skuRepo.FindByIDs(ctx, skuIDs)
 		if err == nil {
 			for _, sku := range skus {
-				skuNameMap[sku.ID] = sku.Name
+				skuMap[sku.ID] = &sku
+			}
+		}
+	}
+
+	// 收集所有 ProductID 批量查询产品名称
+	productIDs := make(map[int64]struct{}, len(skuMap))
+	for _, sku := range skuMap {
+		productIDs[sku.ProductID] = struct{}{}
+	}
+
+	productNameMap := make(map[int64]string, len(productIDs))
+	if len(productIDs) > 0 {
+		ids := make([]int64, 0, len(productIDs))
+		for pid := range productIDs {
+			ids = append(ids, pid)
+		}
+		products, err := s.productRepo.FindByIDs(ctx, ids)
+		if err == nil {
+			for _, p := range products {
+				productNameMap[p.ID] = p.Name
 			}
 		}
 	}
 
 	enrichedList := make([]dto.InventoryEnrichedItem, len(list))
 	for i, inv := range list {
+		sku := skuMap[inv.SkuID]
 		enrichedList[i] = dto.InventoryEnrichedItem{
-			ID:        inv.ID,
-			SkuID:     inv.SkuID,
-			SkuName:   skuNameMap[inv.SkuID],
-			Quantity:  inv.Quantity,
-			Status:    inv.Status,
-			Reserved:  inv.Reserved,
-			Threshold: inv.Threshold,
-			CreatedAt: inv.CreatedAt,
-			UpdatedAt: inv.UpdatedAt,
+			ID:          inv.ID,
+			SkuID:       inv.SkuID,
+			SkuName:     sku.Name,
+			SkuCode:     sku.SKUCode,
+			ProductID:   sku.ProductID,
+			ProductName: productNameMap[sku.ProductID],
+			Quantity:    inv.Quantity,
+			Status:      inv.Status,
+			Reserved:    inv.Reserved,
+			Threshold:   inv.Threshold,
+			CreatedAt:   inv.CreatedAt,
+			UpdatedAt:   inv.UpdatedAt,
 		}
 	}
 

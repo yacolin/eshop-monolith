@@ -29,8 +29,12 @@ func NewInventoryHandler(inventoryService *service.InventoryService) *InventoryH
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
+// @Param product_id query int false "产品ID精确搜索"
 // @Param product_name query string false "产品名称模糊搜索"
-// @Param sku query string false "SKU精确搜索"
+// @Param sku_code query string false "SKU编码精确搜索"
+// @Param sku_name query string false "SKU名称模糊搜索"
+// @Param status query string false "库存状态(instock/lowstock/outofstock)"
+// @Param low_stock query bool false "是否低库存"
 // @Success 200 {object} response.Response{data=dto.InventoryListResult}
 // @Router /api/v1/inventories [get]
 func (h *InventoryHandler) ListInventories(c *gin.Context) {
@@ -60,7 +64,9 @@ func (h *InventoryHandler) ListInventories(c *gin.Context) {
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
 // @Param sku_name query string false "SKU名称模糊搜索"
-// @Param sku query string false "SKU精确搜索"
+// @Param sku_code query string false "SKU编码精确搜索"
+// @Param product_id query int false "产品ID精确搜索"
+// @Param product_name query string false "产品名称模糊搜索"
 // @Success 200 {object} response.Response{data=dto.InventoryEnrichedResult}
 // @Router /api/v1/inventories/enriched [get]
 func (h *InventoryHandler) ListInventoriesEnriched(c *gin.Context) {

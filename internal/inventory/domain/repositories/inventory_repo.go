@@ -308,15 +308,20 @@ func (r *InventoryRepository) applyQueryConditions(ctx context.Context, q dto.In
 	db := r.db.WithContext(ctx).Model(&models.InventoryPO{})
 	db = db.Joins("JOIN products ON inventories.sku_id = products.id")
 
+	if q.ProductID > 0 {
+		db = db.Where("inventories.sku_id IN (SELECT id FROM skus WHERE product_id = ?)", q.ProductID)
+	}
 	if q.ProductName != "" {
 		db = db.Where("products.name LIKE ?", "%"+q.ProductName+"%")
 	}
-	if q.SkuName != "" {
+	if q.SkuName != "" || q.SKUCode != "" {
 		db = db.Joins("JOIN skus ON inventories.sku_id = skus.id")
+	}
+	if q.SkuName != "" {
 		db = db.Where("skus.name LIKE ?", "%"+q.SkuName+"%")
 	}
-	if q.SKU != "" {
-		db = db.Where("products.sku = ?", q.SKU)
+	if q.SKUCode != "" {
+		db = db.Where("skus.sku_code = ?", q.SKUCode)
 	}
 	if q.Status != "" {
 		db = db.Where("inventories.status = ?", q.Status)

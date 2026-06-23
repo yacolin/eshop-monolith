@@ -17,6 +17,8 @@ type IproductRepository interface {
 	Create(ctx context.Context, product *invModels.Product) error
 	// FindByID 根据ID查询产品
 	FindByID(ctx context.Context, id int64) (*invModels.Product, error)
+	// FindByIDs 根据ID批量查询产品
+	FindByIDs(ctx context.Context, ids []int64) ([]invModels.Product, error)
 	// FindBySKU 根据SKU查询产品
 	FindBySKU(ctx context.Context, sku string) (*invModels.Product, error)
 	// ListByCategory 根据分类查询产品
@@ -66,6 +68,20 @@ func (r *ProductRepository) FindByID(ctx context.Context, id int64) (*invModels.
 		return nil, err
 	}
 	return po.ToDomain(), nil
+}
+
+// FindByIDs 根据ID批量查询产品
+func (r *ProductRepository) FindByIDs(ctx context.Context, ids []int64) ([]invModels.Product, error) {
+	var pos []models.ProductPO
+	err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&pos).Error
+	if err != nil {
+		return nil, err
+	}
+	products := make([]invModels.Product, len(pos))
+	for i, po := range pos {
+		products[i] = *po.ToDomain()
+	}
+	return products, nil
 }
 
 // FindBySKU 根据SKU查询产品

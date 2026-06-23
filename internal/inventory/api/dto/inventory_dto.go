@@ -9,13 +9,14 @@ import (
 // InventoryListQuery 库存列表查询参数
 type InventoryListQuery struct {
 	query.Pagination
-	ProductName string `form:"product_name"`      // 产品名称模糊搜索
-	SkuName     string `form:"sku_name"`          // SKU名称模糊搜索
-	SKU         string `form:"sku"`               // SKU精确搜索
-	Status      string `form:"status"`            // 库存状态
-	LowStock    *bool  `form:"low_stock"`         // 是否低库存
-	SortBy      string `form:"sort_by"`           // 排序字段，例如 quantity, reserved, created_at
-	Order       string `form:"order,default=asc"` // asc or desc
+	ProductID   int64  `form:"product_id"`          // 产品ID精确搜索
+	ProductName string `form:"product_name"`        // 产品名称模糊搜索
+	SkuName     string `form:"sku_name"`            // SKU名称模糊搜索
+	SKUCode     string `form:"sku_code"`            // SKU编码精确搜索
+	Status      string `form:"status"`              // 库存状态
+	LowStock    *bool  `form:"low_stock"`           // 是否低库存
+	SortBy      string `form:"sort_by"`             // 排序字段，例如 quantity, reserved, created_at
+	Order       string `form:"order,default=asc"`   // asc or desc
 }
 
 // InventoryListResult 库存列表结果
@@ -92,15 +93,18 @@ type BatchCreateInventoryDTO struct {
 
 // InventoryEnrichedItem 库存列表 enriched 单项
 type InventoryEnrichedItem struct {
-	ID        int64           `json:"id"`
-	SkuID     int64           `json:"sku_id"`
-	SkuName   string          `json:"sku_name"`
-	Quantity  int             `json:"quantity"`
-	Status    string          `json:"status"`
-	Reserved  int             `json:"reserved"`
-	Threshold int             `json:"threshold"`
-	CreatedAt utils.Timestamp `json:"created_at"`
-	UpdatedAt utils.Timestamp `json:"updated_at"`
+	ID          int64           `json:"id"`
+	SkuID       int64           `json:"sku_id"`
+	SkuName     string          `json:"sku_name"`
+	SkuCode     string          `json:"sku_code"`
+	ProductID   int64           `json:"product_id"`
+	ProductName string          `json:"product_name"`
+	Quantity    int             `json:"quantity"`
+	Status      string          `json:"status"`
+	Reserved    int             `json:"reserved"`
+	Threshold   int             `json:"threshold"`
+	CreatedAt   utils.Timestamp `json:"created_at"`
+	UpdatedAt   utils.Timestamp `json:"updated_at"`
 }
 
 // InventoryEnrichedResult 库存列表 enriched 结果

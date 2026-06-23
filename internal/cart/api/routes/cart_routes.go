@@ -17,7 +17,7 @@ func RegisterCartRoutes(router *gin.RouterGroup, repos *repository.Repositories,
 	bus := eventbus.NewBus()
 
 	// 创建库存服务实例
-	inventoryService := invService.NewInventoryService(repos.Inventory, repos.Sku, bus)
+	inventoryService := invService.NewInventoryService(repos.Inventory, repos.Sku, repos.Product, bus)
 
 	// 创建产品服务实例
 	productService := invService.NewProductService(repos.Product, repos.Inventory, repos.Sku, bus, nil, repos.Redis)
