@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"eshop-monolith/internal/infra/repository/models"
+	"eshop-monolith/internal/inventory/api/dto"
 	domain "eshop-monolith/internal/inventory/domain/models"
+	"eshop-monolith/pkg/query"
 
 	"gorm.io/gorm"
 )
@@ -18,6 +20,8 @@ type IskuRepository interface {
 	Delete(ctx context.Context, id int64) error
 	CreateWithTx(tx *gorm.DB, sku *domain.Sku) error
 	DeleteByProductIDWithTx(tx *gorm.DB, productID int64) error
+	FindAll(ctx context.Context, q dto.SkuListQuery, offset, limit int) ([]domain.Sku, error)
+	Count(ctx context.Context, q dto.SkuListQuery) (int64, error)
 }
 
 type SkuRepository struct{ db *gorm.DB }
@@ -88,4 +92,48 @@ func (r *SkuRepository) CreateWithTx(tx *gorm.DB, sku *domain.Sku) error {
 
 func (r *SkuRepository) DeleteByProductIDWithTx(tx *gorm.DB, productID int64) error {
 	return tx.Where("product_id = ?", productID).Delete(&models.SkuPO{}).Error
+}
+
+func (r *SkuRepository) FindAll(ctx context.Context, q dto.SkuListQuery, offset, limit int) ([]domain.Sku, error) {
+	var pos []models.SkuPO
+	db := r.applySkuConditions(ctx, q)
+	db = query.ApplyOrder(db, q.SortBy, q.Order, "id asc")
+
+	if err := db.Offset(offset).Limit(limit).Find(&pos).Error; err != nil {
+		return nil, err
+	}
+	skus := make([]domain.Sku, len(pos))
+	for i, po := range pos {
+		skus[i] = *po.ToDomain()
+	}
+	return skus, nil
+}
+
+func (r *SkuRepository) Count(ctx context.Context, q dto.SkuListQuery) (int64, error) {
+	var total int64
+	db := r.applySkuConditions(ctx, q)
+	if err := db.Count(&total).Error; err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (r *SkuRepository) applySkuConditions(ctx context.Context, q dto.SkuListQuery) *gorm.DB {
+	db := r.db.WithContext(ctx).Model(&models.SkuPO{})
+	if q.ProductID != nil {
+		db = db.Where("product_id = ?", *q.ProductID)
+	}
+	if q.Name != "" {
+		db = db.Where("name LIKE ?", "%"+q.Name+"%")
+	}
+	if q.SKUCode != "" {
+		db = db.Where("sku_code = ?", q.SKUCode)
+	}
+	if q.PriceMin != nil {
+		db = db.Where("price >= ?", *q.PriceMin)
+	}
+	if q.PriceMax != nil {
+		db = db.Where("price <= ?", *q.PriceMax)
+	}
+	return db
 }

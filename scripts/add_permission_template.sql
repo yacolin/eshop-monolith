@@ -17,6 +17,7 @@
 --     商品管理         11000-11150
 --     分类管理         11500-11650
 --     库存管理         12000-12150
+--     SKU 管理         12500-12650
 --   大类二 交易订单    20000-29999
 --     订单管理         21000-21200
 --     购物车管理       21500-21650
@@ -139,6 +140,24 @@ USE eshop_db;
 -- INSERT INTO role_permissions (role_id, permission_id)
 -- SELECT r.id, p.id FROM roles r, permissions p
 -- WHERE r.name IN ('admin', 'editor') AND p.name LIKE 'faq:%';
+
+
+-- ========================================================================
+-- 场景五：在已有大类末尾追加新模块
+-- 示例：在第一大类 商品库存(10000-19999) 末尾追加「SKU 管理」
+-- 新模块基准 = 12000 + 500 = 12500（库存管理基准 + 500 模块间隔）
+-- ========================================================================
+
+-- INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+-- ('sku:read',   '查看 SKU',   '查看 SKU 列表和详情',            'sku', 'read',   'SKU 管理', 12500, 1),
+-- ('sku:create', '创建 SKU',   '创建新的 SKU（含批量创建）',      'sku', 'create', 'SKU 管理', 12550, 1),
+-- ('sku:update', '编辑 SKU',   '更新 SKU 价格/编码/图片等信息',   'sku', 'update', 'SKU 管理', 12600, 1),
+-- ('sku:delete', '删除 SKU',   '删除 SKU',                       'sku', 'delete', 'SKU 管理', 12650, 1);
+--
+-- -- 为角色分配 SKU 权限
+-- INSERT INTO role_permissions (role_id, permission_id)
+-- SELECT r.id, p.id FROM roles r, permissions p
+-- WHERE r.name IN ('admin', 'editor', 'operator') AND p.name LIKE 'sku:%';
 
 
 -- ========================================================================

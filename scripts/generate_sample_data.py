@@ -3,10 +3,9 @@ Generate sample data for categories, products, and inventory for the eshop-micro
 This script connects directly to the database and inserts sample data.
 """
 
-import argparse
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import random
 import os
 import time
@@ -15,7 +14,7 @@ import sys
 
 
 def mysql_utc_now():
-    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def generate_categories():
@@ -905,7 +904,7 @@ def insert_attributes(connection):
     attrs = [
         {"name": "系列", "values": ["标准版", "Pro", "Pro Max"]},
         {"name": "内存", "values": ["128GB", "256GB", "512GB", "1TB"]},
-        {"name": "颜色", "values": ["深空黑", "银色", "金色", "深蓝色"]},
+        {"name": "颜色", "values": ["深空黑", "银色", "金色", "深蓝色", "黑色", "白色"]},
         {"name": "CPU", "values": ["标准版", "高性能版"]},
         {"name": "硬盘", "values": ["512GB", "1TB"]},
         {"name": "尺码", "values": ["39", "40", "41", "42", "43"]},
@@ -913,17 +912,62 @@ def insert_attributes(connection):
     with connection.cursor() as cursor:
         for attr in attrs:
             cursor.execute(
-                "INSERT INTO attribute_attributes (name, sort_order) VALUES (%s, 0)",
+                "INSERT IGNORE INTO attribute_attributes (name, sort_order) VALUES (%s, 0)",
                 (attr["name"],),
             )
-            attr_id = cursor.lastrowid
+            if cursor.lastrowid == 0:
+                cursor.execute("SELECT id FROM attribute_attributes WHERE name = %s", (attr["name"],))
+                attr_id = cursor.fetchone()["id"]
+            else:
+                attr_id = cursor.lastrowid
             for idx, val in enumerate(attr["values"]):
                 cursor.execute(
-                    "INSERT INTO attribute_values (attribute_id, value, sort_order) VALUES (%s, %s, %s)",
+                    "INSERT IGNORE INTO attribute_values (attribute_id, value, sort_order) VALUES (%s, %s, %s)",
                     (attr_id, val, idx),
                 )
         connection.commit()
     print(f"Inserted {len(attrs)} attributes with their values into the database")
+
+
+def insert_product_attribute_values(connection, spus):
+    """Associate products (SPUs) with attribute dimensions and values based on their category."""
+    with connection.cursor() as cursor:
+        # Load attribute ID → name mapping
+        cursor.execute("SELECT id, name FROM attribute_attributes")
+        attr_map = {}
+        for row in cursor.fetchall():
+            attr_map[row['name']] = {"id": row['id'], "values": {}}
+
+        # Load value ID → value mapping per attribute
+        cursor.execute("SELECT id, attribute_id, value FROM attribute_values")
+        for row in cursor.fetchall():
+            for info in attr_map.values():
+                if info["id"] == row['attribute_id']:
+                    info["values"][row['value']] = row['id']
+                    break
+
+        count = 0
+        for spu in spus:
+            hint = spu.get("category_hint")
+            spec_template = SKU_SPECS.get(hint)
+            if not spec_template:
+                continue
+
+            for dim in spec_template["dimensions"]:
+                attr_name = dim["name"]
+                if attr_name not in attr_map:
+                    continue
+                attr_id = attr_map[attr_name]["id"]
+                for opt in dim["options"]:
+                    if opt in attr_map[attr_name]["values"]:
+                        val_id = attr_map[attr_name]["values"][opt]
+                        cursor.execute(
+                            "INSERT IGNORE INTO product_attribute_values (product_id, attribute_id, attribute_value_id) VALUES (%s, %s, %s)",
+                            (spu["id"], attr_id, val_id),
+                        )
+                        count += 1
+        connection.commit()
+    print(f"Inserted {count} product-attribute-value links into the database")
 
 
 def insert_sku_attributes(connection, skus):
@@ -1036,16 +1080,14 @@ def insert_products(connection, products):
     """Insert SPUs (products table) into the database"""
     with connection.cursor() as cursor:
         for product in products:
-            sku_val = f"SP-{str(uuid.uuid4()).split('-')[0].upper()}"
             sql = """
-            INSERT INTO products (name, description, price, sku, spu_id, spec, min_price, created_at, updated_at)
-            VALUES (%s, %s, 0, %s, 0, NULL, %s, %s, %s)
+            INSERT INTO products (name, description, min_price, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s)
             """
             try:
                 cursor.execute(sql, (
                     product["name"],
                     product["description"],
-                    sku_val,
                     product["min_price"],
                     product["created_at"],
                     product["updated_at"],
@@ -1230,11 +1272,11 @@ def clean_database(connection):
         "carts",
         "payments",
         "notifications",
+        "product_attribute_values",
         "sku_attributes",
         "skus",
         "attribute_values",
         "attribute_attributes",
-        "spus",
         "inventories",
         "product_categories",
         "products",
@@ -1347,21 +1389,16 @@ def save_to_json(data, filename):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate and insert sample data for eshop-monolith")
-    parser.add_argument("--clean", action="store_true", help="Clean all existing data before inserting")
-    args = parser.parse_args()
-
     print("Generating and inserting sample data for eshop-monolith...")
 
     # Connect to database
     connection = connect_to_database()
 
-    # Clean existing data if requested
-    if args.clean:
-        clean_database(connection)
-        print("Existing data cleaned.\n")
+    # 本地开发环境：每次全量清理业务数据并重置自增（保留 RBAC 相关表）
+    clean_database(connection)
+    print("Existing data cleaned, auto-increment reset.\n")
 
-    # Seed RBAC data — skip if already exists
+    # Seed RBAC data — 首次运行或表为空时写入，已有则跳过
     try:
         seed_rbac_data(connection)
     except Exception:
@@ -1374,11 +1411,7 @@ def main():
     insert_categories(connection, categories)
     insert_products(connection, spus)
     insert_attributes(connection)
-
-    # ── Generate SKUs from SPUs ─────────────────────────────────────────
-    skus = generate_skus(spus)
-    insert_skus(connection, skus)
-    insert_sku_attributes(connection, skus)
+    insert_product_attribute_values(connection, spus)
 
     # ── Product-category associations ───────────────────────────────────
     product_categories = generate_product_categories_links(spus, categories)
@@ -1394,16 +1427,6 @@ def main():
             })
     insert_product_categories(connection, product_categories)
 
-    # ── Inventory (per SKU) ─────────────────────────────────────────────
-    inventory = generate_inventory(skus)
-    insert_inventory(connection, inventory)
-
-    # ── Orders (reference SKUs) ─────────────────────────────────────────
-    orders = generate_orders(skus)
-    insert_orders(connection, orders)
-    order_items = generate_order_items(orders)
-    insert_order_items(connection, order_items)
-
     # Close connection
     connection.close()
 
@@ -1413,17 +1436,11 @@ def main():
 
     save_to_json(categories, os.path.join(output_dir, "categories.json"))
     save_to_json(spus, os.path.join(output_dir, "spus.json"))
-    save_to_json(skus, os.path.join(output_dir, "skus.json"))
-    save_to_json(inventory, os.path.join(output_dir, "inventory.json"))
 
     combined_data = {
         "categories": categories,
         "spus": spus,
-        "skus": skus,
         "product_categories": product_categories,
-        "inventory": inventory,
-        "orders": orders,
-        "order_items": order_items,
         "generated_at": mysql_utc_now(),
     }
     save_to_json(combined_data, os.path.join(output_dir, "sample_data.json"))
@@ -1432,11 +1449,9 @@ def main():
     print(f"Inserted:")
     print(f"- {len(categories)} categories")
     print(f"- {len(spus)} SPUs")
-    print(f"- {len(skus)} SKUs")
     print(f"- {len(product_categories)} product-category associations")
-    print(f"- {len(inventory)} inventory records")
-    print(f"- {len(orders)} orders")
-    print(f"- {len(order_items)} order items")
+    print(f"\nSKUs were not generated. Use the product attribute APIs to configure")
+    print(f"attribute combinations and create SKUs via POST /api/v1/products/:id/skus/batch")
     print(f"\nFiles saved to: {output_dir}")
 
 

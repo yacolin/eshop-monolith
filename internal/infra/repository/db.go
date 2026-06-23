@@ -103,7 +103,8 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&repoModels.PromotionProductPO{},
 
 			&repoModels.SkuPO{},
-		&repoModels.SkuAttributePO{},
+			&repoModels.SkuAttributePO{},
+			&repoModels.ProductAttributeValuePO{},
 
 		&repoModels.NotificationPO{},
 	); err != nil {
@@ -141,7 +142,8 @@ type Repositories struct {
 	Permission   userRepos.IpermissionRepository
 	Cart         cartRepos.IcartRepository
 	Payment      paymentRepos.IPaymentRepository
-	Sku          invRepos.IskuRepository
+	Sku                  invRepos.IskuRepository
+	ProductAttribute     invRepos.IproductAttributeRepository
 }
 
 // // NewRepositories 创建仓储集合
@@ -161,6 +163,7 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Permission:   userRepos.NewPermissionRepository(db),
 		Cart:         cartRepos.NewCachedCartRepository(cartRepos.NewCartRepository(db), redisClient, db),
 		Payment:      paymentRepos.NewPaymentRepository(db),
-		Sku:          invRepos.NewSkuRepository(db),
+		Sku:                  invRepos.NewSkuRepository(db),
+		ProductAttribute:     invRepos.NewProductAttributeRepository(db),
 	}
 }

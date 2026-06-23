@@ -54,6 +54,25 @@ func (s *SkuService) GetSku(ctx context.Context, id int64) (*models.Sku, error) 
 	return s.skuRepo.FindByID(ctx, id)
 }
 
+func (s *SkuService) ListSkus(ctx context.Context, q dto.SkuListQuery) (*dto.SkuListResult, error) {
+	offset := (q.Page - 1) * q.Size
+	list, err := s.skuRepo.FindAll(ctx, q, offset, q.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	total, err := s.skuRepo.Count(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	skuResponses := make([]dto.SkuResponse, len(list))
+	for i, sku := range list {
+		skuResponses[i] = dto.SkuToResponse(&sku)
+	}
+	return &dto.SkuListResult{List: skuResponses, Total: total}, nil
+}
+
 func (s *SkuService) ListByProductID(ctx context.Context, productID int64) ([]models.Sku, error) {
 	return s.skuRepo.FindByProductID(ctx, productID)
 }

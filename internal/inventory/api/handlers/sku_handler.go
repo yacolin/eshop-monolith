@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"strconv"
-
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/pkg/response"
@@ -65,35 +63,37 @@ func (h *SkuHandler) GetSku(c *gin.Context) {
 	response.Success(c, dto.SkuToResponse(sku))
 }
 
-// ListByProductID 根据产品ID获取SKU列表
-// @Summary 根据产品ID获取SKU列表
-// @Description 根据产品ID获取该产品下所有SKU
+// ListSkus SKU列表查询
+// @Summary SKU列表查询
+// @Description 分页查询SKU列表，支持按产品ID/名称/SKU编码/价格范围筛选
 // @Tags skus
 // @Accept json
 // @Produce json
-// @Param product_id query int true "产品ID"
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页条数" default(10)
+// @Param product_id query int false "产品ID（可选）"
+// @Param name query string false "SKU名称模糊搜索"
+// @Param sku_code query string false "SKU编码精确搜索"
+// @Param price_min query int false "最低价格（分）"
+// @Param price_max query int false "最高价格（分）"
+// @Param sort_by query string false "排序字段 (id, name, price, created_at)"
+// @Param order query string false "排序方向 (asc, desc)" default(asc)
 // @Success 200 {object} response.Response{data=dto.SkuListResult}
 // @Router /api/v1/skus [get]
-func (h *SkuHandler) ListByProductID(c *gin.Context) {
-	productIDStr := c.Query("product_id")
-	productID, err := strconv.ParseInt(productIDStr, 10, 64)
+func (h *SkuHandler) ListSkus(c *gin.Context) {
+	var q dto.SkuListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		c.Error(err)
+		return
+	}
+	(&q).Normalize()
+
+	result, err := h.skuService.ListSkus(c, q)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	skus, err := h.skuService.ListByProductID(c, productID)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-	list := make([]dto.SkuResponse, len(skus))
-	for i, sku := range skus {
-		list[i] = dto.SkuToResponse(&sku)
-	}
-	response.Success(c, dto.SkuListResult{
-		List:  list,
-		Total: int64(len(skus)),
-	})
+	response.Success(c, result)
 }
 
 // UpdateSku 更新SKU

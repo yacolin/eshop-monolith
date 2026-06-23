@@ -17,7 +17,7 @@ func RegisterSkuRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *
 	skus := v1.Group("/skus")
 	{
 		skus.POST("", skuH.CreateSku)
-		skus.GET("", skuH.ListByProductID)
+		skus.GET("", skuH.ListSkus)
 		skus.GET("/:id", skuH.GetSku)
 		skus.PUT("/:id", skuH.UpdateSku)
 		skus.DELETE("/:id", skuH.DeleteSku)
