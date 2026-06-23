@@ -748,46 +748,22 @@ def generate_products(categories):
     return products
 
 
-def generate_product_categories_links(products, categories, min_categories=1, max_categories=3):
-    """Generate sample product_categories links (many-to-many)"""
+def generate_product_categories_links(products, categories):
+    """每个产品只关联到其 category_hint 对应的子品类"""
     product_categories = []
 
-    # Name -> id (ids are expected to be filled after insertion)
     name_to_id = {c["name"]: c["id"] for c in categories if c.get("id") is not None}
-    all_categories = [c for c in categories if c.get("id") is not None]
 
     for product in products:
-        if product.get("id") is None:
-            # Should not happen if called after insert_products()
+        pid = product.get("id")
+        if pid is None:
             continue
-
-        if all_categories:
-            base_category_id = None
-            hint = product.get("category_hint")
-            if hint and hint in name_to_id:
-                base_category_id = name_to_id[hint]
-
-            if base_category_id is None:
-                base_category_id = random.choice(all_categories)["id"]
-
-            target_count = random.randint(min_categories, max_categories)
-            assigned_ids = {base_category_id}
-
-            # Fill remaining categories randomly (avoid duplicates)
-            if len(assigned_ids) < target_count:
-                remaining = [c for c in all_categories if c["id"] not in assigned_ids]
-                if target_count - len(assigned_ids) > len(remaining):
-                    target_count = len(assigned_ids) + len(remaining)
-                for c in random.sample(remaining, target_count - len(assigned_ids)):
-                    assigned_ids.add(c["id"])
-
-            for category_id in assigned_ids:
-                product_categories.append(
-                    {
-                        "product_id": product["id"],
-                        "category_id": category_id,
-                    }
-                )
+        hint = product.get("category_hint")
+        if hint and hint in name_to_id:
+            product_categories.append({
+                "product_id": pid,
+                "category_id": name_to_id[hint],
+            })
 
     return product_categories
 
@@ -824,7 +800,7 @@ SKU_SPECS = {
         "dimensions": [
             {"name": "系列", "options": ["标准版", "Pro", "Pro Max"]},
             {"name": "内存", "options": ["128GB", "256GB", "512GB"]},
-            {"name": "颜色", "options": ["深空黑", "银色"]},
+            {"name": "颜色", "options": ["深空黑", "银色", "金色"]},
         ],
     },
     "Laptops": {
@@ -833,10 +809,106 @@ SKU_SPECS = {
             {"name": "硬盘", "options": ["512GB", "1TB"]},
         ],
     },
+    "Tablets": {
+        "dimensions": [
+            {"name": "内存", "options": ["128GB", "256GB", "512GB"]},
+            {"name": "颜色", "options": ["深空黑", "银色"]},
+        ],
+    },
+    "TVs": {
+        "dimensions": [
+            {"name": "屏幕尺寸", "options": ["55英寸", "65英寸", "75英寸"]},
+            {"name": "分辨率", "options": ["4K", "8K"]},
+        ],
+    },
+    "Cameras": {
+        "dimensions": [
+            {"name": "系列", "options": ["标准版", "Pro", "Pro Max"]},
+            {"name": "内存", "options": ["128GB", "256GB", "512GB"]},
+        ],
+    },
+    "Audio Equipment": {
+        "dimensions": [
+            {"name": "连接方式", "options": ["蓝牙", "WiFi", "有线"]},
+            {"name": "颜色", "options": ["黑色", "白色"]},
+        ],
+    },
+    "Men's Clothing": {
+        "dimensions": [
+            {"name": "尺码", "options": ["S", "M", "L", "XL", "XXL"]},
+            {"name": "颜色", "options": ["黑色", "白色", "蓝色", "灰色"]},
+        ],
+    },
+    "Women's Clothing": {
+        "dimensions": [
+            {"name": "尺码", "options": ["S", "M", "L", "XL"]},
+            {"name": "颜色", "options": ["黑色", "白色", "红色", "粉色"]},
+        ],
+    },
+    "Kids' Clothing": {
+        "dimensions": [
+            {"name": "尺码", "options": ["S", "M", "L", "XL"]},
+            {"name": "颜色", "options": ["蓝色", "粉色", "红色", "白色"]},
+        ],
+    },
     "Shoes": {
         "dimensions": [
-            {"name": "尺码", "options": ["39", "40", "41", "42", "43"]},
-            {"name": "颜色", "options": ["黑色", "白色"]},
+            {"name": "尺码", "options": ["39", "40", "41", "42", "43", "44"]},
+            {"name": "颜色", "options": ["黑色", "白色", "蓝色"]},
+        ],
+    },
+    "Accessories": {
+        "dimensions": [
+            {"name": "颜色", "options": ["黑色", "白色", "灰色", "棕色"]},
+            {"name": "材质", "options": ["皮革", "帆布", "丝绸"]},
+        ],
+    },
+    "Furniture": {
+        "dimensions": [
+            {"name": "颜色", "options": ["黑色", "白色", "灰色", "棕色"]},
+            {"name": "材质", "options": ["实木", "不锈钢", "皮革"]},
+        ],
+    },
+    "Decor": {
+        "dimensions": [
+            {"name": "颜色", "options": ["白色", "灰色", "金色", "黑色"]},
+        ],
+    },
+    "Kitchen": {
+        "dimensions": [
+            {"name": "材质", "options": ["不锈钢", "陶瓷", "玻璃"]},
+            {"name": "容量", "options": ["1L", "2L", "5L"]},
+        ],
+    },
+    "Bedding": {
+        "dimensions": [
+            {"name": "尺码", "options": ["S", "M", "L", "XL"]},
+            {"name": "颜色", "options": ["白色", "灰色", "蓝色", "粉色"]},
+        ],
+    },
+    "Fitness Equipment": {
+        "dimensions": [
+            {"name": "颜色", "options": ["黑色", "灰色"]},
+        ],
+    },
+    "Skincare": {
+        "dimensions": [
+            {"name": "容量", "options": ["50mL", "100mL", "200mL"]},
+        ],
+    },
+    "Makeup": {
+        "dimensions": [
+            {"name": "颜色", "options": ["黑色", "粉色", "金色", "红色"]},
+        ],
+    },
+    "Snacks": {
+        "dimensions": [
+            {"name": "容量", "options": ["200g", "500g", "1kg"]},
+        ],
+    },
+    "Beverages": {
+        "dimensions": [
+            {"name": "容量", "options": ["330mL", "500mL", "1L"]},
         ],
     },
 }
@@ -902,12 +974,18 @@ def insert_skus(connection, skus):
 def insert_attributes(connection):
     """Insert attribute definitions and values into the database"""
     attrs = [
-        {"name": "系列", "values": ["标准版", "Pro", "Pro Max"]},
-        {"name": "内存", "values": ["128GB", "256GB", "512GB", "1TB"]},
-        {"name": "颜色", "values": ["深空黑", "银色", "金色", "深蓝色", "黑色", "白色"]},
-        {"name": "CPU", "values": ["标准版", "高性能版"]},
-        {"name": "硬盘", "values": ["512GB", "1TB"]},
-        {"name": "尺码", "values": ["39", "40", "41", "42", "43"]},
+        {"name": "系列", "values": ["标准版", "Pro", "Pro Max", "Ultra"]},
+        {"name": "内存", "values": ["8GB", "12GB", "16GB", "32GB", "128GB", "256GB", "512GB", "1TB"]},
+        {"name": "颜色", "values": ["深空黑", "银色", "金色", "深蓝色", "黑色", "白色", "红色", "蓝色", "灰色", "粉色"]},
+        {"name": "CPU", "values": ["标准版", "高性能版", "旗舰版"]},
+        {"name": "硬盘", "values": ["256GB", "512GB", "1TB", "2TB"]},
+        {"name": "尺码", "values": ["XS", "S", "M", "L", "XL", "XXL", "39", "40", "41", "42", "43", "44", "45"]},
+        {"name": "屏幕尺寸", "values": ["11英寸", "13英寸", "14英寸", "15英寸", "16英寸", "24英寸", "27英寸", "32英寸", "55英寸", "65英寸", "75英寸", "85英寸"]},
+        {"name": "分辨率", "values": ["1080p", "2K", "4K", "8K"]},
+        {"name": "材质", "values": ["纯棉", "亚麻", "羊毛", "丝绸", "皮革", "帆布", "不锈钢", "实木", "玻璃", "陶瓷"]},
+        {"name": "容量", "values": ["200g", "500g", "1kg", "330mL", "500mL", "1L", "2L", "5L", "50mL", "100mL", "200mL"]},
+        {"name": "连接方式", "values": ["有线", "蓝牙", "WiFi", "USB-C", "Lightning", "3.5mm"]},
+        {"name": "功率", "values": ["500W", "1000W", "1500W", "2000W", "3000W"]},
     ]
     with connection.cursor() as cursor:
         for attr in attrs:
@@ -927,6 +1005,35 @@ def insert_attributes(connection):
                 )
         connection.commit()
     print(f"Inserted {len(attrs)} attributes with their values into the database")
+
+
+def insert_category_attributes(connection):
+    """Associate sub-categories with attributes based on SKU_SPECS definitions."""
+    with connection.cursor() as cursor:
+        # Load category name → id mapping (only sub-categories)
+        cursor.execute("SELECT id, name FROM categories WHERE parent_id IS NOT NULL")
+        cat_name_to_id = {row["name"]: row["id"] for row in cursor.fetchall()}
+
+        # Load attribute name → id mapping
+        cursor.execute("SELECT id, name FROM attribute_attributes")
+        attr_name_to_id = {row["name"]: row["id"] for row in cursor.fetchall()}
+
+        count = 0
+        for cat_name, spec in SKU_SPECS.items():
+            cat_id = cat_name_to_id.get(cat_name)
+            if cat_id is None:
+                continue
+            for dim in spec["dimensions"]:
+                attr_id = attr_name_to_id.get(dim["name"])
+                if attr_id is None:
+                    continue
+                cursor.execute(
+                    "INSERT IGNORE INTO category_attributes (category_id, attribute_id) VALUES (%s, %s)",
+                    (cat_id, attr_id),
+                )
+                count += 1
+        connection.commit()
+    print(f"Inserted {count} category-attribute associations into the database")
 
 
 def insert_product_attribute_values(connection, spus):
@@ -1277,6 +1384,7 @@ def clean_database(connection):
         "skus",
         "attribute_values",
         "attribute_attributes",
+        "category_attributes",
         "inventories",
         "product_categories",
         "products",
@@ -1411,20 +1519,11 @@ def main():
     insert_categories(connection, categories)
     insert_products(connection, spus)
     insert_attributes(connection)
+    insert_category_attributes(connection)
     insert_product_attribute_values(connection, spus)
 
     # ── Product-category associations ───────────────────────────────────
     product_categories = generate_product_categories_links(spus, categories)
-    if not product_categories:
-        print("WARN: product_categories empty, assigning random categories...")
-        valid_cats = [c for c in categories if c.get("id") is not None]
-        for spu in spus:
-            if spu.get("id") is None:
-                continue
-            cat = random.choice(valid_cats)
-            product_categories.append({
-                "product_id": spu["id"], "category_id": cat["id"],
-            })
     insert_product_categories(connection, product_categories)
 
     # Close connection
@@ -1450,8 +1549,7 @@ def main():
     print(f"- {len(categories)} categories")
     print(f"- {len(spus)} SPUs")
     print(f"- {len(product_categories)} product-category associations")
-    print(f"\nSKUs were not generated. Use the product attribute APIs to configure")
-    print(f"attribute combinations and create SKUs via POST /api/v1/products/:id/skus/batch")
+    print(f"\nThen use POST /api/v1/products/:id/skus/batch to generate SKUs")
     print(f"\nFiles saved to: {output_dir}")
 
 
