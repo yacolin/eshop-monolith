@@ -144,6 +144,7 @@ type Repositories struct {
 	Payment      paymentRepos.IPaymentRepository
 	Sku                  invRepos.IskuRepository
 	ProductAttribute     invRepos.IproductAttributeRepository
+	Attribute            invRepos.IattributeRepository
 }
 
 // // NewRepositories 创建仓储集合
@@ -165,5 +166,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Payment:      paymentRepos.NewPaymentRepository(db),
 		Sku:                  invRepos.NewSkuRepository(db),
 		ProductAttribute:     invRepos.NewProductAttributeRepository(db),
+		Attribute:            invRepos.NewAttributeRepository(db),
 	}
 }

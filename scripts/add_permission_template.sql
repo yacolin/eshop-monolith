@@ -18,6 +18,7 @@
 --     分类管理         11500-11650
 --     库存管理         12000-12150
 --     SKU 管理         12500-12650
+--     规格属性管理     13000-13400
 --   大类二 交易订单    20000-29999
 --     订单管理         21000-21200
 --     购物车管理       21500-21650
@@ -158,6 +159,33 @@ USE eshop_db;
 -- INSERT INTO role_permissions (role_id, permission_id)
 -- SELECT r.id, p.id FROM roles r, permissions p
 -- WHERE r.name IN ('admin', 'editor', 'operator') AND p.name LIKE 'sku:%';
+
+
+-- ========================================================================
+-- 场景六：在第一大类末尾追加「规格属性管理」模块
+-- 示例：在 SKU 管理(12500-12650) 之后追加规格属性管理
+-- 新模块基准 = 12500 + 500 = 13000
+-- ========================================================================
+
+-- INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+-- ('attr:read',   '查看属性维度', '查看规格属性维度列表和详情', 'attr', 'read',   '规格属性管理', 13000, 1),
+-- ('attr:create', '创建属性维度', '创建新的规格属性维度',       'attr', 'create', '规格属性管理', 13050, 1),
+-- ('attr:update', '编辑属性维度', '更新规格属性维度信息',       'attr', 'update', '规格属性管理', 13100, 1),
+-- ('attr:delete', '删除属性维度', '删除规格属性维度',           'attr', 'delete', '规格属性管理', 13150, 1);
+--
+-- INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+-- ('attr_val:read',   '查看属性值', '查看属性可选值列表',     'attr_val', 'read',   '规格属性管理', 13250, 1),
+-- ('attr_val:create', '创建属性值', '为属性维度创建可选值',   'attr_val', 'create', '规格属性管理', 13300, 1),
+-- ('attr_val:update', '编辑属性值', '更新属性可选值信息',     'attr_val', 'update', '规格属性管理', 13350, 1),
+-- ('attr_val:delete', '删除属性值', '删除属性可选值',         'attr_val', 'delete', '规格属性管理', 13400, 1);
+--
+-- INSERT INTO role_permissions (role_id, permission_id)
+-- SELECT r.id, p.id FROM roles r, permissions p
+-- WHERE r.name = 'admin' AND p.name IN ('attr:read','attr:create','attr:update','attr:delete','attr_val:read','attr_val:create','attr_val:update','attr_val:delete');
+--
+-- INSERT INTO role_permissions (role_id, permission_id)
+-- SELECT r.id, p.id FROM roles r, permissions p
+-- WHERE r.name = 'editor' AND p.name IN ('attr:read','attr_val:read');
 
 
 -- ========================================================================
