@@ -192,3 +192,56 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"message": "deleted"})
 }
+
+
+// ── 品类-属性关联 ──────────────────────────────────────────────
+
+// GetCategoryAttributes 获取品类关联的属性列表
+// @Summary 获取品类关联的属性列表
+// @Description 获取指定品类关联的规格属性维度列表
+// @Tags categories
+// @Produce json
+// @Param id path int true "品类ID"
+// @Success 200 {object} response.Response{data=[]dto.CategoryAttributeResponse}
+// @Router /api/v1/categories/{id}/attributes [get]
+func (h *CategoryHandler) GetCategoryAttributes(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	attrs, err := h.categoryService.GetCategoryAttributes(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, attrs)
+}
+
+// SetCategoryAttributes 设置品类关联的属性（全量替换）
+// @Summary 设置品类关联的属性
+// @Description 全量替换指定品类关联的规格属性，原有关联会被清除
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Param id path int true "品类ID"
+// @Param attrs body dto.SetCategoryAttributesDTO true "属性ID列表"
+// @Success 200 {object} response.Response
+// @Router /api/v1/categories/{id}/attributes [put]
+func (h *CategoryHandler) SetCategoryAttributes(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	var req dto.SetCategoryAttributesDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		return
+	}
+	if err := h.categoryService.SetCategoryAttributes(c, id, &req); err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, nil)
+}

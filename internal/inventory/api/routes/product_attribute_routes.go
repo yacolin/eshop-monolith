@@ -12,7 +12,7 @@ import (
 
 func RegisterProductAttributeRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB) {
 	attrRepo := repositories.NewProductAttributeRepository(db)
-	svc := service.NewProductAttributeService(attrRepo, repos.Sku, repos.Product, db)
+	svc := service.NewProductAttributeService(attrRepo, repos.Sku, repos.Product, repos.CategoryAttribute, db)
 	h := handlers.NewProductAttributeHandler(svc)
 
 	products := v1.Group("/products")

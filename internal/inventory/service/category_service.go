@@ -13,15 +13,21 @@ import (
 
 // CategoryService 分类服务
 type CategoryService struct {
-	repo repositories.IcategoryRepository
-	bus  *eventbus.Bus
+	repo    repositories.IcategoryRepository
+	catAttr repositories.IcategoryAttributeRepository
+	bus     *eventbus.Bus
 }
 
 // NewCategoryService 创建分类服务
-func NewCategoryService(repo repositories.IcategoryRepository, bus *eventbus.Bus) *CategoryService {
+func NewCategoryService(
+	repo repositories.IcategoryRepository,
+	catAttr repositories.IcategoryAttributeRepository,
+	bus *eventbus.Bus,
+) *CategoryService {
 	return &CategoryService{
-		repo: repo,
-		bus:  bus,
+		repo:    repo,
+		catAttr: catAttr,
+		bus:     bus,
 	}
 }
 
@@ -158,4 +164,28 @@ func (s *CategoryService) ListCategories(ctx context.Context, q dto.CategoryList
 		List:  list,
 		Total: total,
 	}, nil
+}
+
+
+// ── 品类-属性关联 ──────────────────────────────────────────────
+
+// GetCategoryAttributes 获取品类关联的属性列表
+func (s *CategoryService) GetCategoryAttributes(ctx context.Context, categoryID int64) ([]dto.CategoryAttributeResponse, error) {
+	attrs, err := s.catAttr.FindByCategoryID(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]dto.CategoryAttributeResponse, len(attrs))
+	for i, a := range attrs {
+		items[i] = dto.CategoryAttributeResponse{
+			AttributeID:   a.ID,
+			AttributeName: a.Name,
+		}
+	}
+	return items, nil
+}
+
+// SetCategoryAttributes 全量替换品类关联的属性
+func (s *CategoryService) SetCategoryAttributes(ctx context.Context, categoryID int64, req *dto.SetCategoryAttributesDTO) error {
+	return s.catAttr.SetByCategoryID(ctx, categoryID, req.AttributeIDs)
 }

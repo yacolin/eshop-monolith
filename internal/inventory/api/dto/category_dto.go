@@ -33,3 +33,14 @@ type UpdateCategoryDTO struct {
 	Description *string `json:"description" binding:"omitempty,max=65535"`
 	ParentID    *int64  `json:"parent_id"`
 }
+
+// ── 品类-属性关联 ──────────────────────────────────────────────
+
+type CategoryAttributeResponse struct {
+	AttributeID   int64  `json:"attribute_id"`
+	AttributeName string `json:"attribute_name"`
+}
+
+type SetCategoryAttributesDTO struct {
+	AttributeIDs []int64 `json:"attribute_ids" binding:"required"`
+}

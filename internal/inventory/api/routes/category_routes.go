@@ -11,7 +11,7 @@ import (
 )
 
 func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, bus *eventbus.Bus) {
-	categoryService := service.NewCategoryService(repos.Category, bus)
+	categoryService := service.NewCategoryService(repos.Category, repos.CategoryAttribute, bus)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
 	categories := v1.Group("/categories")
@@ -20,6 +20,8 @@ func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories,
 		categories.GET("/root", categoryHandler.ListRootCategories)
 		categories.GET("/:id/children", categoryHandler.ListSubCategories)
 		categories.GET("/:id", categoryHandler.GetCategoryByID)
+		// 品类-属性关联
+		categories.GET("/:id/attributes", categoryHandler.GetCategoryAttributes)
 	}
 
 	// 需要认证的分类写操作
@@ -29,5 +31,7 @@ func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories,
 		auth.POST("", categoryHandler.CreateCategory)
 		auth.PUT("/:id", categoryHandler.UpdateCategory)
 		auth.DELETE("/:id", categoryHandler.DeleteCategory)
+		// 品类-属性关联写操作
+		auth.PUT("/:id/attributes", categoryHandler.SetCategoryAttributes)
 	}
 }

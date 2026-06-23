@@ -75,6 +75,7 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&repoModels.InventoryPO{},
 
 		&repoModels.ProductCategoryPO{},
+		&repoModels.CategoryAttributePO{},
 
 		&repoModels.OrderPO{},
 		&repoModels.OrderItemPO{},
@@ -145,6 +146,7 @@ type Repositories struct {
 	Sku                  invRepos.IskuRepository
 	ProductAttribute     invRepos.IproductAttributeRepository
 	Attribute            invRepos.IattributeRepository
+	CategoryAttribute    invRepos.IcategoryAttributeRepository
 }
 
 // // NewRepositories 创建仓储集合
@@ -167,5 +169,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Sku:                  invRepos.NewSkuRepository(db),
 		ProductAttribute:     invRepos.NewProductAttributeRepository(db),
 		Attribute:            invRepos.NewAttributeRepository(db),
+		CategoryAttribute:    invRepos.NewCategoryAttributeRepository(db),
 	}
 }

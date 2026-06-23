@@ -17,6 +17,7 @@ type ProductAttributeService struct {
 	attrRepo     repositories.IproductAttributeRepository
 	skuRepo      repositories.IskuRepository
 	productRepo  repositories.IproductRepository
+	catAttrRepo  repositories.IcategoryAttributeRepository
 	db           *gorm.DB
 }
 
@@ -24,25 +25,38 @@ func NewProductAttributeService(
 	attrRepo repositories.IproductAttributeRepository,
 	skuRepo repositories.IskuRepository,
 	productRepo repositories.IproductRepository,
+	catAttrRepo repositories.IcategoryAttributeRepository,
 	db *gorm.DB,
 ) *ProductAttributeService {
 	return &ProductAttributeService{
 		attrRepo:    attrRepo,
 		skuRepo:     skuRepo,
 		productRepo: productRepo,
+		catAttrRepo: catAttrRepo,
 		db:          db,
 	}
 }
 
-// GetProductAttributes 获取产品的属性定义及可选值列表
+// GetProductAttributes 获取产品的属性定义及可选值列表（按品类过滤）
 func (s *ProductAttributeService) GetProductAttributes(ctx context.Context, productID int64) ([]dto.ProductAttributeItem, error) {
 	attrs, vals, err := s.attrRepo.FindByProductID(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
 
+	// 获取产品所属品类的允许属性集合
+	allowed, err := s.getAllowedAttributes(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+
 	valMap := make(map[int64][]dto.AttributeValueItem)
 	for _, v := range vals {
+		if allowed != nil {
+			if _, ok := allowed[v.AttributeID]; !ok {
+				continue
+			}
+		}
 		valMap[v.AttributeID] = append(valMap[v.AttributeID], dto.AttributeValueItem{
 			ValueID: v.ID,
 			Value:   v.Value,
@@ -51,6 +65,9 @@ func (s *ProductAttributeService) GetProductAttributes(ctx context.Context, prod
 
 	result := make([]dto.ProductAttributeItem, 0, len(attrs))
 	for _, a := range attrs {
+		if _, ok := valMap[a.ID]; !ok {
+			continue
+		}
 		result = append(result, dto.ProductAttributeItem{
 			AttributeID:   a.ID,
 			AttributeName: a.Name,
@@ -58,6 +75,35 @@ func (s *ProductAttributeService) GetProductAttributes(ctx context.Context, prod
 		})
 	}
 	return result, nil
+}
+
+// getAllowedAttributes 查询产品品类的允许属性集合，无品类关联时返回 nil（不限）
+func (s *ProductAttributeService) getAllowedAttributes(ctx context.Context, productID int64) (map[int64]struct{}, error) {
+	var categoryIDs []int64
+	if err := s.db.WithContext(ctx).Table("product_categories").
+		Where("product_id = ?", productID).Pluck("category_id", &categoryIDs).Error; err != nil {
+		return nil, err
+	}
+	if len(categoryIDs) == 0 {
+		return nil, nil
+	}
+
+	// 收集所有品类关联的属性
+	allowed := make(map[int64]struct{})
+	for _, catID := range categoryIDs {
+		attrs, err := s.catAttrRepo.FindByCategoryID(ctx, catID)
+		if err != nil {
+			return nil, err
+		}
+		for _, a := range attrs {
+			allowed[a.ID] = struct{}{}
+		}
+	}
+	// 如果品类都没有关联属性，返回 nil（不限）
+	if len(allowed) == 0 {
+		return nil, nil
+	}
+	return allowed, nil
 }
 
 // UpdateProductAttributes 更新产品关联的属性值（全量替换）
