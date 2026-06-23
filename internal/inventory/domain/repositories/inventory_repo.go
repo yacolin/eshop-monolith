@@ -30,6 +30,8 @@ func recalcStatus(po *models.InventoryPO) {
 type IinventoryRepository interface {
 	// CreateInventory 创建库存
 	CreateInventory(ctx context.Context, inv *invModels.Inventory) error
+	// BatchCreateInventory 批量创建库存
+	BatchCreateInventory(ctx context.Context, invs []*invModels.Inventory) error
 	// FindInventoryBySkuID 根据SKU ID查询库存
 	FindInventoryBySkuID(ctx context.Context, skuID int64) (*invModels.Inventory, error)
 	// ReserveInventory 预占库存
@@ -53,6 +55,16 @@ type InventoryRepository struct {
 // NewInventoryRepository 创建库存仓储
 func NewInventoryRepository(db *gorm.DB) IinventoryRepository {
 	return &InventoryRepository{db: db}
+}
+
+// BatchCreateInventory 批量创建库存
+func (r *InventoryRepository) BatchCreateInventory(ctx context.Context, invs []*invModels.Inventory) error {
+	pos := make([]models.InventoryPO, len(invs))
+	for i, inv := range invs {
+		inv.UpdateStatus()
+		pos[i] = *models.InventoryFromDomain(inv)
+	}
+	return r.db.WithContext(ctx).CreateInBatches(pos, 100).Error
 }
 
 // CreateInventory 创建库存

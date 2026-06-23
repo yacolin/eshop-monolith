@@ -105,6 +105,30 @@ func (h *InventoryHandler) CreateInventory(c *gin.Context) {
 	response.Success(c, dto)
 }
 
+// BatchCreateInventory 批量创建库存
+// @Summary 批量创建库存
+// @Description 批量创建多个SKU的库存记录
+// @Tags inventories
+// @Accept json
+// @Produce json
+// @Param inventory body dto.BatchCreateInventoryDTO true "批量库存信息"
+// @Success 200 {object} response.Response{data=[]models.Inventory}
+// @Router /api/v1/inventories/batch [post]
+func (h *InventoryHandler) BatchCreateInventory(c *gin.Context) {
+	var req dto.BatchCreateInventoryDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		return
+	}
+	result, err := h.inventoryService.BatchCreateInventory(c, &req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.Success(c, result)
+}
+
 // UpdateInventory 更新库存
 // @Summary 更新库存
 // @Description 根据ID更新库存信息

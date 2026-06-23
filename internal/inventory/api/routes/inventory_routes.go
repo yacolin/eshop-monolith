@@ -26,6 +26,7 @@ func RegisterInventoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories
 	auth.Use(middleware.JWTAuth())
 	{
 		auth.POST("", inventoryHandler.CreateInventory)
+		auth.POST("/batch", inventoryHandler.BatchCreateInventory)
 		auth.PUT("/:id", inventoryHandler.UpdateInventory)
 		auth.POST("/reserve", inventoryHandler.ReserveInventory)
 		auth.POST("/release", inventoryHandler.ReleaseInventory)

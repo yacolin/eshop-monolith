@@ -172,7 +172,6 @@ func (h *ProductHandler) GetProductWithSkus(c *gin.Context) {
 // @Produce json
 // @Param id path int true "产品ID"
 // @Success 200 {object} response.Response{data=dto.ProductDetailDTO}
-// @Router /api/v1/products/{id}/detail [get]
 func (h *ProductHandler) GetProductDetail(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
 	if err != nil {

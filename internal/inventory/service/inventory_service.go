@@ -39,6 +39,24 @@ type UpdateInventoryRequest struct {
 	Quantity int `json:"quantity"`
 }
 
+// BatchCreateInventory 批量创建库存
+func (s *InventoryService) BatchCreateInventory(ctx context.Context, req *dto.BatchCreateInventoryDTO) ([]*models.Inventory, error) {
+	inventories := make([]*models.Inventory, len(req.SkuIDs))
+	for i, skuID := range req.SkuIDs {
+		inventories[i] = &models.Inventory{
+			SkuID:     skuID,
+			Quantity:  req.Quantity,
+			Threshold: req.Threshold,
+		}
+	}
+
+	if err := s.repo.BatchCreateInventory(ctx, inventories); err != nil {
+		return nil, err
+	}
+
+	return inventories, nil
+}
+
 // CreateInventory 创建库存
 func (s *InventoryService) CreateInventory(ctx context.Context, req *dto.CreateInventoryDTO) (*models.Inventory, error) {
 

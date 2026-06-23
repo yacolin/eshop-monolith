@@ -81,6 +81,15 @@ type AdjustInventoryDTO struct {
 	Quantity  int   `json:"quantity" binding:"required"` // 正数增加, 负数减少
 }
 
+// BatchCreateInventoryDTO 批量创建库存请求
+//
+// 对多个 SKU 统一设置相同的初始库存量和低库存预警阈值。
+type BatchCreateInventoryDTO struct {
+	SkuIDs    []int64 `json:"sku_ids" binding:"required,min=1"`
+	Quantity  int     `json:"quantity" binding:"required,min=0"`  // 统一初始物理库存量
+	Threshold int     `json:"threshold" binding:"min=0"`          // 统一低库存预警阈值
+}
+
 // InventoryEnrichedItem 库存列表 enriched 单项
 type InventoryEnrichedItem struct {
 	ID        int64           `json:"id"`
