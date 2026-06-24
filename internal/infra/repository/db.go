@@ -13,6 +13,8 @@ import (
 
 	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
 
+	addressRepos "eshop-monolith/internal/address/domain/repositories"
+
 	"eshop-monolith/pkg/config"
 	"fmt"
 	"time"
@@ -108,6 +110,8 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 			&repoModels.ProductAttributeValuePO{},
 
 		&repoModels.NotificationPO{},
+
+		&repoModels.AddressPO{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
@@ -147,6 +151,7 @@ type Repositories struct {
 	ProductAttribute     invRepos.IproductAttributeRepository
 	Attribute            invRepos.IattributeRepository
 	CategoryAttribute    invRepos.IcategoryAttributeRepository
+	Address              addressRepos.IaddressRepository
 }
 
 // // NewRepositories 创建仓储集合
@@ -170,5 +175,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		ProductAttribute:     invRepos.NewProductAttributeRepository(db),
 		Attribute:            invRepos.NewAttributeRepository(db),
 		CategoryAttribute:    invRepos.NewCategoryAttributeRepository(db),
+		Address:              addressRepos.NewAddressRepository(db),
 	}
 }

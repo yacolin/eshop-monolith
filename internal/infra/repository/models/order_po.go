@@ -21,7 +21,14 @@ type OrderPO struct {
 	CreatedAt      time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP()"`
 	UpdatedAt      time.Time      `gorm:"type:timestamp;default:CURRENT_TIMESTAMP();onUpdate:CURRENT_TIMESTAMP()"`
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
-	Items          []OrderItemPO  `gorm:"foreignKey:OrderID"`
+	Consignee  string        `gorm:"type:varchar(64)"`
+	Phone      string        `gorm:"type:varchar(20)"`
+	Province   string        `gorm:"type:varchar(32)"`
+	City       string        `gorm:"type:varchar(32)"`
+	District   string        `gorm:"type:varchar(32)"`
+	DetailAddr string        `gorm:"type:varchar(256)"`
+	ZipCode    string        `gorm:"type:varchar(10)"`
+	Items      []OrderItemPO `gorm:"foreignKey:OrderID"`
 }
 
 func (OrderPO) TableName() string { return "orders" }
@@ -42,6 +49,13 @@ func (po *OrderPO) ToDomain() *domain.Order {
 		Status:         po.Status,
 		CreatedAt:      utils.Timestamp(po.CreatedAt),
 		UpdatedAt:      utils.Timestamp(po.UpdatedAt),
+		Consignee:      po.Consignee,
+		Phone:          po.Phone,
+		Province:       po.Province,
+		City:           po.City,
+		District:       po.District,
+		DetailAddr:     po.DetailAddr,
+		ZipCode:        po.ZipCode,
 		Items:          items,
 	}
 }
@@ -62,6 +76,13 @@ func OrderFromDomain(o *domain.Order) *OrderPO {
 		Status:         o.Status,
 		CreatedAt:      time.Time(o.CreatedAt),
 		UpdatedAt:      time.Time(o.UpdatedAt),
+		Consignee:      o.Consignee,
+		Phone:          o.Phone,
+		Province:       o.Province,
+		City:           o.City,
+		District:       o.District,
+		DetailAddr:     o.DetailAddr,
+		ZipCode:        o.ZipCode,
 		Items:          items,
 	}
 }

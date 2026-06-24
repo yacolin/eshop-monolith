@@ -19,6 +19,7 @@ import (
 	orderSvcPkg "eshop-monolith/internal/order/service"
 	payRoutes "eshop-monolith/internal/payment/api/routes"
 	reviewRoutes "eshop-monolith/internal/review/api/routes"
+	addressRoutes "eshop-monolith/internal/address/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
 
 	"eshop-monolith/internal/infra/eventbus"
@@ -137,6 +138,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		userRoutes.RegisterRoleRoutes(v1, repos, db)
 		notifRoutes.RegisterNotificationRoutes(v1, repos, db, bus)
 		reviewRoutes.RegisterReviewRoutes(v1, repos, db, bus)
+		addressRoutes.RegisterAddressRoutes(v1, db, bus)
 		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, bus)
 
 

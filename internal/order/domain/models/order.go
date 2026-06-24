@@ -29,6 +29,15 @@ type Order struct {
 	CreatedAt      utils.Timestamp `json:"created_at"`
 	UpdatedAt      utils.Timestamp `json:"updated_at"`
 
+	// 地址快照（下单时锁定）
+	Consignee   string `json:"consignee"`
+	Phone       string `json:"phone"`
+	Province    string `json:"province"`
+	City        string `json:"city"`
+	District    string `json:"district"`
+	DetailAddr  string `json:"detail_addr"`
+	ZipCode     string `json:"zip_code"`
+
 	Items []OrderItem `json:"items,omitempty"`
 }
 
