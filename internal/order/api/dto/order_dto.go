@@ -17,6 +17,13 @@ type OrderResponse struct {
 	Status         string             `json:"status"`
 	CreatedAt      utils.Timestamp    `json:"created_at"`
 	UpdatedAt      utils.Timestamp    `json:"updated_at"`
+	Consignee      string             `json:"consignee"`
+	Phone          string             `json:"phone"`
+	Province       string             `json:"province"`
+	City           string             `json:"city"`
+	District       string             `json:"district"`
+	DetailAddr     string             `json:"detail_addr"`
+	ZipCode        string             `json:"zip_code"`
 	Items          []OrderItemResponse `json:"items,omitempty"`
 }
 
@@ -73,8 +80,9 @@ type UserOrderListQuery struct {
 // @Description 创建订单的请求体
 type CreateOrderDTO struct {
 	CustomerID   string               `json:"customer_id" binding:"required"`
-	Currency     string               `json:"currency"`      // 可选，默认 CNY
-	UserCouponID *int64               `json:"user_coupon_id"` // 可选，使用的用户优惠券ID
+	Currency     string               `json:"currency"`           // 可选，默认 CNY
+	AddressID    int64                `json:"address_id" binding:"required"`
+	UserCouponID *int64               `json:"user_coupon_id"`      // 可选，使用的用户优惠券ID
 	Items        []CreateOrderItemDTO `json:"items" binding:"required,min=1,dive"`
 }
 
