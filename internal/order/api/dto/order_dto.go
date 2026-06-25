@@ -25,6 +25,7 @@ type OrderItemResponse struct {
 	ID        int64  `json:"id"`
 	OrderID   int64  `json:"order_id"`
 	OrderNo   string `json:"order_no"`
+	SkuID     int64  `json:"sku_id"`
 	ProductID string `json:"product_id"`
 	Quantity  int    `json:"quantity"`
 	UnitPrice int64  `json:"unit_price"` // 单价，单位：分
@@ -91,9 +92,8 @@ type UpdateOrderStatusDTO struct {
 	Status string `json:"status" binding:"required"`
 }
 
-// CreateOrderItemReq 订单项
+// CreateOrderItemDTO 订单项
 type CreateOrderItemDTO struct {
-	ProductID string `json:"product_id" binding:"required"`
-	Quantity  int    `json:"quantity" binding:"required,min=1"`
-	UnitPrice int64  `json:"unit_price" binding:"required,min=0"` // 单价，单位：分
+	SkuID    int64 `json:"sku_id" binding:"required"`
+	Quantity int   `json:"quantity" binding:"required,min=1"`
 }

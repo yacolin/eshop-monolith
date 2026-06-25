@@ -52,6 +52,7 @@ func orderItemToResponse(item *models.OrderItem, orderNo string) dto.OrderItemRe
 		ID:        item.ID,
 		OrderID:   item.OrderID,
 		OrderNo:   orderNo,
+		SkuID:     item.SkuID,
 		ProductID: item.ProductID,
 		Quantity:  item.Quantity,
 		UnitPrice: item.UnitPrice,
@@ -63,15 +64,17 @@ type OrderService struct {
 	db            *gorm.DB
 	orderRepo     repositories.IorderRepository
 	inventoryRepo repositories.InventoryForOrder
+	skuForOrder   repositories.SkuForOrder
 	couponService *couponSvc.CouponService
 	bus           *eventbus.Bus
 }
 
-func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, bus *eventbus.Bus, couponService *couponSvc.CouponService) *OrderService {
+func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, skuForOrder repositories.SkuForOrder, bus *eventbus.Bus, couponService *couponSvc.CouponService) *OrderService {
 	return &OrderService{
 		db:            db,
 		orderRepo:     orderRepo,
 		inventoryRepo: inventoryRepo,
+		skuForOrder:   skuForOrder,
 		couponService: couponService,
 		bus:           bus,
 	}
@@ -86,19 +89,20 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *dto.CreateOrderDTO)
 		var orderItems []models.OrderItem
 
 		for _, item := range req.Items {
-			pid, err := strconv.ParseInt(item.ProductID, 10, 64)
+			productID, price, err := s.skuForOrder.GetSkuInfo(ctx, item.SkuID)
 			if err != nil {
-				return errcode.ErrInvalidParams
-			}
-			if err := s.inventoryRepo.ReserveWithTx(tx, pid, item.Quantity); err != nil {
 				return err
 			}
-			amount := item.UnitPrice * int64(item.Quantity)
+			if err := s.inventoryRepo.ReserveWithTx(tx, item.SkuID, item.Quantity); err != nil {
+				return err
+			}
+			amount := price * int64(item.Quantity)
 			totalAmount += amount
 			orderItems = append(orderItems, models.OrderItem{
-				ProductID: item.ProductID,
+				SkuID:     item.SkuID,
+				ProductID: strconv.FormatInt(productID, 10),
 				Quantity:  item.Quantity,
-				UnitPrice: item.UnitPrice,
+				UnitPrice: price,
 				Amount:    amount,
 			})
 		}
@@ -188,17 +192,13 @@ func (s *OrderService) CancelOrder(ctx context.Context, orderID int64) error {
 		}
 
 		for _, item := range order.Items {
-			pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
-			if parseErr != nil {
-				return errcode.ErrInvalidParams
-			}
 			switch order.Status {
 			case models.OrderStatusPending:
-				if releaseErr := s.inventoryRepo.ReleaseWithTx(tx, pid, item.Quantity); releaseErr != nil {
+				if releaseErr := s.inventoryRepo.ReleaseWithTx(tx, item.SkuID, item.Quantity); releaseErr != nil {
 					return releaseErr
 				}
 			case models.OrderStatusPaid:
-				if restoreErr := s.inventoryRepo.RestoreWithTx(tx, pid, item.Quantity); restoreErr != nil {
+				if restoreErr := s.inventoryRepo.RestoreWithTx(tx, item.SkuID, item.Quantity); restoreErr != nil {
 					return restoreErr
 				}
 			}
@@ -264,33 +264,21 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, orderID int64, sta
 		switch {
 		case status == models.OrderStatusPaid && order.Status == models.OrderStatusPending:
 			for _, item := range order.Items {
-				pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
-				if parseErr != nil {
-					return errcode.ErrInvalidParams
-				}
-				if deductErr := s.inventoryRepo.DeductWithTx(tx, pid, item.Quantity); deductErr != nil {
+				if deductErr := s.inventoryRepo.DeductWithTx(tx, item.SkuID, item.Quantity); deductErr != nil {
 					return deductErr
 				}
 			}
 
 		case status == models.OrderStatusCancelled && order.Status == models.OrderStatusPending:
 			for _, item := range order.Items {
-				pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
-				if parseErr != nil {
-					return errcode.ErrInvalidParams
-				}
-				if releaseErr := s.inventoryRepo.ReleaseWithTx(tx, pid, item.Quantity); releaseErr != nil {
+				if releaseErr := s.inventoryRepo.ReleaseWithTx(tx, item.SkuID, item.Quantity); releaseErr != nil {
 					return releaseErr
 				}
 			}
 
 		case status == models.OrderStatusCancelled && order.Status == models.OrderStatusPaid:
 			for _, item := range order.Items {
-				pid, parseErr := strconv.ParseInt(item.ProductID, 10, 64)
-				if parseErr != nil {
-					return errcode.ErrInvalidParams
-				}
-				if restoreErr := s.inventoryRepo.RestoreWithTx(tx, pid, item.Quantity); restoreErr != nil {
+				if restoreErr := s.inventoryRepo.RestoreWithTx(tx, item.SkuID, item.Quantity); restoreErr != nil {
 					return restoreErr
 				}
 			}
