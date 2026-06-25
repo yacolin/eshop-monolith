@@ -43,6 +43,13 @@ func orderToResponse(o *models.Order) dto.OrderResponse {
 		Status:         o.Status,
 		CreatedAt:      o.CreatedAt,
 		UpdatedAt:      o.UpdatedAt,
+		Consignee:      o.Consignee,
+		Phone:          o.Phone,
+		Province:       o.Province,
+		City:           o.City,
+		District:       o.District,
+		DetailAddr:     o.DetailAddr,
+		ZipCode:        o.ZipCode,
 		Items:          items,
 	}
 }
@@ -61,22 +68,24 @@ func orderItemToResponse(item *models.OrderItem, orderNo string) dto.OrderItemRe
 }
 
 type OrderService struct {
-	db            *gorm.DB
-	orderRepo     repositories.IorderRepository
-	inventoryRepo repositories.InventoryForOrder
-	skuForOrder   repositories.SkuForOrder
-	couponService *couponSvc.CouponService
-	bus           *eventbus.Bus
+	db              *gorm.DB
+	orderRepo       repositories.IorderRepository
+	inventoryRepo   repositories.InventoryForOrder
+	skuForOrder     repositories.SkuForOrder
+	addressForOrder repositories.IaddressForOrder
+	couponService   *couponSvc.CouponService
+	bus             *eventbus.Bus
 }
 
-func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, skuForOrder repositories.SkuForOrder, bus *eventbus.Bus, couponService *couponSvc.CouponService) *OrderService {
+func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, skuForOrder repositories.SkuForOrder, addressForOrder repositories.IaddressForOrder, bus *eventbus.Bus, couponService *couponSvc.CouponService) *OrderService {
 	return &OrderService{
-		db:            db,
-		orderRepo:     orderRepo,
-		inventoryRepo: inventoryRepo,
-		skuForOrder:   skuForOrder,
-		couponService: couponService,
-		bus:           bus,
+		db:              db,
+		orderRepo:       orderRepo,
+		inventoryRepo:   inventoryRepo,
+		skuForOrder:     skuForOrder,
+		addressForOrder: addressForOrder,
+		couponService:   couponService,
+		bus:             bus,
 	}
 }
 
@@ -123,6 +132,13 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *dto.CreateOrderDTO)
 			}
 		}
 
+		// 地址快照
+		userID, _ := strconv.ParseInt(req.CustomerID, 10, 64)
+		addr, err := s.addressForOrder.GetAddress(ctx, userID, req.AddressID)
+		if err != nil {
+			return err
+		}
+
 		order = &models.Order{
 			OrderNo:        orderNo,
 			CustomerID:     req.CustomerID,
@@ -131,7 +147,14 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *dto.CreateOrderDTO)
 			CouponID:       couponID,
 			Currency:       req.Currency,
 			Status:         models.OrderStatusPending,
-			Items:          orderItems,
+			Consignee:  addr.Consignee,
+			Phone:      addr.Phone,
+			Province:   addr.Province,
+			City:       addr.City,
+			District:   addr.District,
+			DetailAddr: addr.Detail,
+			ZipCode:    addr.ZipCode,
+			Items:      orderItems,
 		}
 
 		return s.orderRepo.CreateWithTx(tx, order)

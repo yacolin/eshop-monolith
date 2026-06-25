@@ -3,6 +3,7 @@ package routes
 import (
 	"log"
 
+	addressSvc "eshop-monolith/internal/address/service"
 	couponSvc "eshop-monolith/internal/coupon/service"
 	"eshop-monolith/internal/infra/eventbus"
 	"eshop-monolith/internal/infra/repository"
@@ -20,7 +21,9 @@ func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db
 		log.Fatal("Inventory repository does not implement InventoryForOrder interface")
 	}
 	skuForOrder := orderRepos.NewSkuForOrderAdapter(db)
-	orderService := service.NewOrderService(db, repos.Order, invForOrder, skuForOrder, bus, couponService)
+	addressSvcInstance := addressSvc.NewAddressService(repos.Address, db, bus)
+	addressForOrder := orderRepos.NewAddressForOrderAdapter(addressSvcInstance)
+	orderService := service.NewOrderService(db, repos.Order, invForOrder, skuForOrder, addressForOrder, bus, couponService)
 	orderHandler := handlers.NewOrderHandler(orderService)
 
 	orders := v1.Group("/orders")
