@@ -52,6 +52,38 @@ type SkuListResult struct {
 	Total int64         `json:"total"`
 }
 
+// SkuDetailResponse SKU 详情响应（含库存信息）
+type SkuDetailResponse struct {
+	ID                int64             `json:"id"`
+	ProductID         int64             `json:"product_id"`
+	Name              string            `json:"name"`
+	Price             int64             `json:"price"`
+	SKUCode           string            `json:"sku_code"`
+	Image             string            `json:"image,omitempty"`
+	Spec              map[string]string `json:"spec,omitempty"`
+	AvailableQuantity int               `json:"available_quantity"`
+	InventoryStatus   string            `json:"inventory_status"`
+	CreatedAt         utils.Timestamp   `json:"created_at"`
+	UpdatedAt         utils.Timestamp   `json:"updated_at"`
+}
+
+// SkuDetailToResponse 将 SKU + 库存信息映射为 SkuDetailResponse
+func SkuDetailToResponse(s *models.Sku, availableQuantity int, inventoryStatus string) SkuDetailResponse {
+	return SkuDetailResponse{
+		ID:                s.ID,
+		ProductID:         s.ProductID,
+		Name:              s.Name,
+		Price:             s.Price,
+		SKUCode:           s.SKUCode,
+		Image:             s.Image,
+		Spec:              s.Spec,
+		AvailableQuantity: availableQuantity,
+		InventoryStatus:   inventoryStatus,
+		CreatedAt:         s.CreatedAt,
+		UpdatedAt:         s.UpdatedAt,
+	}
+}
+
 func SkuToResponse(s *models.Sku) SkuResponse {
 	return SkuResponse{
 		ID: s.ID, ProductID: s.ProductID, Name: s.Name, Price: s.Price,

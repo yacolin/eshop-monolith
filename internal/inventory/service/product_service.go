@@ -588,6 +588,33 @@ func (s *ProductService) GetSkusByProductID(ctx context.Context, productID int64
 	return s.skuRepo.FindByProductID(ctx, productID)
 }
 
+// GetSkusWithInventory 获取产品的 SKU 列表并批量注入库存信息
+func (s *ProductService) GetSkusWithInventory(ctx context.Context, productID int64) ([]dto.SkuDetailResponse, error) {
+	skus, err := s.GetSkusByProductID(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	skuIDs := make([]int64, len(skus))
+	for i, sku := range skus {
+		skuIDs[i] = sku.ID
+	}
+	invMap, err := s.inventoryRepo.FindInventoriesBySkuIDs(ctx, skuIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]dto.SkuDetailResponse, len(skus))
+	for i, sku := range skus {
+		availableQuantity := 0
+		inventoryStatus := string(models.InventoryStatusOutOfStock)
+		if inv, ok := invMap[sku.ID]; ok {
+			availableQuantity = inv.Quantity - inv.Reserved
+			inventoryStatus = inv.Status
+		}
+		result[i] = dto.SkuDetailToResponse(&sku, availableQuantity, inventoryStatus)
+	}
+	return result, nil
+}
+
 func (s *ProductService) GetProductBySKU(ctx context.Context, sku string) (*models.Product, error) {
 	return s.repo.FindBySKU(ctx, sku)
 }

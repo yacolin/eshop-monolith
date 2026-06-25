@@ -45,6 +45,8 @@ type IinventoryRepository interface {
 	// ListInventories 列出所有库存
 	ListInventories(ctx context.Context, query dto.InventoryListQuery, offset, limit int) ([]invModels.Inventory, error)
 	CountInventories(ctx context.Context, query dto.InventoryListQuery) (int64, error)
+	// FindInventoriesBySkuIDs 根据 SKU ID 列表批量查询库存，返回 map[skuID]Inventory
+	FindInventoriesBySkuIDs(ctx context.Context, skuIDs []int64) (map[int64]*invModels.Inventory, error)
 }
 
 // InventoryRepository 库存仓储实现
@@ -264,6 +266,23 @@ func (r *InventoryRepository) FindInventoryByID(ctx context.Context, id int64) (
 		return nil, err
 	}
 	return po.ToDomain(), nil
+}
+
+// FindInventoriesBySkuIDs 根据 SKU ID 列表批量查询库存
+func (r *InventoryRepository) FindInventoriesBySkuIDs(ctx context.Context, skuIDs []int64) (map[int64]*invModels.Inventory, error) {
+	if len(skuIDs) == 0 {
+		return map[int64]*invModels.Inventory{}, nil
+	}
+	var pos []models.InventoryPO
+	if err := r.db.WithContext(ctx).Where("sku_id IN ?", skuIDs).Find(&pos).Error; err != nil {
+		return nil, err
+	}
+	result := make(map[int64]*invModels.Inventory, len(pos))
+	for i := range pos {
+		inv := pos[i].ToDomain()
+		result[inv.SkuID] = inv
+	}
+	return result, nil
 }
 
 // DeleteInventory 删除库存

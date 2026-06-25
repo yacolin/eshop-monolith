@@ -149,14 +149,10 @@ func (h *ProductHandler) GetProductWithSkus(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	skus, err := h.productService.GetSkusByProductID(c, id)
+	skuResponses, err := h.productService.GetSkusWithInventory(c, id)
 	if err != nil {
 		c.Error(err)
 		return
-	}
-	skuResponses := make([]dto.SkuResponse, len(skus))
-	for i, sku := range skus {
-		skuResponses[i] = dto.SkuToResponse(&sku)
 	}
 	response.Success(c, dto.ProductWithSkusResponse{
 		Product: dto.ProductToResponse(product),

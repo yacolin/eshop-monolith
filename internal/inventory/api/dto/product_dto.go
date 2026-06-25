@@ -87,7 +87,7 @@ type ProductDetailDTO struct {
 // ProductWithSkusResponse 产品详情（含 SKU 列表）
 type ProductWithSkusResponse struct {
 	Product ProductResponse `json:"product"`
-	Skus    []SkuResponse   `json:"skus"`
+	Skus    []SkuDetailResponse `json:"skus"`
 }
 
 // ProductWithCategoryDTO 产品列表项（含分类信息）
