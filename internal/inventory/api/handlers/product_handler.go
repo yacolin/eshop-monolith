@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"eshop-monolith/internal/inventory/api/dto"
+	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
@@ -144,19 +145,42 @@ func (h *ProductHandler) GetProductWithSkus(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	product, err := h.productService.GetProductByID(c, id)
-	if err != nil {
-		c.Error(err)
+
+	// 并行查询 product 和 SKU + 库存
+	type prodRes struct {
+		Product *models.Product
+		Err     error
+	}
+	type skuRes struct {
+		Skus []dto.SkuDetailResponse
+		Err  error
+	}
+	prodCh := make(chan prodRes, 1)
+	skuCh := make(chan skuRes, 1)
+
+	go func() {
+		p, e := h.productService.GetProductByID(c, id)
+		prodCh <- prodRes{Product: p, Err: e}
+	}()
+	go func() {
+		s, e := h.productService.GetSkusWithInventory(c, id)
+		skuCh <- skuRes{Skus: s, Err: e}
+	}()
+
+	pr := <-prodCh
+	if pr.Err != nil {
+		c.Error(pr.Err)
 		return
 	}
-	skuResponses, err := h.productService.GetSkusWithInventory(c, id)
-	if err != nil {
-		c.Error(err)
+	sr := <-skuCh
+	if sr.Err != nil {
+		c.Error(sr.Err)
 		return
 	}
+
 	response.Success(c, dto.ProductWithSkusResponse{
-		Product: dto.ProductToResponse(product),
-		Skus:    skuResponses,
+		Product: dto.ProductToResponse(pr.Product),
+		Skus:    sr.Skus,
 	})
 }
 

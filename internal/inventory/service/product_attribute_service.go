@@ -88,20 +88,17 @@ func (s *ProductAttributeService) getAllowedAttributes(ctx context.Context, prod
 		return nil, nil
 	}
 
-	// 收集所有品类关联的属性
-	allowed := make(map[int64]struct{})
-	for _, catID := range categoryIDs {
-		attrs, err := s.catAttrRepo.FindByCategoryID(ctx, catID)
-		if err != nil {
-			return nil, err
-		}
-		for _, a := range attrs {
-			allowed[a.ID] = struct{}{}
-		}
+	// 批量查询所有品类（含父品类递归）的属性
+	attrs, err := s.catAttrRepo.FindByCategoryIDs(ctx, categoryIDs)
+	if err != nil {
+		return nil, err
 	}
-	// 如果品类都没有关联属性，返回 nil（不限）
-	if len(allowed) == 0 {
+	if len(attrs) == 0 {
 		return nil, nil
+	}
+	allowed := make(map[int64]struct{}, len(attrs))
+	for _, a := range attrs {
+		allowed[a.ID] = struct{}{}
 	}
 	return allowed, nil
 }
