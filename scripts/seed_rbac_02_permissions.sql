@@ -88,7 +88,7 @@ INSERT INTO permissions (name, display_name, description, resource, action, cate
 -- ==================== 购物车管理 (21500) ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
 ('cart:read',   '查看购物车',   '查看购物车内容',               'cart', 'read',   '购物车管理', 21500, 1),
-('cart:add',    '添加商品',     '添加商品到购物车',             'cart', 'add',    '购物车管理', 21550, 1),
+('cart:create',    '添加商品',     '添加商品到购物车',             'cart', 'add',    '购物车管理', 21550, 1),
 ('cart:update', '编辑购物车',   '更新购物车商品信息',           'cart', 'update', '购物车管理', 21600, 1),
 ('cart:delete', '删除商品',     '删除购物车中的商品',           'cart', 'delete', '购物车管理', 21650, 1);
 

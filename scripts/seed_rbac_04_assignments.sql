@@ -41,7 +41,7 @@ SELECT (SELECT id FROM roles WHERE name = 'user'), id FROM permissions WHERE nam
     'order:cancel',
     -- 购物车：完全管理（归属当前用户）
     'cart:read',
-    'cart:add',
+    'cart:create',
     'cart:update',
     'cart:delete',
     -- 支付：查看和发起（归属当前用户）
@@ -389,7 +389,7 @@ SELECT (SELECT id FROM roles WHERE name = 'customer'), id FROM permissions WHERE
     'order:cancel',
     -- 购物车：完整管理
     'cart:read',
-    'cart:add',
+    'cart:create',
     'cart:update',
     'cart:delete',
     -- 支付：查看和发起
