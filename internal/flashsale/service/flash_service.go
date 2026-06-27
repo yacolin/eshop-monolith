@@ -97,13 +97,21 @@ func (s *FlashService) CreateActivity(ctx context.Context, req *dto.CreateActivi
 	return activity, nil
 }
 
-func (s *FlashService) LoadStockToRedis(ctx context.Context, activityID int64) error {
-	activity, err := s.repo.GetActivity(ctx, activityID)
+// WarmupStockToRedis 批量加载全部活动库存到 Redis
+func (s *FlashService) WarmupStockToRedis(ctx context.Context) (int, error) {
+	activities, err := s.repo.ListActivities(ctx)
 	if err != nil {
-		return errcode.ErrNotFound
+		return 0, err
 	}
 
-	return s.rdb.Set(ctx, stockKey(activityID), activity.TotalStock-activity.SoldStock, 0).Err()
+	pipe := s.rdb.Pipeline()
+	for _, a := range activities {
+		pipe.Set(ctx, stockKey(a.ID), a.TotalStock-a.SoldStock, 0)
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return 0, err
+	}
+	return len(activities), nil
 }
 
 func (s *FlashService) GetActivity(ctx context.Context, id int64) (*models.FlashActivity, error) {

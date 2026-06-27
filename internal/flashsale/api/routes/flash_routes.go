@@ -23,7 +23,7 @@ func RegisterFlashRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db
 	flash := v1.Group("/flash")
 	{
 		flash.POST("/activities", flashHandler.CreateActivity)
-		flash.POST("/activities/:id/load-stock", flashHandler.LoadStock)
+		flash.POST("/activities/warmup", flashHandler.WarmupStock)
 		flash.POST("/buy", flashHandler.FlashBuy)
 		flash.GET("/activities", flashHandler.ListActivities)
 		flash.GET("/activities-cursor", flashHandler.ListActivitiesByCursor)

@@ -33,19 +33,21 @@ func (h *FlashHandler) CreateActivity(c *gin.Context) {
 	response.Success(c, activity)
 }
 
-func (h *FlashHandler) LoadStock(c *gin.Context) {
-	id, err := utils.ParseIntParam(c, "id")
+// WarmupStock 批量预热全部活动库存到 Redis
+// @Summary 批量预热活动库存到 Redis
+// @Description 将所有活动库存加载到 Redis 缓存
+// @Tags flash-activities
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=map[string]int}
+// @Router /api/v1/flash/activities/warmup [post]
+func (h *FlashHandler) WarmupStock(c *gin.Context) {
+	total, err := h.flashService.WarmupStockToRedis(c)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-
-	if err := h.flashService.LoadStockToRedis(c, id); err != nil {
-		c.Error(err)
-		return
-	}
-
-	response.Success(c, gin.H{"message": "stock loaded to redis successfully"})
+	response.Success(c, gin.H{"total": total})
 }
 
 func (h *FlashHandler) FlashBuy(c *gin.Context) {
@@ -93,7 +95,7 @@ func (h *FlashHandler) ListActivities(c *gin.Context) {
 // ListActivitiesByCursor 基于游标分页查询活动列表
 // @Summary 基于游标分页查询活动列表
 // @Description 使用游标分页代替传统 OFFSET 分页，解决深分页性能问题
-// @Tags flash_activities
+// @Tags flash-activities
 // @Accept json
 // @Produce json
 // @Param cursor query int false "游标（上一页最后一条的 ID，首次查询传 0）" default(0)
