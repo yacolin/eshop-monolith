@@ -4,11 +4,12 @@
 
 ## 技术栈
 
-- **语言**: Go 1.21+
+- **语言**: Go 1.25+
 - **Web 框架**: Gin
 - **ORM**: GORM
-- **数据库**: MySQL 8.0
-- **缓存**: Redis 7
+- **数据库**: MySQL 8.0 (Docker)
+- **缓存**: Redis 7 (Docker)
+- **消息队列**: RabbitMQ (Docker)
 - **配置管理**: Viper
 - **日志**: Zap
 
@@ -262,88 +263,88 @@ API 层 → Service 层 → Domain 层 ← Repository 层
 
 ### 前置要求
 
-- Go 1.21+
-- MySQL 8.0+
-- Redis 7+
-- Make (可选)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- Go 1.25+
+- Make（可选，macOS/Linux 原生支持）
 
-### 运行步骤
-
-#### 1. 启动依赖服务
+### 快速启动
 
 ```bash
-# 本地安装并启动 MySQL 和 Redis
-# MySQL: 确保 3306 端口可用
-# Redis: 确保 6379 端口可用
+# Windows
+.\run.bat dev
+
+# macOS / Linux
+make up
+# 或直接
+docker compose up -d
 ```
 
-#### 2. 初始化数据库
+启动后运行应用：`run.bat start` 或 `go run ./cmd/server`，访问 **http://localhost:8080**
+
+### 详细说明
+
+#### 1. 启动基础设施
+
+Docker 启动基础设施，应用在宿主机运行以获得最佳开发性能：
+
+| 容器 | 服务 | 端口 |
+|------|------|------|
+| eshop-mysql | MySQL 8.0 | 3306 |
+| eshop-redis | Redis 7 | 6379 |
+| eshop-rabbitmq | RabbitMQ 管理面板 | 5672, 15672 |
+
+应用在宿主机使用 `go run ./cmd/server` 运行，代码修改后直接重启即可。
+
+#### 2. 查看日志
 
 ```bash
-# 创建数据库
-mysql -u root -p -e "CREATE DATABASE eshop_db;"
+# 所有服务
+docker compose logs -f
 
-# 执行初始化脚本（仅建库，表结构由 AutoMigrate 自动创建）
-mysql -u root -p eshop_db < scripts/init.sql
-
-# 导入 RBAC 权限与测试用户数据
-mysql -u root -p eshop_db < scripts/seed_rbac.sql
+# 仅应用
+docker compose logs -f app
 ```
 
-#### 3. 配置环境
+#### 3. 手动编译运行（宿主机模式）
 
 ```bash
-# 配置文件已存在于 configs/config.yaml
-# 可根据需要修改数据库密码等配置
-# 例如：修改 MySQL 密码
-# vim configs/config.yaml
-```
-
-#### 4. 运行应用
-
-```bash
-# 下载依赖
 go mod download
-
-# 运行应用
 go run ./cmd/server
-
-# 或使用 make
-make run
 ```
 
-#### 5. 生成 API 文档
+#### 4. 生成 Swagger 文档
 
 ```bash
-# 安装 swag CLI（首次使用）
+# 需要先安装 swag CLI
 go install github.com/swaggo/swag/cmd/swag@latest
 
-# 生成 Swagger 文档
+# 生成文档
 swag init -g cmd/server/main.go --output docs
 ```
 
 启动服务后访问：**http://localhost:8080/swagger/index.html**
 
-### 使用 Makefile
+#### 5. 常用命令
 
 ```bash
-# 查看所有命令
-make help
+# 查看容器状态
+docker compose ps
 
-# 安装依赖
-make deps
+# 查看实时日志
+docker compose logs -f
+
+# 停止基础设施（保留数据）
+docker compose stop
+docker compose down        # 停止并删除容器
+
+# 停止并删除数据卷（清空数据库）
+docker compose down -v
+
+# 全容器化部署（含 app）
+docker compose --profile prod up -d
 
 # 运行测试
-make test
-
-# 构建应用
-make build
-
-# 运行应用
-make run
-
-# 清理
-make clean
+go test ./...
 ```
 
 ## 配置说明
@@ -415,6 +416,15 @@ SERVER_PORT=8081 \
 MYSQL_PASSWORD=secret \
 JWT_SECRET=production-secret \
 go run ./cmd/server
+```
+
+在 Docker 环境中，`docker-compose.yml` 通过环境变量自动将服务地址指向容器名：
+
+```yaml
+environment:
+  MYSQL_HOST: mysql        # 替代 localhost
+  REDIS_HOST: redis
+  RABBITMQ_HOST: rabbitmq
 ```
 
 ## API 使用示例
@@ -634,21 +644,30 @@ go build -ldflags="-s -w" -o app ./cmd/server
 
 ### 应用无法启动
 
-1. 检查配置文件：
+1. 确认 Docker 容器运行中：
    ```bash
-   cat configs/config.yaml
+   docker compose ps
    ```
-2. 检查数据库连接：
+2. 检查应用日志：
    ```bash
-   mysql -h localhost -u root -p -e "SELECT 1"
+   docker compose logs app
    ```
-3. 检查 Redis 连接：
+3. 手动测试各服务连通性：
    ```bash
-   redis-cli ping
+   # MySQL
+   docker exec eshop-mysql mysql -uroot -p123456 -e "SELECT 1"
+
+   # Redis
+   docker exec eshop-redis redis-cli ping
+
+   # RabbitMQ
+   curl -u guest:guest http://localhost:15672/api/overview
    ```
-4. 查看应用日志：
+4. WSL 端口冲突（Windows）：
    ```bash
-   # 直接查看应用输出日志
+   # 确保 WSL 未占用端口
+   wsl --terminate Ubuntu-24.04
+   docker compose up -d
    ```
 
 ### 性能问题
@@ -669,12 +688,13 @@ go build -ldflags="-s -w" -o app ./cmd/server
 
 ### 常见错误
 
-| 错误                        | 原因           | 解决方案               |
-| --------------------------- | -------------- | ---------------------- |
-| `connection refused`        | 数据库未启动   | 启动本地 MySQL 服务    |
-| `invalid token`             | JWT 密钥不匹配 | 检查 `jwt.secret` 配置 |
-| `duplicate key`             | 唯一约束冲突   | 检查业务逻辑           |
-| `context deadline exceeded` | 超时           | 增加超时时间或优化查询 |
+| 错误                        | 原因                        | 解决方案                               |
+| --------------------------- | ---------------------------- | -------------------------------------- |
+| `connection refused`        | 容器未启动或端口冲突         | `docker compose up -d`，检查 WSL 端口  |
+| `invalid token`             | JWT 密钥不匹配               | 检查 `jwt.secret` 配置                 |
+| `duplicate key`             | 唯一约束冲突                 | 检查业务逻辑                           |
+| `context deadline exceeded` | 超时                         | 增加超时时间或优化查询                 |
+| `no such host`              | Docker 网络问题              | 检查 `docker compose ps` 确认全部运行  |
 
 ## 开发指南
 
