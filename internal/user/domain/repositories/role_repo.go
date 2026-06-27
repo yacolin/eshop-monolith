@@ -4,9 +4,36 @@ import (
 	"context"
 	userModels "eshop-monolith/internal/user/domain/models"
 	"eshop-monolith/internal/infra/repository/models"
+	"eshop-monolith/pkg/utils"
 
 	"gorm.io/gorm"
 )
+
+// UserRolePermissionRow 用户角色+权限 enriched 查询结果行（单次 LEFT JOIN 产出）
+type UserRolePermissionRow struct {
+	// 角色字段
+	RoleID          int64           `gorm:"column:role_id"`
+	RoleName        string          `gorm:"column:role_name"`
+	RoleDisplayName string          `gorm:"column:role_display_name"`
+	RoleDescription string          `gorm:"column:role_description"`
+	RoleStatus      int             `gorm:"column:role_status"`
+	RoleSort        int             `gorm:"column:role_sort"`
+	RoleIsSystem    bool            `gorm:"column:role_is_system"`
+	RoleCreatedAt   utils.Timestamp `gorm:"column:role_created_at"`
+	RoleUpdatedAt   utils.Timestamp `gorm:"column:role_updated_at"`
+	// 权限字段（LEFT JOIN 无匹配时为 NULL）
+	PermID          *int64           `gorm:"column:perm_id"`
+	PermName        *string          `gorm:"column:perm_name"`
+	PermDisplayName *string          `gorm:"column:perm_display_name"`
+	PermDescription *string          `gorm:"column:perm_description"`
+	PermResource    *string          `gorm:"column:perm_resource"`
+	PermAction      *string          `gorm:"column:perm_action"`
+	PermCategory    *string          `gorm:"column:perm_category"`
+	PermSort        *int             `gorm:"column:perm_sort"`
+	PermStatus      *int             `gorm:"column:perm_status"`
+	PermCreatedAt   *utils.Timestamp `gorm:"column:perm_created_at"`
+	PermUpdatedAt   *utils.Timestamp `gorm:"column:perm_updated_at"`
+}
 
 type IroleRepository interface {
 	Create(ctx context.Context, role *userModels.Role) error
@@ -23,6 +50,10 @@ type IroleRepository interface {
 	AssignPermissionToRole(ctx context.Context, roleID, permissionID int64) error
 	RemovePermissionFromRole(ctx context.Context, roleID, permissionID int64) error
 	GetRolePermissions(ctx context.Context, roleID int64) ([]userModels.Permission, error)
+	// GetUserRolesEnriched 获取用户角色+权限（单次 LEFT JOIN 替代 Preload）
+	GetUserRolesEnriched(ctx context.Context, userID int64) ([]UserRolePermissionRow, error)
+	// GetUserRoleNames 获取用户角色名列表（仅 name，不加 Preload，给 JWT 生成用）
+	GetUserRoleNames(ctx context.Context, userID int64) ([]string, error)
 }
 
 type roleRepository struct {
@@ -166,6 +197,48 @@ func (r *roleRepository) GetUserRoles(ctx context.Context, userID int64) ([]user
 		roles[i] = *po.ToDomain()
 	}
 	return roles, err
+}
+
+// GetUserRolesEnriched 获取用户角色+权限（单次 LEFT JOIN 替代 Preload("Permissions")）
+func (r *roleRepository) GetUserRolesEnriched(ctx context.Context, userID int64) ([]UserRolePermissionRow, error) {
+	var rows []UserRolePermissionRow
+	err := r.db.WithContext(ctx).
+		Table("roles").
+		Select(`roles.id AS role_id, roles.name AS role_name, roles.display_name AS role_display_name,
+				roles.description AS role_description, roles.status AS role_status,
+				roles.sort AS role_sort, roles.is_system AS role_is_system,
+				roles.created_at AS role_created_at, roles.updated_at AS role_updated_at,
+				p.id AS perm_id, p.name AS perm_name, p.display_name AS perm_display_name,
+				p.description AS perm_description, p.resource AS perm_resource,
+				p.action AS perm_action, p.category AS perm_category,
+				p.sort AS perm_sort, p.status AS perm_status,
+				p.created_at AS perm_created_at, p.updated_at AS perm_updated_at`).
+		Joins("JOIN user_roles ur ON ur.role_id = roles.id AND ur.user_id = ? AND ur.deleted_at IS NULL", userID).
+		Joins("LEFT JOIN role_permissions rp ON rp.role_id = roles.id AND rp.deleted_at IS NULL").
+		Joins("LEFT JOIN permissions p ON p.id = rp.permission_id AND p.status = 1").
+		Where("roles.status = ?", 1).
+		Order("roles.sort ASC, roles.created_at DESC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// GetUserRoleNames 获取用户角色名列表（仅 name，不加载 Permissions，用于 JWT 生成）
+func (r *roleRepository) GetUserRoleNames(ctx context.Context, userID int64) ([]string, error) {
+	var names []string
+	err := r.db.WithContext(ctx).
+		Table("roles").
+		Select("roles.name").
+		Joins("JOIN user_roles ur ON ur.role_id = roles.id AND ur.user_id = ? AND ur.deleted_at IS NULL", userID).
+		Where("roles.status = ?", 1).
+		Order("roles.sort ASC").
+		Pluck("roles.name", &names).Error
+	if err != nil {
+		return nil, err
+	}
+	return names, nil
 }
 
 func (r *roleRepository) AssignPermissionToRole(ctx context.Context, roleID, permissionID int64) error {

@@ -90,14 +90,9 @@ func NewTokenService(secret string, tokenRepo repositories.IauthTokenRepository,
 func (s *TokenService) GenerateTokenPair(ctx context.Context, userID int64, identityID int64, provider string, meta map[string]interface{}) (*TokenPair, error) {
 	now := time.Now()
 
-	roles, err := s.roleRepo.GetUserRoles(ctx, userID)
+	roleNames, err := s.roleRepo.GetUserRoleNames(ctx, userID)
 	if err != nil {
 		return nil, err
-	}
-
-	roleNames := make([]string, 0, len(roles))
-	for _, role := range roles {
-		roleNames = append(roleNames, role.Name)
 	}
 
 	accessJTI := generateJTI()
@@ -171,14 +166,9 @@ func (s *TokenService) GenerateAccessToken(userID int64, identityID int64, provi
 	expiresAt := now.Add(s.accessExpiry)
 	jti := generateJTI()
 
-	roles, err := s.roleRepo.GetUserRoles(context.Background(), userID)
+	roleNames, err := s.roleRepo.GetUserRoleNames(context.Background(), userID)
 	if err != nil {
 		return "", time.Time{}, err
-	}
-
-	roleNames := make([]string, 0, len(roles))
-	for _, role := range roles {
-		roleNames = append(roleNames, role.Name)
 	}
 
 	claims := TokenClaims{

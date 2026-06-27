@@ -7,9 +7,22 @@ import (
 	"eshop-monolith/internal/inventory/api/dto"
 	invModels "eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/pkg/query"
+	"eshop-monolith/pkg/utils"
 
 	"gorm.io/gorm"
 )
+
+// ProductEnrichedRow 产品 enriched 查询结果行（含分类信息，子查询+LEFT JOIN 单次产出）
+type ProductEnrichedRow struct {
+	ID           int64           `gorm:"column:id"`
+	Name         string          `gorm:"column:name"`
+	Description  string          `gorm:"column:description"`
+	MinPrice     int64           `gorm:"column:min_price"`
+	CreatedAt    utils.Timestamp `gorm:"column:created_at"`
+	UpdatedAt    utils.Timestamp `gorm:"column:updated_at"`
+	CategoryID   *int64          `gorm:"column:category_id"`
+	CategoryName *string         `gorm:"column:category_name"`
+}
 
 // Repository 产品仓储接口
 type IproductRepository interface {
@@ -38,6 +51,8 @@ type IproductRepository interface {
 	FindAll(ctx context.Context) ([]invModels.Product, error)
 	// ListProductsByCursor 基于游标查询产品列表（深分页优化）
 	ListProductsByCursor(ctx context.Context, q dto.ProductCursorQuery, limit int) ([]invModels.Product, error)
+	// ListProductsEnriched 列出产品（含分类信息，子查询分页+LEFT JOIN categories 单次查询）
+	ListProductsEnriched(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]ProductEnrichedRow, error)
 }
 
 // ProductRepository 产品仓储实现
@@ -217,6 +232,30 @@ func (r *ProductRepository) ListProductsByCursor(ctx context.Context, q dto.Prod
 		products[i] = *po.ToDomain()
 	}
 	return products, nil
+}
+
+// ListProductsEnriched 列出产品（含分类信息，子查询先分页再 LEFT JOIN categories 单次查询）
+func (r *ProductRepository) ListProductsEnriched(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]ProductEnrichedRow, error) {
+	subQuery := r.db.WithContext(ctx).Model(&models.ProductPO{})
+	subQuery = r.applyQueryConditions(ctx, q)
+	subQuery = r.applyOrder(subQuery, q)
+	subQuery = subQuery.Offset(offset).Limit(limit)
+	if offset > 0 {
+		subQuery = subQuery.Select("*")
+	}
+
+	var rows []ProductEnrichedRow
+	err := r.db.WithContext(ctx).
+		Table("(?) AS p", subQuery).
+		Select("p.id, p.name, p.description, p.min_price, p.created_at, p.updated_at, c.id AS category_id, c.name AS category_name").
+		Joins("LEFT JOIN product_categories pc ON p.id = pc.product_id").
+		Joins("LEFT JOIN categories c ON pc.category_id = c.id").
+		Order("p.id ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 // applyCursorQueryConditions 应用游标查询的过滤条件

@@ -28,7 +28,6 @@ type WechatSession struct {
 // AuthService 认证服务
 type AuthService struct {
 	db                *gorm.DB
-	userRepo          repositories.IuserRepository
 	identityRepo      repositories.IuserIdentityRepository
 	tokenRepo         repositories.IauthTokenRepository
 	loginHistoryRepo  repositories.IloginHistoryRepository
@@ -52,7 +51,7 @@ type VerifyCodeService interface {
 // NewAuthService 创建认证服务实例
 func NewAuthService(
 	db *gorm.DB,
-	userRepo repositories.IuserRepository,
+	_ repositories.IuserRepository, // 保留兼容，构造后不再持有
 	identityRepo repositories.IuserIdentityRepository,
 	tokenRepo repositories.IauthTokenRepository,
 	loginHistoryRepo repositories.IloginHistoryRepository,
@@ -61,7 +60,6 @@ func NewAuthService(
 ) *AuthService {
 	return &AuthService{
 		db:               db,
-		userRepo:         userRepo,
 		identityRepo:     identityRepo,
 		tokenRepo:        tokenRepo,
 		loginHistoryRepo: loginHistoryRepo,
@@ -86,7 +84,8 @@ func (s *AuthService) LoginByPassword(ctx context.Context, payload *auth.Passwor
 		return nil, nil, errcode.ErrInvalidCredentials
 	}
 
-	identity, err := s.identityRepo.GetByProviderAndIdentifier(ctx, models.ProviderPassword.String(), payload.Username)
+	// GetByProviderAndIdentifier 已 Preload("User")，无需再单独查 user
+	identity, err := s.identityRepo.GetWithUserByProviderAndIdentifier(ctx, models.ProviderPassword.String(), payload.Username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, errcode.ErrInvalidCredentials
@@ -98,12 +97,7 @@ func (s *AuthService) LoginByPassword(ctx context.Context, payload *auth.Passwor
 		return nil, nil, errcode.ErrInvalidCredentials
 	}
 
-	user, err := s.userRepo.GetByID(ctx, identity.UserID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return user, identity, nil
+	return identity.User, identity, nil
 }
 
 // LoginByWechat 微信登录
@@ -121,7 +115,7 @@ func (s *AuthService) LoginByWechat(ctx context.Context, payload *auth.WechatPay
 		return nil, nil, false, fmt.Errorf("微信登录失败: code无效")
 	}
 
-	identity, err := s.identityRepo.GetByProviderAndIdentifier(ctx, models.ProviderWechat.String(), session.OpenID)
+	identity, err := s.identityRepo.GetWithUserByProviderAndIdentifier(ctx, models.ProviderWechat.String(), session.OpenID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil, false, err
 	}
@@ -137,11 +131,7 @@ func (s *AuthService) LoginByWechat(ctx context.Context, payload *auth.WechatPay
 		identity.Meta = string(metaJSON)
 		_ = s.identityRepo.Update(ctx, identity)
 
-		user, err := s.userRepo.GetByID(ctx, identity.UserID)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		return user, identity, false, nil
+		return identity.User, identity, false, nil
 	}
 
 	meta := models.IdentityMeta{
@@ -170,17 +160,13 @@ func (s *AuthService) LoginByPhone(ctx context.Context, payload *auth.PhonePaylo
 		}
 	}
 
-	identity, err := s.identityRepo.GetByProviderAndIdentifier(ctx, models.ProviderPhone.String(), payload.Phone)
+	identity, err := s.identityRepo.GetWithUserByProviderAndIdentifier(ctx, models.ProviderPhone.String(), payload.Phone)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil, false, err
 	}
 
 	if identity != nil {
-		user, err := s.userRepo.GetByID(ctx, identity.UserID)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		return user, identity, false, nil
+		return identity.User, identity, false, nil
 	}
 
 	newIdentity := &models.UserIdentity{
@@ -194,17 +180,13 @@ func (s *AuthService) LoginByPhone(ctx context.Context, payload *auth.PhonePaylo
 
 // LoginByEmail 邮箱验证码登录
 func (s *AuthService) LoginByEmail(ctx context.Context, payload *auth.EmailPayload) (*models.User, *models.UserIdentity, bool, error) {
-	identity, err := s.identityRepo.GetByProviderAndIdentifier(ctx, models.ProviderEmail.String(), payload.Email)
+	identity, err := s.identityRepo.GetWithUserByProviderAndIdentifier(ctx, models.ProviderEmail.String(), payload.Email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil, false, err
 	}
 
 	if identity != nil {
-		user, err := s.userRepo.GetByID(ctx, identity.UserID)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		return user, identity, false, nil
+		return identity.User, identity, false, nil
 	}
 
 	newIdentity := &models.UserIdentity{
@@ -303,20 +285,21 @@ func (s *AuthService) Register(ctx context.Context, payload *auth.RegisterPayloa
 	return user, identity, nil
 }
 
-// RecordLoginHistory 记录登录历史
+// RecordLoginHistory 记录登录历史（异步写入，不阻塞登录主流程）
 func (s *AuthService) RecordLoginHistory(ctx context.Context, userID, identityID int64, provider, action, status, failureReason, ip, userAgent string) {
-	loginHistory := &models.LoginHistory{
-		UserID:     userID,
-		IdentityID: identityID,
-		Provider:   provider,
-		Event:      action,
-		Status:     status,
-		FailReason: failureReason,
-		IP:         ip,
-		UserAgent:  userAgent,
-	}
-	// 登录历史记录失败不影响主流程
-	_ = s.loginHistoryRepo.Create(ctx, loginHistory)
+	go func() {
+		loginHistory := &models.LoginHistory{
+			UserID:     userID,
+			IdentityID: identityID,
+			Provider:   provider,
+			Event:      action,
+			Status:     status,
+			FailReason: failureReason,
+			IP:         ip,
+			UserAgent:  userAgent,
+		}
+		_ = s.loginHistoryRepo.Create(context.Background(), loginHistory)
+	}()
 }
 
 // createPasswordIdentity 创建密码身份凭证
@@ -344,20 +327,15 @@ func (s *AuthService) createPasswordIdentity(userID int64, payload *auth.Registe
 
 // EnsureUser 确保用户存在（社交登录时使用）
 func (s *AuthService) EnsureUser(ctx context.Context, provider, identifier string) (*models.User, *models.UserIdentity, bool, error) {
-	identity, err := s.identityRepo.GetByProviderAndIdentifier(ctx, provider, identifier)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	identity, err := s.identityRepo.GetWithUserByProviderAndIdentifier(ctx, provider, identifier)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, false, nil
+		}
 		return nil, nil, false, err
 	}
 
-	if identity != nil {
-		user, err := s.userRepo.GetByID(ctx, identity.UserID)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		return user, identity, false, nil
-	}
-
-	return nil, nil, false, nil
+	return identity.User, identity, false, nil
 }
 
 // getStringValue 从 JWT claims 中获取字符串值

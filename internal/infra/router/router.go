@@ -180,19 +180,14 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		}()
 	}
 
-	// Start RabbitMQ consumers
+	// Start RabbitMQ consumers（WS 独立，业务合并）
 	go func() {
 		if err := consumers.StartWSConsumer(context.Background(), mqClient, wsHub); err != nil {
 			logger.Error("启动 WS 消费者失败", "error", err)
 		}
 	}()
 	go func() {
-		if err := consumers.StartNotificationConsumer(context.Background(), mqClient, notifSvc); err != nil {
-			logger.Error("启动通知消费者失败", "error", err)
-		}
-	}()
-	go func() {
-		if err := consumers.StartOrderBizConsumers(context.Background(), mqClient, orderSvc, flashSvc); err != nil {
+		if err := consumers.StartBusinessConsumer(context.Background(), mqClient, orderSvc, flashSvc, notifSvc); err != nil {
 			logger.Error("启动业务消费者失败", "error", err)
 		}
 	}()

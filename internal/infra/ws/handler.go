@@ -80,15 +80,18 @@ func (h *Handler) Upgrade(c *gin.Context) {
 
 	client := NewClient(h.hub, conn, userID, lastSeq)
 
-	// 查询用户信息用于在线事件广播
+	// 异步加载用户信息，不阻塞 WS 握手路径
 	if h.hub.userInfoProvider != nil {
-		username, nickname, lookupErr := h.hub.userInfoProvider(userID)
-		if lookupErr == nil {
-			client.Username = username
-			client.Nickname = nickname
-		} else {
-			logger.Warn("查询用户信息失败", "user_id", userID, "error", lookupErr)
-		}
+		provider := h.hub.userInfoProvider
+		go func() {
+			username, nickname, lookupErr := provider(userID)
+			if lookupErr == nil {
+				client.Username = username
+				client.Nickname = nickname
+			} else {
+				logger.Warn("查询用户信息失败", "user_id", userID, "error", lookupErr)
+			}
+		}()
 	}
 
 	h.hub.register <- client

@@ -31,6 +31,8 @@ type IuserIdentityRepository interface {
 	LinkIdentityToUser(ctx context.Context, identityID, userID string) error
 	// GetUserByIdentity 根据身份凭证获取用户信息
 	GetUserByIdentity(ctx context.Context, provider, identifier string) (*userModels.User, error)
+	// GetWithUserByProviderAndIdentifier 单次 JOIN 查询身份+用户（替代 Preload("User")）
+	GetWithUserByProviderAndIdentifier(ctx context.Context, provider, identifier string) (*userModels.UserIdentity, error)
 }
 
 type userIdentityRepository struct {
@@ -128,4 +130,17 @@ func (r *userIdentityRepository) GetUserByIdentity(ctx context.Context, provider
 		return nil, gorm.ErrRecordNotFound
 	}
 	return po.User.ToDomain(), nil
+}
+
+// GetWithUserByProviderAndIdentifier 单次 JOIN 查询身份+用户（替代 Preload("User")，减少1次DB往返）
+func (r *userIdentityRepository) GetWithUserByProviderAndIdentifier(ctx context.Context, provider, identifier string) (*userModels.UserIdentity, error) {
+	var po models.UserIdentityPO
+	err := r.db.WithContext(ctx).
+		Joins("User").
+		Where("user_identities.provider = ? AND user_identities.identifier = ?", provider, identifier).
+		First(&po).Error
+	if err != nil {
+		return nil, err
+	}
+	return po.ToDomain(), nil
 }

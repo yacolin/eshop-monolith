@@ -348,7 +348,51 @@ func (s *permissionService) RemoveRoleFromUser(userID int64, roleID int64) error
 }
 
 func (s *permissionService) GetUserRoles(userID int64) ([]models.Role, error) {
-	return s.roleRepo.GetUserRoles(context.Background(), userID)
+	rows, err := s.roleRepo.GetUserRolesEnriched(context.Background(), userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 按 role_id 分组，合并权限
+	roleMap := make(map[int64]*models.Role, len(rows))
+	var order []int64
+	for _, row := range rows {
+		if _, ok := roleMap[row.RoleID]; !ok {
+			roleMap[row.RoleID] = &models.Role{
+				ID:          row.RoleID,
+				Name:        row.RoleName,
+				DisplayName: row.RoleDisplayName,
+				Description: row.RoleDescription,
+				Status:      row.RoleStatus,
+				Sort:        row.RoleSort,
+				IsSystem:    row.RoleIsSystem,
+				CreatedAt:   row.RoleCreatedAt,
+				UpdatedAt:   row.RoleUpdatedAt,
+			}
+			order = append(order, row.RoleID)
+		}
+		if row.PermID != nil {
+			roleMap[row.RoleID].Permissions = append(roleMap[row.RoleID].Permissions, models.Permission{
+				ID:          *row.PermID,
+				Name:        *row.PermName,
+				DisplayName: *row.PermDisplayName,
+				Description: *row.PermDescription,
+				Resource:    *row.PermResource,
+				Action:      *row.PermAction,
+				Category:    *row.PermCategory,
+				Sort:        *row.PermSort,
+				Status:      *row.PermStatus,
+				CreatedAt:   *row.PermCreatedAt,
+				UpdatedAt:   *row.PermUpdatedAt,
+			})
+		}
+	}
+
+	roles := make([]models.Role, len(order))
+	for i, id := range order {
+		roles[i] = *roleMap[id]
+	}
+	return roles, nil
 }
 
 func (s *permissionService) AssignPermissionsToRole(roleID int64, permissionIDs []int64) error {

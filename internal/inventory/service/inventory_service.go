@@ -160,71 +160,35 @@ func (s *InventoryService) ReleaseInventory(ctx context.Context, req *dto.Releas
 	return nil
 }
 
-// ListInventoriesEnriched 列出所有库存（含 SKU 名称和产品信息）
+// ListInventoriesEnriched 列出所有库存（含 SKU 名称和产品信息，单次 LEFT JOIN 查询）
 func (s *InventoryService) ListInventoriesEnriched(ctx context.Context, q dto.InventoryListQuery) (*dto.InventoryEnrichedResult, error) {
 	offset := (q.Page - 1) * q.Size
-	list, err := s.repo.ListInventories(ctx, q, offset, q.Size)
+
+	rows, err := s.repo.ListInventoriesEnriched(ctx, q, offset, q.Size)
 	if err != nil {
 		return nil, err
 	}
 
-	total, err := s.repo.CountInventories(ctx, q)
+	total, err := s.repo.CountInventoriesEnriched(ctx, q)
 	if err != nil {
 		return nil, err
 	}
 
-	// 收集所有 SkuID 批量查询 SKU 信息
-	skuIDs := make([]int64, len(list))
-	for i, inv := range list {
-		skuIDs[i] = inv.SkuID
-	}
-
-	skuMap := make(map[int64]*models.Sku, len(list))
-	if len(skuIDs) > 0 {
-		skus, err := s.skuRepo.FindByIDs(ctx, skuIDs)
-		if err == nil {
-			for _, sku := range skus {
-				skuMap[sku.ID] = &sku
-			}
-		}
-	}
-
-	// 收集所有 ProductID 批量查询产品名称
-	productIDs := make(map[int64]struct{}, len(skuMap))
-	for _, sku := range skuMap {
-		productIDs[sku.ProductID] = struct{}{}
-	}
-
-	productNameMap := make(map[int64]string, len(productIDs))
-	if len(productIDs) > 0 {
-		ids := make([]int64, 0, len(productIDs))
-		for pid := range productIDs {
-			ids = append(ids, pid)
-		}
-		products, err := s.productRepo.FindByIDs(ctx, ids)
-		if err == nil {
-			for _, p := range products {
-				productNameMap[p.ID] = p.Name
-			}
-		}
-	}
-
-	enrichedList := make([]dto.InventoryEnrichedItem, len(list))
-	for i, inv := range list {
-		sku := skuMap[inv.SkuID]
+	enrichedList := make([]dto.InventoryEnrichedItem, len(rows))
+	for i, row := range rows {
 		enrichedList[i] = dto.InventoryEnrichedItem{
-			ID:          inv.ID,
-			SkuID:       inv.SkuID,
-			SkuName:     sku.Name,
-			SkuCode:     sku.SKUCode,
-			ProductID:   sku.ProductID,
-			ProductName: productNameMap[sku.ProductID],
-			Quantity:    inv.Quantity,
-			Status:      inv.Status,
-			Reserved:    inv.Reserved,
-			Threshold:   inv.Threshold,
-			CreatedAt:   inv.CreatedAt,
-			UpdatedAt:   inv.UpdatedAt,
+			ID:          row.ID,
+			SkuID:       row.SkuID,
+			SkuName:     row.SkuName,
+			SkuCode:     row.SkuCode,
+			ProductID:   row.ProductID,
+			ProductName: row.ProductName,
+			Quantity:    row.Quantity,
+			Status:      row.Status,
+			Reserved:    row.Reserved,
+			Threshold:   row.Threshold,
+			CreatedAt:   row.CreatedAt,
+			UpdatedAt:   row.UpdatedAt,
 		}
 	}
 

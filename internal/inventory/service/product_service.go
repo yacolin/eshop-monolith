@@ -441,44 +441,6 @@ func (s *ProductService) getCategoryInfo(ctx context.Context, productID int64) (
 	return categories, nil
 }
 
-// batchCategoriesInfo 批量查询产品的所有分类（一次查询）
-func (s *ProductService) batchCategoriesInfo(ctx context.Context, products []models.Product) (map[int64][]dto.ProductCategoryBrief, error) {
-	if len(products) == 0 {
-		return nil, nil
-	}
-
-	productIDs := make([]int64, len(products))
-	for i, p := range products {
-		productIDs[i] = p.ID
-	}
-
-	type categoryRow struct {
-		ProductID  int64
-		CategoryID int64
-		Name       string
-	}
-
-	var rows []categoryRow
-	if err := s.db.WithContext(ctx).
-		Table("product_categories").
-		Select("product_categories.product_id, categories.id as category_id, categories.name").
-		Joins("JOIN categories ON categories.id = product_categories.category_id").
-		Where("product_categories.product_id IN ?", productIDs).
-		Order("categories.id ASC").
-		Scan(&rows).Error; err != nil {
-		return nil, err
-	}
-
-	result := make(map[int64][]dto.ProductCategoryBrief, len(rows))
-	for _, row := range rows {
-		result[row.ProductID] = append(result[row.ProductID], dto.ProductCategoryBrief{
-			ID:   row.CategoryID,
-			Name: row.Name,
-		})
-	}
-	return result, nil
-}
-
 // GetProductWithCategory 获取产品详情（含分类信息）
 func (s *ProductService) GetProductWithCategory(ctx context.Context, id int64) (*dto.ProductWithCategoryDTO, error) {
 	product, err := s.repo.FindByID(ctx, id)
@@ -501,38 +463,51 @@ func (s *ProductService) GetProductWithCategory(ctx context.Context, id int64) (
 	return result, nil
 }
 
-// ListProductsWithCategory 列出产品（含分类信息，批量补全）
+// ListProductsWithCategory 列出产品（含分类信息，子查询单次 LEFT JOIN）
 func (s *ProductService) ListProductsWithCategory(ctx context.Context, q dto.ProductListQuery) (*query.ListResult[dto.ProductWithCategoryDTO], error) {
-	products, err := s.ListProducts(ctx, q)
+	offset := (q.Page - 1) * q.Size
+
+	rows, err := s.repo.ListProductsEnriched(ctx, q, offset, q.Size)
 	if err != nil {
 		return nil, err
 	}
 
-	enrichedList := make([]dto.ProductWithCategoryDTO, len(products.List))
-	for i, p := range products.List {
-		enrichedList[i] = dto.ProductWithCategoryDTO{
-			ID:          p.ID,
-			Name:        p.Name,
-			Description: p.Description,
-			MinPrice:    p.MinPrice,
-			CreatedAt:   p.CreatedAt,
-			UpdatedAt:   p.UpdatedAt,
+	total, err := s.repo.CountProducts(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	// 按 product_id 分组，合并同一产品的多个分类
+	productMap := make(map[int64]*dto.ProductWithCategoryDTO, len(rows))
+	var order []int64
+	for _, row := range rows {
+		if _, ok := productMap[row.ID]; !ok {
+			productMap[row.ID] = &dto.ProductWithCategoryDTO{
+				ID:          row.ID,
+				Name:        row.Name,
+				Description: row.Description,
+				MinPrice:    row.MinPrice,
+				CreatedAt:   row.CreatedAt,
+				UpdatedAt:   row.UpdatedAt,
+			}
+			order = append(order, row.ID)
+		}
+		if row.CategoryID != nil {
+			productMap[row.ID].Categories = append(productMap[row.ID].Categories, dto.ProductCategoryBrief{
+				ID:   *row.CategoryID,
+				Name: *row.CategoryName,
+			})
 		}
 	}
 
-	// 批量查询所有商品的分类信息
-	categoryMap, batchErr := s.batchCategoriesInfo(ctx, products.List)
-	if batchErr == nil {
-		for i, p := range products.List {
-			if cats, ok := categoryMap[p.ID]; ok {
-				enrichedList[i].Categories = cats
-			}
-		}
+	enrichedList := make([]dto.ProductWithCategoryDTO, len(order))
+	for i, id := range order {
+		enrichedList[i] = *productMap[id]
 	}
 
 	return &query.ListResult[dto.ProductWithCategoryDTO]{
 		List:  enrichedList,
-		Total: products.Total,
+		Total: total,
 	}, nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"eshop-monolith/pkg/errcode"
 	invModels "eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/pkg/query"
+	"eshop-monolith/pkg/utils"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -24,6 +25,22 @@ func recalcStatus(po *models.InventoryPO) {
 	default:
 		po.Status = string(invModels.InventoryStatusInStock)
 	}
+}
+
+// InventoryEnrichedRow 库存 enriched 查询结果行，含 SKU 和产品信息（单次 LEFT JOIN 产出）
+type InventoryEnrichedRow struct {
+	ID          int64           `gorm:"column:id"`
+	SkuID       int64           `gorm:"column:sku_id"`
+	SkuName     string          `gorm:"column:sku_name"`
+	SkuCode     string          `gorm:"column:sku_code"`
+	ProductID   int64           `gorm:"column:product_id"`
+	ProductName string          `gorm:"column:product_name"`
+	Quantity    int             `gorm:"column:quantity"`
+	Status      string          `gorm:"column:status"`
+	Reserved    int             `gorm:"column:reserved"`
+	Threshold   int             `gorm:"column:threshold"`
+	CreatedAt   utils.Timestamp `gorm:"column:created_at"`
+	UpdatedAt   utils.Timestamp `gorm:"column:updated_at"`
 }
 
 // IinventoryRepository 库存仓储接口
@@ -47,6 +64,10 @@ type IinventoryRepository interface {
 	CountInventories(ctx context.Context, query dto.InventoryListQuery) (int64, error)
 	// FindInventoriesBySkuIDs 根据 SKU ID 列表批量查询库存，返回 map[skuID]Inventory
 	FindInventoriesBySkuIDs(ctx context.Context, skuIDs []int64) (map[int64]*invModels.Inventory, error)
+	// ListInventoriesEnriched 列出库存（含 SKU 名称和产品名称，单次 LEFT JOIN 查询）
+	ListInventoriesEnriched(ctx context.Context, q dto.InventoryListQuery, offset, limit int) ([]InventoryEnrichedRow, error)
+	// CountInventoriesEnriched 统计 enriched 库存数量（使用同样的 JOIN 条件）
+	CountInventoriesEnriched(ctx context.Context, q dto.InventoryListQuery) (int64, error)
 }
 
 // InventoryRepository 库存仓储实现
@@ -320,6 +341,63 @@ func (r *InventoryRepository) CountInventories(ctx context.Context, q dto.Invent
 	}
 
 	return total, nil
+}
+
+// ListInventoriesEnriched 列出库存（含 SKU 名称和产品名称，单次 LEFT JOIN 查询替代 N+1 补全）
+func (r *InventoryRepository) ListInventoriesEnriched(ctx context.Context, q dto.InventoryListQuery, offset, limit int) ([]InventoryEnrichedRow, error) {
+	db := r.db.WithContext(ctx).Table("inventories").
+		Select(`inventories.id, inventories.sku_id, skus.name AS sku_name, skus.sku_code,
+				skus.product_id, products.name AS product_name,
+				inventories.quantity, inventories.status, inventories.reserved,
+				inventories.threshold, inventories.created_at, inventories.updated_at`).
+		Joins("LEFT JOIN skus ON inventories.sku_id = skus.id").
+		Joins("LEFT JOIN products ON skus.product_id = products.id")
+
+	db = r.applyEnrichedConditions(db, q)
+	db = query.ApplyOrder(db, q.SortBy, q.Order, "inventories.id ASC")
+
+	var rows []InventoryEnrichedRow
+	if err := db.Offset(offset).Limit(limit).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// CountInventoriesEnriched 统计 enriched 库存数量
+func (r *InventoryRepository) CountInventoriesEnriched(ctx context.Context, q dto.InventoryListQuery) (int64, error) {
+	var total int64
+	db := r.db.WithContext(ctx).Table("inventories").
+		Joins("LEFT JOIN skus ON inventories.sku_id = skus.id").
+		Joins("LEFT JOIN products ON skus.product_id = products.id")
+
+	db = r.applyEnrichedConditions(db, q)
+	if err := db.Count(&total).Error; err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+// applyEnrichedConditions 应用 enriched 查询条件（使用正确的 JOIN 链路而非 applyQueryConditions 的 buggy JOIN）
+func (r *InventoryRepository) applyEnrichedConditions(db *gorm.DB, q dto.InventoryListQuery) *gorm.DB {
+	if q.ProductID > 0 {
+		db = db.Where("skus.product_id = ?", q.ProductID)
+	}
+	if q.ProductName != "" {
+		db = db.Where("products.name LIKE ?", "%"+q.ProductName+"%")
+	}
+	if q.SkuName != "" {
+		db = db.Where("skus.name LIKE ?", "%"+q.SkuName+"%")
+	}
+	if q.SKUCode != "" {
+		db = db.Where("skus.sku_code = ?", q.SKUCode)
+	}
+	if q.Status != "" {
+		db = db.Where("inventories.status = ?", q.Status)
+	}
+	if q.LowStock != nil && *q.LowStock {
+		db = db.Where("inventories.quantity <= inventories.threshold AND inventories.quantity > 0")
+	}
+	return db
 }
 
 // applyQueryConditions 应用查询条件（不包含排序）
