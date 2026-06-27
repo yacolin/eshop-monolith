@@ -102,7 +102,7 @@ func (h *FlashHandler) ListActivities(c *gin.Context) {
 // @Param size query int false "每页条数" default(20)
 // @Param status query string false "筛选状态：pending/active/finished"
 // @Success 200 {object} response.Response{data=dto.ActivityCursorResult}
-// @Router /api/v1/flash/activities-cursor [get]
+// @Router /api/v1/flash/activities/cursor [get]
 func (h *FlashHandler) ListActivitiesByCursor(c *gin.Context) {
 	var q dto.ActivityCursorQuery
 	if err := c.ShouldBindQuery(&q); err != nil {

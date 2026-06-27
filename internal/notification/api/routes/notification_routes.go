@@ -27,7 +27,7 @@ func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositor
 		notify.GET("", notifHandler.ListNotifications)
 		notify.GET("/unread", notifHandler.GetUnreadCount)
 		notify.PUT("/:id/read", notifHandler.MarkAsRead)
-		notify.PUT("/read-all", notifHandler.MarkAllAsRead)
+		notify.PUT("/readall", notifHandler.MarkAllAsRead)
 		notify.DELETE("/:id", notifHandler.DeleteNotification)
 	}
 

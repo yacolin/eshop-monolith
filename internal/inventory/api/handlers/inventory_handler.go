@@ -170,11 +170,11 @@ func (h *InventoryHandler) UpdateInventory(c *gin.Context) {
 // @Description 根据SKU ID获取库存信息
 // @Tags inventories
 // @Produce json
-// @Param skuId path int true "SKU ID"
+// @Param sku_id path int true "SKU ID"
 // @Success 200 {object} response.Response{data=models.Inventory}
-// @Router /api/v1/inventories/sku/{skuId} [get]
+// @Router /api/v1/inventories/sku/{sku_id} [get]
 func (h *InventoryHandler) GetInventoryBySkuID(c *gin.Context) {
-	skuId, err := utils.ParseIntParam(c, "skuId")
+	skuId, err := utils.ParseIntParam(c, "sku_id")
 	if err != nil {
 		c.Error(err)
 		return

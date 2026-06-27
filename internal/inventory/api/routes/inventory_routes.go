@@ -18,7 +18,7 @@ func RegisterInventoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories
 	{
 		inventories.GET("", inventoryHandler.ListInventories)
 		inventories.GET("/enriched", inventoryHandler.ListInventoriesEnriched)
-		inventories.GET("/sku/:skuId", inventoryHandler.GetInventoryBySkuID)
+		inventories.GET("/sku/:sku_id", inventoryHandler.GetInventoryBySkuID)
 	}
 
 	// 需要认证的库存写操作

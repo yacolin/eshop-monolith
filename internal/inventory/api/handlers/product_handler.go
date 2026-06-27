@@ -375,7 +375,7 @@ func (h *ProductHandler) ListProductsByCursor(c *gin.Context) {
 // @Param size query int false "每页条数" default(20)
 // @Param category_id query int false "分类ID筛选"
 // @Success 200 {object} response.Response{data=dto.ProductCacheCursorResult}
-// @Router /api/v1/products/cache-cursor [get]
+// @Router /api/v1/products/cache/cursor [get]
 func (h *ProductHandler) ListCachedProductsByCursor(c *gin.Context) {
 	var q dto.ProductCacheCursorQuery
 	if err := c.ShouldBindQuery(&q); err != nil {

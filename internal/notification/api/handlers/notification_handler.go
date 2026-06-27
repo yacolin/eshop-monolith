@@ -121,7 +121,7 @@ func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {object} response.Response
-// @Router /api/v1/notifications/read-all [put]
+// @Router /api/v1/notifications/readall [put]
 func (h *NotificationHandler) MarkAllAsRead(c *gin.Context) {
 	userID, err := getCurrentUserID(c)
 	if err != nil {
