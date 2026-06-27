@@ -56,6 +56,16 @@ func (s *InventoryService) BatchCreateInventory(ctx context.Context, req *dto.Ba
 		return nil, err
 	}
 
+	for _, inv := range inventories {
+		if inv.Quantity > 0 && inv.Quantity <= inv.Threshold {
+			s.rabbit.Publish(ctx, events.InventoryLowEvent{
+				SkuID:     fmt.Sprintf("%d", inv.SkuID),
+				Quantity:  inv.Quantity,
+				Threshold: inv.Threshold,
+			})
+		}
+	}
+
 	return inventories, nil
 }
 
@@ -111,6 +121,9 @@ func (s *InventoryService) UpdateInventory(ctx context.Context, skuID int64, req
 		return nil, err
 	}
 
+	// 检查低库存并发布事件
+	s.checkLowInventory(ctx, skuID)
+
 	return inv, nil
 }
 
@@ -125,6 +138,9 @@ func (s *InventoryService) ReserveInventory(ctx context.Context, req *dto.Reserv
 		SkuID:    fmt.Sprintf("%d", req.SkuID),
 		Quantity: req.Quantity,
 	})
+
+	// 检查低库存并发布事件
+	s.checkLowInventory(ctx, req.SkuID)
 
 	return nil
 }
@@ -240,4 +256,19 @@ func (s *InventoryService) ListInventories(ctx context.Context, q dto.InventoryL
 		List:  list,
 		Total: total,
 	}, nil
+}
+
+// checkLowInventory 检查库存是否低于阈值，是则发布低库存事件
+func (s *InventoryService) checkLowInventory(ctx context.Context, skuID int64) {
+	inv, err := s.repo.FindInventoryBySkuID(ctx, skuID)
+	if err != nil || inv == nil {
+		return
+	}
+	if inv.Quantity > 0 && inv.Quantity <= inv.Threshold {
+		s.rabbit.Publish(ctx, events.InventoryLowEvent{
+			SkuID:     fmt.Sprintf("%d", skuID),
+			Quantity:  inv.Quantity,
+			Threshold: inv.Threshold,
+		})
+	}
 }

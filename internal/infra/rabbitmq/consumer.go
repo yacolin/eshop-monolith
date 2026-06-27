@@ -27,15 +27,20 @@ type Consumer struct {
 }
 
 func NewConsumer(client *Client, cfg ConsumerConfig) *Consumer {
+	// 创建独立 channel，避免多消费者共用导致消息分发异常
 	if cfg.Prefetch <= 0 {
 		cfg.Prefetch = client.cfg.PrefetchCount
 	}
 	if cfg.RetryLimit <= 0 {
 		cfg.RetryLimit = client.cfg.RetryLimit
 	}
+		ch, err := client.NewChannel()
+	if err != nil {
+		return nil
+	}
 	return &Consumer{
 		client:   client,
-		ch:       client.Channel(),
+		ch:       ch,
 		cfg:      cfg,
 		handlers: make(map[string]func(Message) error),
 	}
@@ -185,13 +190,7 @@ func (c *Consumer) sendToRetry(msg Message, retryCount int, lastErr string) {
 		"x-retry-error": lastErr,
 	}
 
-	ch := c.client.Channel()
-	if ch == nil {
-		log.Printf("rabbitmq [%s]: channel 不可用，无法发送到重试队列", c.cfg.Queue)
-		return
-	}
-
-	if err := ch.Publish(
+	if err := c.ch.Publish(
 		c.client.cfg.Exchange,
 		retryQueue,
 		false, false,

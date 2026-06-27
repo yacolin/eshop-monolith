@@ -179,6 +179,25 @@ func (c *Client) Channel() *amqp.Channel {
 	return c.ch
 }
 
+// NewChannel 为消费者创建独立 channel
+func (c *Client) NewChannel() (*amqp.Channel, error) {
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+	if conn == nil {
+		return nil, fmt.Errorf("rabbitmq: 连接不可用")
+	}
+	ch, err := conn.Channel()
+	if err != nil {
+		return nil, fmt.Errorf("打开 channel 失败: %w", err)
+	}
+	if err := ch.Qos(c.cfg.PrefetchCount, 0, false); err != nil {
+		ch.Close()
+		return nil, fmt.Errorf("设置 Qos 失败: %w", err)
+	}
+	return ch, nil
+}
+
 func (c *Client) Close() error {
 	c.mu.Lock()
 	c.closed = true

@@ -138,6 +138,14 @@ type RealtimeMessage struct {
 	Payload interface{} `json:"payload"`
 }
 
+// NewRealtimeMessage 创建实时推送消息
+func NewRealtimeMessage(msgType string, payload interface{}) *RealtimeMessage {
+	return &RealtimeMessage{
+		Type:    msgType,
+		Payload: payload,
+	}
+}
+
 // Marshal 序列化为 JSON
 func (m *RealtimeMessage) Marshal() ([]byte, error) {
 	return json.Marshal(m)
