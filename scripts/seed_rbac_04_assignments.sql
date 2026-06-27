@@ -25,6 +25,16 @@ SELECT (SELECT id FROM roles WHERE name = 'user'), id FROM permissions WHERE nam
     'category:read',
     -- 库存：可查看
     'inventory:read',
+    -- SKU：可查看
+    'sku:read',
+    -- 规格属性：可查看
+    'attr:read',
+    'attr_val:read',
+    -- 地址：管理自身地址
+    'address:read',
+    'address:create',
+    'address:update',
+    'address:delete',
     -- 订单：基础操作（查看/创建/取消）
     'order:read',
     'order:create',
@@ -69,6 +79,13 @@ SELECT (SELECT id FROM roles WHERE name = 'operator'), id FROM permissions WHERE
     'category:read',
     -- 库存：可查看
     'inventory:read',
+    -- SKU：可查看
+    'sku:read',
+    -- 规格属性：可查看
+    'attr:read',
+    'attr_val:read',
+    -- 地址：可查看
+    'address:read',
     -- 订单：查看/编辑/取消
     'order:read',
     'order:update',
@@ -108,6 +125,13 @@ SELECT (SELECT id FROM roles WHERE name = 'editor'), id FROM permissions WHERE n
     'category:update',
     -- 库存：可查看
     'inventory:read',
+    -- SKU：可查看
+    'sku:read',
+    -- 规格属性：可查看
+    'attr:read',
+    'attr_val:read',
+    -- 地址：可查看
+    'address:read',
     -- 订单：可查看
     'order:read',
     -- 秒杀：查看/创建/编辑/管理
@@ -144,6 +168,10 @@ SELECT (SELECT id FROM roles WHERE name = 'warehouse'), id FROM permissions WHER
     'inventory:create',
     'inventory:update',
     'inventory:reserve',
+    -- SKU：可查看
+    'sku:read',
+    -- 地址：可查看（发货需要）
+    'address:read',
     -- 订单：查看和更新状态（发货）
     'order:read',
     'order:update',
@@ -164,6 +192,10 @@ SELECT (SELECT id FROM roles WHERE name = 'finance'), id FROM permissions WHERE 
     'refund:update',
     -- 商品：可查看
     'product:read',
+    -- SKU：可查看
+    'sku:read',
+    -- 地址：可查看（退款上下文）
+    'address:read',
     -- 通知：查看
     'notification:read',
     -- 用户：查看用户信息
@@ -181,6 +213,15 @@ SELECT (SELECT id FROM roles WHERE name = 'merchant'), id FROM permissions WHERE
     'category:read',
     -- 库存：可查看
     'inventory:read',
+    -- SKU：管理自身商品 SKU
+    'sku:read',
+    'sku:create',
+    'sku:update',
+    -- 规格属性：可查看
+    'attr:read',
+    'attr_val:read',
+    -- 地址：可查看
+    'address:read',
     -- 订单：查看和处理（管理自身订单）
     'order:read',
     'order:update',
@@ -213,6 +254,13 @@ SELECT (SELECT id FROM roles WHERE name = 'support'), id FROM permissions WHERE 
     'product:read',
     -- 分类：可查看
     'category:read',
+    -- SKU：可查看（客服上下文）
+    'sku:read',
+    -- 规格属性：可查看
+    'attr:read',
+    'attr_val:read',
+    -- 地址：可查看（处理订单问题）
+    'address:read',
     -- 订单：查看/编辑/取消（处理订单问题）
     'order:read',
     'order:update',
@@ -246,6 +294,13 @@ SELECT (SELECT id FROM roles WHERE name = 'sales'), id FROM permissions WHERE na
     'category:read',
     -- 订单：可查看（了解销售情况）
     'order:read',
+    -- SKU：可查看
+    'sku:read',
+    -- 规格属性：可查看
+    'attr:read',
+    'attr_val:read',
+    -- 地址：可查看
+    'address:read',
     -- 秒杀：创建和管理秒杀活动
     'flash:read',
     'flash:create',
@@ -284,7 +339,13 @@ SELECT (SELECT id FROM roles WHERE name = 'analyst'), id FROM permissions WHERE 
     'review:read',
     'notification:read',
     'user:read',
-    'dashboard:read'
+    'dashboard:read',
+    -- SKU 和规格属性：只读（数据分析）
+    'sku:read',
+    'attr:read',
+    'attr_val:read',
+    -- 地址：只读（数据分析）
+    'address:read'
 );
 
 -- ==================== guest 角色：访客浏览 ====================
@@ -295,7 +356,11 @@ SELECT (SELECT id FROM roles WHERE name = 'guest'), id FROM permissions WHERE na
     'category:read',
     'review:read',
     'flash:read',
-    'promotion:read'
+    'promotion:read',
+    -- SKU：浏览商品时可见
+    'sku:read',
+    'attr:read',
+    'attr_val:read'
 );
 
 -- ==================== customer 角色：客户售后 ====================
@@ -307,6 +372,16 @@ SELECT (SELECT id FROM roles WHERE name = 'customer'), id FROM permissions WHERE
     'category:read',
     -- 库存：可查看
     'inventory:read',
+    -- SKU：可查看
+    'sku:read',
+    -- 规格属性：可查看
+    'attr:read',
+    'attr_val:read',
+    -- 地址：管理自身地址
+    'address:read',
+    'address:create',
+    'address:update',
+    'address:delete',
     -- 订单：完整操作（可更新售后状态）
     'order:read',
     'order:create',

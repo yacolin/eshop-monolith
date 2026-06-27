@@ -48,6 +48,24 @@ INSERT INTO permissions (name, display_name, description, resource, action, cate
 ('inventory:update',  '编辑库存',   '编辑库存信息',              'inventory', 'update',  '库存管理', 12100, 1),
 ('inventory:reserve', '库存操作',   '库存预订与释放操作',        'inventory', 'reserve', '库存管理', 12150, 1);
 
+-- ==================== SKU 管理 (12500) ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('sku:read',   '查看 SKU',   '查看 SKU 列表和详情',            'sku', 'read',   'SKU 管理', 12500, 1),
+('sku:create', '创建 SKU',   '创建新的 SKU（含批量创建）',      'sku', 'create', 'SKU 管理', 12550, 1),
+('sku:update', '编辑 SKU',   '更新 SKU 价格/编码/图片等信息',   'sku', 'update', 'SKU 管理', 12600, 1),
+('sku:delete', '删除 SKU',   '删除 SKU',                       'sku', 'delete', 'SKU 管理', 12650, 1);
+
+-- ==================== 规格属性管理 (13000) ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('attr:read',      '查看属性维度', '查看规格属性维度列表和详情', 'attr',     'read',   '规格属性管理', 13000, 1),
+('attr:create',    '创建属性维度', '创建新的规格属性维度',       'attr',     'create', '规格属性管理', 13050, 1),
+('attr:update',    '编辑属性维度', '更新规格属性维度信息',       'attr',     'update', '规格属性管理', 13100, 1),
+('attr:delete',    '删除属性维度', '删除规格属性维度',           'attr',     'delete', '规格属性管理', 13150, 1),
+('attr_val:read',   '查看属性值', '查看属性可选值列表',         'attr_val', 'read',   '规格属性管理', 13250, 1),
+('attr_val:create', '创建属性值', '为属性维度创建可选值',       'attr_val', 'create', '规格属性管理', 13300, 1),
+('attr_val:update', '编辑属性值', '更新属性可选值信息',         'attr_val', 'update', '规格属性管理', 13350, 1),
+('attr_val:delete', '删除属性值', '删除属性可选值',             'attr_val', 'delete', '规格属性管理', 13400, 1);
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 大类二：交易订单 (20000-29999)
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -59,6 +77,13 @@ INSERT INTO permissions (name, display_name, description, resource, action, cate
 ('order:update',       '编辑订单',   '编辑订单信息',              'order', 'update',       '订单管理', 21100, 1),
 ('order:cancel',       '取消订单',   '取消订单',                  'order', 'cancel',       '订单管理', 21150, 1),
 ('order:delete',       '删除订单',   '删除订单',                  'order', 'delete',       '订单管理', 21200, 1);
+
+-- ==================== 地址管理 (21250) ====================
+INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
+('address:read',   '查看地址',   '查看收货地址列表和详情',      'address', 'read',   '地址管理', 21250, 1),
+('address:create', '创建地址',   '添加新的收货地址',            'address', 'create', '地址管理', 21300, 1),
+('address:update', '编辑地址',   '编辑收货地址信息',            'address', 'update', '地址管理', 21350, 1),
+('address:delete', '删除地址',   '删除收货地址',                'address', 'delete', '地址管理', 21400, 1);
 
 -- ==================== 购物车管理 (21500) ====================
 INSERT INTO permissions (name, display_name, description, resource, action, category, sort, status) VALUES
