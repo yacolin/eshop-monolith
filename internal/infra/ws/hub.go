@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/pkg/logger"
 
 	"github.com/redis/go-redis/v9"
@@ -359,6 +360,35 @@ func (h *Hub) HandleEvent(event interface{}) {
 		logger.Error("WebSocket 消息序列化失败", "error", err)
 		return
 	}
+
+	if err := h.msgCache.StoreMessage(userID, seqID, msgJSON); err != nil {
+		logger.Warn("存储消息缓存失败", "user_id", userID, "error", err)
+	}
+
+	h.SendToUser(userID, msgJSON)
+
+	go h.sessionMgr.UpdateLastSeq(userID, seqID)
+}
+
+// HandleMessage 处理来自 RabbitMQ 的消息
+func (h *Hub) HandleMessage(msg rabbitmq.Message) {
+	userID := extractUserIDFromMessage(msg)
+	if userID <= 0 {
+		return
+	}
+
+	seqID, err := h.msgCache.NextSeqID(userID)
+	if err != nil {
+		logger.Error("获取序列ID失败", "user_id", userID, "error", err)
+		return
+	}
+
+	pushMsg := NewPushMessageFromRaw(msg.RoutingKey, msg.Payload, seqID)
+	if pushMsg == nil {
+		return
+	}
+
+	msgJSON, _ := pushMsg.Marshal()
 
 	if err := h.msgCache.StoreMessage(userID, seqID, msgJSON); err != nil {
 		logger.Warn("存储消息缓存失败", "user_id", userID, "error", err)

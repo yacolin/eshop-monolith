@@ -2,12 +2,14 @@ package events
 
 // PaymentCreatedEvent 支付创建事件
 type PaymentCreatedEvent struct {
-	PaymentID      int64  `json:"payment_id"`
-	OrderID        int64  `json:"order_id"`
-	Amount         int64  `json:"amount"`
-	Currency       string `json:"currency"`
-	PaymentMethod  string `json:"payment_method"`
+	PaymentID     int64  `json:"payment_id"`
+	OrderID       int64  `json:"order_id"`
+	Amount        int64  `json:"amount"`
+	Currency      string `json:"currency"`
+	PaymentMethod string `json:"payment_method"`
 }
+
+func (e PaymentCreatedEvent) RoutingKey() string { return "payment.created" }
 
 // PaymentStatusUpdatedEvent 支付状态更新事件
 type PaymentStatusUpdatedEvent struct {
@@ -17,6 +19,8 @@ type PaymentStatusUpdatedEvent struct {
 	PreviousStatus string `json:"previous_status"`
 	TransactionID  string `json:"transaction_id,omitempty"`
 }
+
+func (e PaymentStatusUpdatedEvent) RoutingKey() string { return "payment.status-updated" }
 
 // PaymentFailedEvent 支付失败事件
 type PaymentFailedEvent struct {
@@ -28,6 +32,8 @@ type PaymentFailedEvent struct {
 	FailureReason string `json:"failure_reason"`
 }
 
+func (e PaymentFailedEvent) RoutingKey() string { return "payment.failed" }
+
 // PaymentSuccessEvent 支付成功事件（下游 handler 据此进行订单状态更新+库存扣减）
 type PaymentSuccessEvent struct {
 	PaymentID int64  `json:"payment_id"`
@@ -35,6 +41,8 @@ type PaymentSuccessEvent struct {
 	Amount    int64  `json:"amount"`
 	OrderType string `json:"order_type"` // "order" 常规订单, "flash" 闪购订单
 }
+
+func (e PaymentSuccessEvent) RoutingKey() string { return "payment.success" }
 
 // RefundCreatedEvent 退款创建事件
 type RefundCreatedEvent struct {
@@ -44,6 +52,8 @@ type RefundCreatedEvent struct {
 	RefundAmount int64  `json:"refund_amount"`
 	RefundReason string `json:"refund_reason"`
 }
+
+func (e RefundCreatedEvent) RoutingKey() string { return "payment.refund.created" }
 
 // RefundStatusUpdatedEvent 退款状态更新事件
 type RefundStatusUpdatedEvent struct {
@@ -55,6 +65,8 @@ type RefundStatusUpdatedEvent struct {
 	TransactionID  string `json:"transaction_id,omitempty"`
 }
 
+func (e RefundStatusUpdatedEvent) RoutingKey() string { return "payment.refund.status-updated" }
+
 // RefundFailedEvent 退款失败事件
 type RefundFailedEvent struct {
 	RefundID      int64  `json:"refund_id"`
@@ -63,3 +75,5 @@ type RefundFailedEvent struct {
 	RefundAmount  int64  `json:"refund_amount"`
 	FailureReason string `json:"failure_reason"`
 }
+
+func (e RefundFailedEvent) RoutingKey() string { return "payment.refund.failed" }

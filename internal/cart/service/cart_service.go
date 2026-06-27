@@ -10,7 +10,7 @@ import (
 	"eshop-monolith/internal/cart/domain/models"
 	"eshop-monolith/internal/cart/domain/repositories"
 	"eshop-monolith/internal/cart/events"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	invService "eshop-monolith/internal/inventory/service"
 )
 
@@ -20,17 +20,17 @@ type CartService struct {
 	inventoryService *invService.InventoryService
 	productService   *invService.ProductService
 	skuService       *invService.SkuService
-	bus              *eventbus.Bus
+	rabbit           *rabbitmq.Client
 }
 
 // NewCartService 创建购物车服务实例
-func NewCartService(cartRepo repositories.IcartRepository, inventoryService *invService.InventoryService, productService *invService.ProductService, skuService *invService.SkuService, bus *eventbus.Bus) *CartService {
+func NewCartService(cartRepo repositories.IcartRepository, inventoryService *invService.InventoryService, productService *invService.ProductService, skuService *invService.SkuService, rabbit *rabbitmq.Client) *CartService {
 	return &CartService{
 		cartRepo:         cartRepo,
 		inventoryService: inventoryService,
 		productService:   productService,
 		skuService:       skuService,
-		bus:              bus,
+		rabbit:           rabbit,
 	}
 }
 
@@ -106,7 +106,7 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 		}
 
 		// 发布购物车项更新事件
-		s.bus.Publish(events.CartItemUpdatedEvent{
+		s.rabbit.Publish(ctx,events.CartItemUpdatedEvent{
 			CartID:      cart.ID,
 			UserID:      cart.UserID,
 			ItemID:      existingItem.ID,
@@ -132,7 +132,7 @@ func (s *CartService) AddToCart(ctx context.Context, userID int64, sessionID str
 		}
 
 		// 发布购物车项添加事件
-		s.bus.Publish(events.CartItemAddedEvent{
+		s.rabbit.Publish(ctx,events.CartItemAddedEvent{
 			CartID:    cart.ID,
 			UserID:    cart.UserID,
 			SkuID:     newItem.SkuID,
@@ -197,7 +197,7 @@ func (s *CartService) UpdateCartItem(ctx context.Context, userID int64, sessionI
 	}
 
 	// 发布购物车项更新事件
-	s.bus.Publish(events.CartItemUpdatedEvent{
+	s.rabbit.Publish(ctx,events.CartItemUpdatedEvent{
 		CartID:      cart.ID,
 		UserID:      cart.UserID,
 		ItemID:      itemID,
@@ -249,7 +249,7 @@ func (s *CartService) RemoveCartItem(ctx context.Context, userID int64, sessionI
 	}
 
 	// 发布购物车项移除事件
-	s.bus.Publish(events.CartItemRemovedEvent{
+	s.rabbit.Publish(ctx,events.CartItemRemovedEvent{
 		CartID:    cart.ID,
 		UserID:    cart.UserID,
 		ItemID:    itemID,
@@ -286,7 +286,7 @@ func (s *CartService) ClearCart(ctx context.Context, userID int64, sessionID str
 	}
 
 	// 发布购物车清空事件
-	s.bus.Publish(events.CartClearedEvent{
+	s.rabbit.Publish(ctx,events.CartClearedEvent{
 		CartID: cart.ID,
 		UserID: cart.UserID,
 	})

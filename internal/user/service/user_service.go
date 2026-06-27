@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/internal/user/api/dto"
 	"eshop-monolith/internal/user/domain/models"
@@ -19,18 +19,18 @@ type UserService struct {
 	userInfoRepo     repositories.IuserInfoRepository
 	authRepo         repositories.IauthTokenRepository
 	loginHistoryRepo repositories.IloginHistoryRepository
-	bus              *eventbus.Bus
+	rabbit           *rabbitmq.Client
 
 	jwtSecret string
 }
 
-func NewUserService(repo repositories.IuserRepository, userInfoRepo repositories.IuserInfoRepository, authRepo repositories.IauthTokenRepository, loginHistoryRepo repositories.IloginHistoryRepository, bus *eventbus.Bus) *UserService {
+func NewUserService(repo repositories.IuserRepository, userInfoRepo repositories.IuserInfoRepository, authRepo repositories.IauthTokenRepository, loginHistoryRepo repositories.IloginHistoryRepository, rabbit *rabbitmq.Client) *UserService {
 	return &UserService{
 		repo:             repo,
 		userInfoRepo:     userInfoRepo,
 		authRepo:         authRepo,
 		loginHistoryRepo: loginHistoryRepo,
-		bus:              bus,
+		rabbit:           rabbit,
 	}
 }
 
@@ -125,7 +125,7 @@ func (s *UserService) UpdateUserInfo(ctx context.Context, userID int64, req dto.
 		}
 	}
 
-	s.bus.Publish(events.UserProfileUpdatedEvent{
+	s.rabbit.Publish(ctx, events.UserProfileUpdatedEvent{
 		UserID:   userID,
 		Nickname: userInfo.Nickname,
 	})

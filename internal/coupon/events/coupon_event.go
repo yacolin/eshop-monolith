@@ -11,6 +11,8 @@ type CouponIssuedEvent struct {
 	IssuedAt     time.Time `json:"issued_at"`
 }
 
+func (e CouponIssuedEvent) RoutingKey() string { return "coupon.issued" }
+
 // CouponUsedEvent 优惠券使用事件
 type CouponUsedEvent struct {
 	UserCouponID int64     `json:"user_coupon_id"`
@@ -21,6 +23,8 @@ type CouponUsedEvent struct {
 	UsedAt       time.Time `json:"used_at"`
 }
 
+func (e CouponUsedEvent) RoutingKey() string { return "coupon.used" }
+
 // CouponExpiredEvent 优惠券过期事件
 type CouponExpiredEvent struct {
 	UserCouponID int64     `json:"user_coupon_id"`
@@ -29,3 +33,5 @@ type CouponExpiredEvent struct {
 	CouponCode   string    `json:"coupon_code"`
 	ExpiredAt    time.Time `json:"expired_at"`
 }
+
+func (e CouponExpiredEvent) RoutingKey() string { return "coupon.expired" }

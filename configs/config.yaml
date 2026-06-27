@@ -51,3 +51,14 @@ cors:
     - "Origin"
     - "Content-Type"
     - "Authorization"
+
+rabbitmq:
+  host: localhost
+  port: 5672
+  username: guest
+  password: guest
+  vhost: /
+  exchange: eshop.events
+  prefetch_count: 10
+  retry_limit: 3
+  retry_delay_ms: 5000

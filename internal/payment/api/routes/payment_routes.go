@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/payment/api/handlers"
 	"eshop-monolith/internal/payment/domain/repositories"
 	"eshop-monolith/internal/payment/service"
@@ -12,7 +12,7 @@ import (
 )
 
 // RegisterPaymentRoutes 注册支付相关路由
-func RegisterPaymentRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, bus *eventbus.Bus, db *gorm.DB) {
+func RegisterPaymentRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, rabbit *rabbitmq.Client, db *gorm.DB) {
 	// 创建仓储实例
 	paymentRepo := repositories.NewPaymentRepository(db)
 	refundRepo := repositories.NewRefundRepository(db)
@@ -24,7 +24,7 @@ func RegisterPaymentRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, 
 		refundRepo,
 		paymentMethodRepo,
 		repos.Order,
-		bus,
+		rabbit,
 	)
 
 	// 创建处理器实例

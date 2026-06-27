@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/order/domain/repositories"
 	"eshop-monolith/internal/payment/api/dto"
 	"eshop-monolith/internal/payment/domain/models"
@@ -22,7 +22,7 @@ type PaymentService struct {
 	refundRepo        paymentRepos.IRefundRepository
 	paymentMethodRepo paymentRepos.IPaymentMethodRepository
 	orderRepo         repositories.IorderRepository
-	bus               *eventbus.Bus
+	rabbit            *rabbitmq.Client
 }
 
 // NewPaymentService 创建支付服务实例
@@ -31,14 +31,14 @@ func NewPaymentService(
 	refundRepo paymentRepos.IRefundRepository,
 	paymentMethodRepo paymentRepos.IPaymentMethodRepository,
 	orderRepo repositories.IorderRepository,
-	bus *eventbus.Bus,
+	rabbit *rabbitmq.Client,
 ) *PaymentService {
 	return &PaymentService{
 		paymentRepo:       paymentRepo,
 		refundRepo:        refundRepo,
 		paymentMethodRepo: paymentMethodRepo,
 		orderRepo:         orderRepo,
-		bus:               bus,
+		rabbit:            rabbit,
 	}
 }
 
@@ -81,7 +81,7 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *dto.CreatePayme
 	}
 
 	// 发布支付创建事件
-	s.bus.Publish(events.PaymentCreatedEvent{
+	s.rabbit.Publish(ctx,events.PaymentCreatedEvent{
 		PaymentID:     payment.ID,
 		OrderID:       payment.OrderID,
 		Amount:        payment.Amount,
@@ -144,7 +144,7 @@ func (s *PaymentService) UpdatePaymentStatus(ctx context.Context, id int64, stat
 	}
 
 	// 发布支付状态更新事件
-	s.bus.Publish(events.PaymentStatusUpdatedEvent{
+	s.rabbit.Publish(ctx,events.PaymentStatusUpdatedEvent{
 		PaymentID:      payment.ID,
 		OrderID:        payment.OrderID,
 		Status:         payment.Status,
@@ -154,7 +154,7 @@ func (s *PaymentService) UpdatePaymentStatus(ctx context.Context, id int64, stat
 
 	// 如果支付成功，发布支付成功事件（由下游 handler 完成订单状态更新+库存扣减）
 	if status == "success" {
-		s.bus.Publish(events.PaymentSuccessEvent{
+		s.rabbit.Publish(ctx,events.PaymentSuccessEvent{
 			PaymentID: payment.ID,
 			OrderID:   payment.OrderID,
 			Amount:    payment.Amount,
@@ -164,7 +164,7 @@ func (s *PaymentService) UpdatePaymentStatus(ctx context.Context, id int64, stat
 
 	// 如果支付失败，发布支付失败事件
 	if status == "failed" {
-		s.bus.Publish(events.PaymentFailedEvent{
+		s.rabbit.Publish(ctx,events.PaymentFailedEvent{
 			PaymentID:     payment.ID,
 			OrderID:       payment.OrderID,
 			Amount:        payment.Amount,
@@ -271,7 +271,7 @@ func (s *PaymentService) CreateRefund(ctx context.Context, req *dto.CreateRefund
 	}
 
 	// 发布退款创建事件
-	s.bus.Publish(events.RefundCreatedEvent{
+	s.rabbit.Publish(ctx,events.RefundCreatedEvent{
 		RefundID:     refund.ID,
 		PaymentID:    refund.PaymentID,
 		OrderID:      refund.OrderID,
@@ -302,7 +302,7 @@ func (s *PaymentService) UpdateRefundStatus(ctx context.Context, id int64, statu
 	}
 
 	// 发布退款状态更新事件
-	s.bus.Publish(events.RefundStatusUpdatedEvent{
+	s.rabbit.Publish(ctx,events.RefundStatusUpdatedEvent{
 		RefundID:       refund.ID,
 		PaymentID:      refund.PaymentID,
 		OrderID:        refund.OrderID,
@@ -337,7 +337,7 @@ func (s *PaymentService) UpdateRefundStatus(ctx context.Context, id int64, statu
 
 	// 如果退款失败，发布退款失败事件
 	if status == "failed" {
-		s.bus.Publish(events.RefundFailedEvent{
+		s.rabbit.Publish(ctx,events.RefundFailedEvent{
 			RefundID:      refund.ID,
 			PaymentID:     refund.PaymentID,
 			OrderID:       refund.OrderID,

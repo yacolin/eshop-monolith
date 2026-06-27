@@ -7,7 +7,7 @@ import (
 
 	"eshop-monolith/internal/coupon/domain/models"
 	"eshop-monolith/internal/coupon/domain/repositories"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/pkg/errcode"
 
 	"gorm.io/gorm"
@@ -29,15 +29,15 @@ type PromotionService struct {
 	db               *gorm.DB
 	promotionRepo    repositories.IpromotionRepository
 	promotionProdRepo repositories.IpromotionProductRepository
-	bus              *eventbus.Bus
+	bus              *rabbitmq.Client
 }
 
-func NewPromotionService(db *gorm.DB, promotionRepo repositories.IpromotionRepository, promotionProdRepo repositories.IpromotionProductRepository, bus *eventbus.Bus) *PromotionService {
+func NewPromotionService(db *gorm.DB, promotionRepo repositories.IpromotionRepository, promotionProdRepo repositories.IpromotionProductRepository, rabbit *rabbitmq.Client) *PromotionService {
 	return &PromotionService{
 		db:               db,
 		promotionRepo:    promotionRepo,
 		promotionProdRepo: promotionProdRepo,
-		bus:              bus,
+		bus:              rabbit,
 	}
 }
 

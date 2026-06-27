@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"eshop-monolith/internal/dashboard/api/dto"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
 
 	"github.com/bytedance/sonic"
@@ -25,7 +25,7 @@ type DashboardService struct {
 	db          *gorm.DB
 	rdb         *redis.Client
 	repos       *repository.Repositories
-	bus         *eventbus.Bus
+	rabbit      *rabbitmq.Client
 	singleGroup singleflight.Group
 }
 
@@ -34,13 +34,13 @@ func NewDashboardService(
 	db *gorm.DB,
 	rdb *redis.Client,
 	repos *repository.Repositories,
-	bus *eventbus.Bus,
+	rabbit *rabbitmq.Client,
 ) *DashboardService {
 	return &DashboardService{
 		db:    db,
 		rdb:   rdb,
 		repos: repos,
-		bus:   bus,
+		rabbit: rabbit,
 	}
 }
 
@@ -107,36 +107,9 @@ func (s *DashboardService) InvalidateCache() {
 }
 
 // RegisterEventHandlers 注册事件处理器，数据变更时自动失效缓存
+// TODO: 使用 rabbitmq.Consumer 重新实现事件订阅（Task 10）
 func (s *DashboardService) RegisterEventHandlers() {
-	// 订单相关事件
-	s.bus.Subscribe("eshop-monolith/internal/order/events.OrderCreatedEvent", func(interface{}) {
-		s.InvalidateCache()
-	})
-	s.bus.Subscribe("eshop-monolith/internal/order/events.OrderCancelledEvent", func(interface{}) {
-		s.InvalidateCache()
-	})
-
-	// 支付相关事件
-	s.bus.Subscribe("eshop-monolith/internal/payment/events.PaymentSuccessEvent", func(interface{}) {
-		s.InvalidateCache()
-	})
-	s.bus.Subscribe("eshop-monolith/internal/payment/events.PaymentStatusUpdatedEvent", func(interface{}) {
-		s.InvalidateCache()
-	})
-	s.bus.Subscribe("eshop-monolith/internal/payment/events.RefundCreatedEvent", func(interface{}) {
-		s.InvalidateCache()
-	})
-
-	// 产品相关事件
-	s.bus.Subscribe("eshop-monolith/internal/inventory/events.ProductCreatedEvent", func(interface{}) {
-		s.InvalidateCache()
-	})
-	s.bus.Subscribe("eshop-monolith/internal/inventory/events.ProductUpdatedEvent", func(interface{}) {
-		s.InvalidateCache()
-	})
-	s.bus.Subscribe("eshop-monolith/internal/inventory/events.ProductDeletedEvent", func(interface{}) {
-		s.InvalidateCache()
-	})
+	// 预留: 后续通过 rabbitmq.Consumer + HandleFunc 重新实现
 }
 
 // computeSummary 计算核心指标

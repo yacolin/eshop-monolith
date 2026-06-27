@@ -10,7 +10,7 @@ import (
 	"eshop-monolith/internal/flashsale/domain/models"
 	"eshop-monolith/internal/flashsale/domain/repositories"
 	"eshop-monolith/internal/flashsale/events"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	invRepos "eshop-monolith/internal/inventory/domain/repositories"
 	paymentModels "eshop-monolith/internal/payment/domain/models"
 	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
@@ -41,11 +41,11 @@ type FlashService struct {
 	repo          *repositories.FlashRepository
 	inventoryRepo invRepos.IinventoryRepository
 	paymentRepo   paymentRepos.IPaymentRepository
-	bus           *eventbus.Bus
+	rabbit        *rabbitmq.Client
 }
 
-func NewFlashService(db *gorm.DB, rdb *redis.Client, repo *repositories.FlashRepository, inventoryRepo invRepos.IinventoryRepository, paymentRepo paymentRepos.IPaymentRepository, bus *eventbus.Bus) *FlashService {
-	return &FlashService{db: db, rdb: rdb, repo: repo, inventoryRepo: inventoryRepo, paymentRepo: paymentRepo, bus: bus}
+func NewFlashService(db *gorm.DB, rdb *redis.Client, repo *repositories.FlashRepository, inventoryRepo invRepos.IinventoryRepository, paymentRepo paymentRepos.IPaymentRepository, rabbit *rabbitmq.Client) *FlashService {
+	return &FlashService{db: db, rdb: rdb, repo: repo, inventoryRepo: inventoryRepo, paymentRepo: paymentRepo, rabbit: rabbit}
 }
 
 func stockKey(activityID int64) string {
@@ -199,16 +199,14 @@ func (s *FlashService) ConfirmOrder(ctx context.Context, orderID int64) error {
 	}
 
 	// 事务外发布闪购订单支付成功事件
-	if s.bus != nil {
-		s.bus.Publish(events.FlashOrderPaidEvent{
-			OrderID:    order.ID,
-			UserID:     order.UserID,
-			ActivityID: order.ActivityID,
-			ProductID:  order.ProductID,
-			Amount:     order.TotalAmount,
-			PaidAt:     time.Now(),
-		})
-	}
+	s.rabbit.Publish(ctx, events.FlashOrderPaidEvent{
+		OrderID:    order.ID,
+		UserID:     order.UserID,
+		ActivityID: order.ActivityID,
+		ProductID:  order.ProductID,
+		Amount:     order.TotalAmount,
+		PaidAt:     time.Now(),
+	})
 
 	return nil
 }
@@ -253,14 +251,12 @@ func (s *FlashService) CancelOrder(ctx context.Context, orderID int64) error {
 	s.rdb.Incr(ctx, stockKey)
 
 	// 事务外发布闪购订单取消事件
-	if s.bus != nil {
-		s.bus.Publish(events.FlashOrderCancelledEvent{
-			OrderID:     order.ID,
-			UserID:      order.UserID,
-			ActivityID:  order.ActivityID,
-			CancelledAt: time.Now(),
-		})
-	}
+	s.rabbit.Publish(ctx, events.FlashOrderCancelledEvent{
+		OrderID:     order.ID,
+		UserID:      order.UserID,
+		ActivityID:  order.ActivityID,
+		CancelledAt: time.Now(),
+	})
 
 	return nil
 }
@@ -334,16 +330,14 @@ func (s *FlashService) FlashBuy(ctx context.Context, req *dto.FlashBuyReq) (*dto
 	}
 
 	// 事务外发布闪购订单创建事件
-	if s.bus != nil {
-		s.bus.Publish(events.FlashOrderCreatedEvent{
-			OrderID:    order.ID,
-			UserID:     order.UserID,
-			ActivityID: req.ActivityID,
-			ProductID:  activity.ProductID,
-			Amount:     order.TotalAmount,
-			CreatedAt:  time.Now(),
-		})
-	}
+	s.rabbit.Publish(ctx, events.FlashOrderCreatedEvent{
+		OrderID:    order.ID,
+		UserID:     order.UserID,
+		ActivityID: req.ActivityID,
+		ProductID:  activity.ProductID,
+		Amount:     order.TotalAmount,
+		CreatedAt:  time.Now(),
+	})
 
 	s.rdb.Set(ctx, limitKey, 1, 24*time.Hour)
 

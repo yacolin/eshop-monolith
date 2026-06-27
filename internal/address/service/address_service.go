@@ -6,7 +6,7 @@ import (
 	"eshop-monolith/internal/address/domain/models"
 	"eshop-monolith/internal/address/domain/repositories"
 	"eshop-monolith/internal/address/events"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/pkg/errcode"
 	"gorm.io/gorm"
 )
@@ -16,11 +16,11 @@ const maxAddressPerUser = 20
 type AddressService struct {
 	repo repositories.IaddressRepository
 	db   *gorm.DB
-	bus  *eventbus.Bus
+	rabbit  *rabbitmq.Client
 }
 
-func NewAddressService(repo repositories.IaddressRepository, db *gorm.DB, bus *eventbus.Bus) *AddressService {
-	return &AddressService{repo: repo, db: db, bus: bus}
+func NewAddressService(repo repositories.IaddressRepository, db *gorm.DB, rabbit *rabbitmq.Client) *AddressService {
+	return &AddressService{repo: repo, db: db, rabbit: rabbit}
 }
 
 func (s *AddressService) Create(ctx context.Context, userID int64, req *dto.CreateAddressReq) (*models.Address, error) {
@@ -48,9 +48,7 @@ func (s *AddressService) Create(ctx context.Context, userID int64, req *dto.Crea
 		return nil, err
 	}
 
-	if s.bus != nil {
-		s.bus.PublishAsync(events.AddressCreatedEvent{AddressID: addr.ID, UserID: userID})
-	}
+	s.rabbit.Publish(context.Background(), events.AddressCreatedEvent{AddressID: addr.ID, UserID: userID})
 	return addr, nil
 }
 
@@ -105,9 +103,7 @@ func (s *AddressService) Update(ctx context.Context, userID int64, addressID int
 		return nil, err
 	}
 
-	if s.bus != nil {
-		s.bus.PublishAsync(events.AddressUpdatedEvent{AddressID: addr.ID, UserID: userID})
-	}
+	s.rabbit.Publish(context.Background(), events.AddressUpdatedEvent{AddressID: addr.ID, UserID: userID})
 	return addr, nil
 }
 
@@ -119,9 +115,7 @@ func (s *AddressService) Delete(ctx context.Context, userID int64, addressID int
 	if err := s.repo.Delete(ctx, addr.ID); err != nil {
 		return err
 	}
-	if s.bus != nil {
-		s.bus.PublishAsync(events.AddressDeletedEvent{AddressID: addressID, UserID: userID})
-	}
+	s.rabbit.Publish(context.Background(), events.AddressDeletedEvent{AddressID: addressID, UserID: userID})
 	return nil
 }
 

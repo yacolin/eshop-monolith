@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/internal/infra/router"
 	"eshop-monolith/pkg/config"
@@ -55,8 +56,12 @@ func main() {
 	// 初始化仓储
 	repos := repository.NewRepositories(db, redisClient)
 
+	// 初始化 RabbitMQ 客户端
+	mqClient := rabbitmq.NewClient(rabbitmq.NewConfig(&cfg.RabbitMQ))
+	defer mqClient.Close()
+
 	// 初始化路由
-	router := router.SetupRouter(cfg, repos, db)
+	router := router.SetupRouter(cfg, repos, db, mqClient)
 
 	// 创建HTTP服务器
 	server := &http.Server{

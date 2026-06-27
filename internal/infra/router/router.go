@@ -15,6 +15,7 @@ import (
 	invRoutes "eshop-monolith/internal/inventory/api/routes"
 	invSvcPkg "eshop-monolith/internal/inventory/service"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
+	notifSvcPkg "eshop-monolith/internal/notification/service"
 	orderRoutes "eshop-monolith/internal/order/api/routes"
 	orderSvcPkg "eshop-monolith/internal/order/service"
 	payRoutes "eshop-monolith/internal/payment/api/routes"
@@ -22,10 +23,10 @@ import (
 	addressRoutes "eshop-monolith/internal/address/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
+	"eshop-monolith/internal/infra/rabbitmq/consumers"
 	"eshop-monolith/internal/infra/repository"
 	ws "eshop-monolith/internal/infra/ws"
-	paymentEvents "eshop-monolith/internal/payment/events"
 	"eshop-monolith/pkg/config"
 	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/middleware"
@@ -41,14 +42,8 @@ import (
 )
 
 // SetupRouter 设置路由
-func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB) *gin.Engine {
+func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB, mqClient *rabbitmq.Client) *gin.Engine {
 	router := gin.Default()
-
-	// 创建事件总线实例
-	bus := eventbus.NewBus()
-
-	// 注册基础事件处理器（日志记录等）
-	eventbus.RegisterHandlers(bus)
 
 	// 创建 WebSocket Hub 并启动（传入Redis客户端支持断线重连和增量同步）
 	wsHub := ws.NewHub(repos.Redis)
@@ -74,9 +69,6 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		return username, info.Nickname, nil
 	})
 
-	// 注册 WebSocket 事件处理器（将业务事件推送给在线用户）
-	eventbus.RegisterWSHandlers(bus, wsHub)
-
 	// 添加全局错误处理中间件
 	router.Use(middleware.ErrorHandler())
 
@@ -85,6 +77,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	var flashSvc *flashSvcPkg.FlashService
 	var productSvc *invSvcPkg.ProductService
 	var dashboardSvc *dashboardSvcPkg.DashboardService
+	var notifSvc *notifSvcPkg.NotificationService
 	var warmupDone atomic.Bool
 
 	// 健康检查
@@ -117,30 +110,29 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		})
 
 		// 公开路由（按领域拆分注册）
-		invRoutes.RegisterCategoryRoutes(v1, repos, bus)
-		productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, bus)
-		invRoutes.RegisterInventoryRoutes(v1, repos, bus)
-		invRoutes.RegisterSkuRoutes(v1, repos, db, bus)
+		invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
+		productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)
+		invRoutes.RegisterInventoryRoutes(v1, repos, mqClient)
+		invRoutes.RegisterSkuRoutes(v1, repos, db, mqClient)
 		invRoutes.RegisterProductAttributeRoutes(v1, repos, db)
 		invRoutes.RegisterAttributeRoutes(v1, repos, db)
 
 		// 优惠券系统（需先于订单初始化，用于结算时优惠校验）
-		couponSvc := couponRoutes.RegisterCouponRoutes(v1, repos, db, bus)
-		couponRoutes.RegisterPromotionRoutes(v1, repos, db, bus)
+		couponSvc := couponRoutes.RegisterCouponRoutes(v1, repos, db, mqClient)
+		couponRoutes.RegisterPromotionRoutes(v1, repos, db, mqClient)
 
-		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, bus, couponSvc)
-		userRoutes.RegisterUserRoutes(v1, repos)
-		payRoutes.RegisterPaymentRoutes(v1, repos, bus, db)
-		cartRoutes.RegisterCartRoutes(v1, repos, db)
-		flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, bus)
+		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
+		userRoutes.RegisterUserRoutes(v1, repos, mqClient)
+		payRoutes.RegisterPaymentRoutes(v1, repos, mqClient, db)
+		cartRoutes.RegisterCartRoutes(v1, repos, db, mqClient)
+		flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, mqClient)
 		userRoutes.RegisterAuthRoutes(v1, repos, db)
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
 		userRoutes.RegisterRoleRoutes(v1, repos, db)
-		notifRoutes.RegisterNotificationRoutes(v1, repos, db, bus)
-		reviewRoutes.RegisterReviewRoutes(v1, repos, db, bus)
-		addressRoutes.RegisterAddressRoutes(v1, db, bus)
-		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, bus)
-
+		notifSvc = notifRoutes.RegisterNotificationRoutes(v1, repos, db, mqClient)
+		reviewRoutes.RegisterReviewRoutes(v1, repos, db, mqClient)
+		addressRoutes.RegisterAddressRoutes(v1, db, mqClient)
+		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, mqClient)
 
 		// WebSocket 路由
 		ws.RegisterWSRoutes(v1, wsHub)
@@ -187,25 +179,23 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 			}
 		}()
 	}
-	// 注册支付成功事件业务处理器（在 service 创建后, 通过闭包注入依赖）
-	bus.Subscribe("payment.PaymentSuccessEvent", func(event any) {
-		e, ok := event.(paymentEvents.PaymentSuccessEvent)
-		if !ok {
-			return
+
+	// Start RabbitMQ consumers
+	go func() {
+		if err := consumers.StartWSConsumer(context.Background(), mqClient, wsHub); err != nil {
+			logger.Error("启动 WS 消费者失败", "error", err)
 		}
-		switch e.OrderType {
-		case "flash":
-			if err := flashSvc.HandlePaidSuccess(context.Background(), e.OrderID); err != nil {
-				logger.Error("flash order paid handler failed",
-					"order_id", e.OrderID, "error", err)
-			}
-		default:
-			if err := orderSvc.HandlePaidSuccess(context.Background(), e.OrderID); err != nil {
-				logger.Error("order paid handler failed",
-					"order_id", e.OrderID, "error", err)
-			}
+	}()
+	go func() {
+		if err := consumers.StartNotificationConsumer(context.Background(), mqClient, notifSvc); err != nil {
+			logger.Error("启动通知消费者失败", "error", err)
 		}
-	})
+	}()
+	go func() {
+		if err := consumers.StartOrderBizConsumers(context.Background(), mqClient, orderSvc, flashSvc); err != nil {
+			logger.Error("启动业务消费者失败", "error", err)
+		}
+	}()
 
 	return router
 }

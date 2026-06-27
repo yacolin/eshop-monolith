@@ -3,7 +3,7 @@ package routes
 import (
 	"context"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/internal/review/api/handlers"
 	"eshop-monolith/internal/review/domain/repositories"
@@ -16,7 +16,7 @@ import (
 )
 
 // RegisterReviewRoutes 注册评论与评分相关路由
-func RegisterReviewRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) {
+func RegisterReviewRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, rabbit *rabbitmq.Client) {
 	reviewRepo := repositories.NewReviewRepository(db)
 	if err := reviewRepo.AutoMigrate(); err != nil {
 		panic("failed to auto migrate review tables: " + err.Error())
@@ -27,7 +27,7 @@ func RegisterReviewRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, d
 	findOrderByItem := buildOrderLookup(repos, db)
 	findUser := buildUserLookup(repos)
 
-	reviewSvc := service.NewReviewService(reviewRepo, bus, findOrderByItem, findUser)
+	reviewSvc := service.NewReviewService(reviewRepo, rabbit, findOrderByItem, findUser)
 	reviewHandler := handlers.NewReviewHandler(reviewSvc)
 
 	// ---- 公开路由（无需登录）：浏览评论与评分 ----

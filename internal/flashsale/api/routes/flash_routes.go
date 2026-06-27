@@ -4,20 +4,20 @@ import (
 	"eshop-monolith/internal/flashsale/api/handlers"
 	"eshop-monolith/internal/flashsale/domain/repositories"
 	"eshop-monolith/internal/flashsale/service"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func RegisterFlashRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) *service.FlashService {
+func RegisterFlashRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, rabbit *rabbitmq.Client) *service.FlashService {
 	flashRepo := repositories.NewFlashRepository(db)
 	if err := flashRepo.AutoMigrate(); err != nil {
 		panic("failed to auto migrate flash tables: " + err.Error())
 	}
 
-	flashService := service.NewFlashService(db, repos.Redis, flashRepo, repos.Inventory, repos.Payment, bus)
+	flashService := service.NewFlashService(db, repos.Redis, flashRepo, repos.Inventory, repos.Payment, rabbit)
 	flashHandler := handlers.NewFlashHandler(flashService)
 
 	flash := v1.Group("/flash")

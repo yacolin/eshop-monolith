@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/domain/repositories"
@@ -15,19 +15,19 @@ import (
 type CategoryService struct {
 	repo    repositories.IcategoryRepository
 	catAttr repositories.IcategoryAttributeRepository
-	bus     *eventbus.Bus
+	rabbit  *rabbitmq.Client
 }
 
 // NewCategoryService 创建分类服务
 func NewCategoryService(
 	repo repositories.IcategoryRepository,
 	catAttr repositories.IcategoryAttributeRepository,
-	bus *eventbus.Bus,
+	rabbit  *rabbitmq.Client,
 ) *CategoryService {
 	return &CategoryService{
 		repo:    repo,
 		catAttr: catAttr,
-		bus:     bus,
+		rabbit:  rabbit,
 	}
 }
 
@@ -51,7 +51,7 @@ func (s *CategoryService) CreateCategory(ctx context.Context, req *dto.CreateCat
 	}
 
 	// 发布分类创建事件
-	s.bus.Publish(events.CategoryCreatedEvent{
+	s.rabbit.Publish(ctx,events.CategoryCreatedEvent{
 		CategoryID: newCategory.ID,
 		Name:       newCategory.Name,
 		ParentID:   newCategory.ParentID,
@@ -116,7 +116,7 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *dto
 	}
 
 	// 发布分类更新事件
-	s.bus.Publish(events.CategoryUpdatedEvent{
+	s.rabbit.Publish(ctx,events.CategoryUpdatedEvent{
 		CategoryID: existingCategory.ID,
 		Name:       existingCategory.Name,
 		ParentID:   existingCategory.ParentID,
@@ -139,7 +139,7 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
 	}
 
 	// 发布分类删除事件
-	s.bus.Publish(events.CategoryDeletedEvent{
+	s.rabbit.Publish(ctx,events.CategoryDeletedEvent{
 		CategoryID: existingCategory.ID,
 		Name:       existingCategory.Name,
 		ParentID:   existingCategory.ParentID,

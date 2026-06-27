@@ -10,6 +10,8 @@ type CartItemAddedEvent struct {
 	Price     int64 `json:"price"`
 }
 
+func (e CartItemAddedEvent) RoutingKey() string { return "cart.item-added" }
+
 // CartItemUpdatedEvent 购物车项更新事件
 type CartItemUpdatedEvent struct {
 	CartID      int64 `json:"cart_id"`
@@ -22,6 +24,8 @@ type CartItemUpdatedEvent struct {
 	Price       int64 `json:"price"`
 }
 
+func (e CartItemUpdatedEvent) RoutingKey() string { return "cart.item-updated" }
+
 // CartItemRemovedEvent 购物车项移除事件
 type CartItemRemovedEvent struct {
 	CartID    int64 `json:"cart_id"`
@@ -33,8 +37,12 @@ type CartItemRemovedEvent struct {
 	Price     int64 `json:"price"`
 }
 
+func (e CartItemRemovedEvent) RoutingKey() string { return "cart.item-removed" }
+
 // CartClearedEvent 购物车清空事件
 type CartClearedEvent struct {
 	CartID int64 `json:"cart_id"`
 	UserID int64 `json:"user_id"`
 }
+
+func (e CartClearedEvent) RoutingKey() string { return "cart.cleared" }

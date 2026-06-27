@@ -4,16 +4,16 @@ import (
 	"eshop-monolith/internal/address/api/handlers"
 	"eshop-monolith/internal/address/domain/repositories"
 	"eshop-monolith/internal/address/service"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func RegisterAddressRoutes(v1 *gin.RouterGroup, db *gorm.DB, bus *eventbus.Bus) {
+func RegisterAddressRoutes(v1 *gin.RouterGroup, db *gorm.DB, rabbit *rabbitmq.Client) {
 	repo := repositories.NewAddressRepository(db)
-	svc := service.NewAddressService(repo, db, bus)
+	svc := service.NewAddressService(repo, db, rabbit)
 	handler := handlers.NewAddressHandler(svc)
 
 	addresses := v1.Group("/addresses")

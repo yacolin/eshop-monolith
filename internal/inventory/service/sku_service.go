@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/domain/repositories"
@@ -15,12 +15,12 @@ import (
 type SkuService struct {
 	skuRepo     repositories.IskuRepository
 	productRepo repositories.IproductRepository
-	bus         *eventbus.Bus
+	rabbit      *rabbitmq.Client
 	db          *gorm.DB
 }
 
-func NewSkuService(skuRepo repositories.IskuRepository, productRepo repositories.IproductRepository, bus *eventbus.Bus, db *gorm.DB) *SkuService {
-	return &SkuService{skuRepo: skuRepo, productRepo: productRepo, bus: bus, db: db}
+func NewSkuService(skuRepo repositories.IskuRepository, productRepo repositories.IproductRepository, rabbit *rabbitmq.Client, db *gorm.DB) *SkuService {
+	return &SkuService{skuRepo: skuRepo, productRepo: productRepo, rabbit: rabbit, db: db}
 }
 
 // syncProductMinPrice 重新计算 Product 的最低 SKU 价格
@@ -46,7 +46,7 @@ func (s *SkuService) CreateSku(ctx context.Context, req *dto.CreateSkuDTO) (*mod
 	}
 	s.syncProductMinPrice(ctx, req.ProductID)
 
-	s.bus.Publish(events.SkuCreatedEvent{SkuID: sku.ID, ProductID: sku.ProductID, Price: sku.Price})
+	s.rabbit.Publish(ctx,events.SkuCreatedEvent{SkuID: sku.ID, ProductID: sku.ProductID, Price: sku.Price})
 	return sku, nil
 }
 
@@ -93,7 +93,7 @@ func (s *SkuService) UpdateSku(ctx context.Context, id int64, req *dto.UpdateSku
 	}
 	s.syncProductMinPrice(ctx, sku.ProductID)
 
-	s.bus.Publish(events.SkuUpdatedEvent{SkuID: sku.ID, ProductID: sku.ProductID, Price: sku.Price})
+	s.rabbit.Publish(ctx,events.SkuUpdatedEvent{SkuID: sku.ID, ProductID: sku.ProductID, Price: sku.Price})
 	return sku, nil
 }
 
@@ -107,6 +107,6 @@ func (s *SkuService) DeleteSku(ctx context.Context, id int64) error {
 	}
 	s.syncProductMinPrice(ctx, sku.ProductID)
 
-	s.bus.Publish(events.SkuDeletedEvent{SkuID: sku.ID, ProductID: sku.ProductID})
+	s.rabbit.Publish(ctx,events.SkuDeletedEvent{SkuID: sku.ID, ProductID: sku.ProductID})
 	return nil
 }

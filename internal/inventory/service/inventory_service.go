@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/domain/repositories"
@@ -17,16 +17,16 @@ type InventoryService struct {
 	repo        repositories.IinventoryRepository
 	skuRepo     repositories.IskuRepository
 	productRepo repositories.IproductRepository
-	bus         *eventbus.Bus
+	rabbit      *rabbitmq.Client
 }
 
 // NewInventoryService 创建库存服务
-func NewInventoryService(repo repositories.IinventoryRepository, skuRepo repositories.IskuRepository, productRepo repositories.IproductRepository, bus *eventbus.Bus) *InventoryService {
+func NewInventoryService(repo repositories.IinventoryRepository, skuRepo repositories.IskuRepository, productRepo repositories.IproductRepository, rabbit *rabbitmq.Client) *InventoryService {
 	return &InventoryService{
 		repo:        repo,
 		skuRepo:     skuRepo,
 		productRepo: productRepo,
-		bus:         bus,
+		rabbit:      rabbit,
 	}
 }
 
@@ -121,7 +121,7 @@ func (s *InventoryService) ReserveInventory(ctx context.Context, req *dto.Reserv
 	}
 
 	// 发布库存预占事件
-	s.bus.Publish(events.InventoryReservedEvent{
+	s.rabbit.Publish(ctx,events.InventoryReservedEvent{
 		SkuID:    fmt.Sprintf("%d", req.SkuID),
 		Quantity: req.Quantity,
 	})
@@ -136,7 +136,7 @@ func (s *InventoryService) ReleaseInventory(ctx context.Context, req *dto.Releas
 	}
 
 	// 发布库存释放事件
-	s.bus.Publish(events.InventoryReleasedEvent{
+	s.rabbit.Publish(ctx,events.InventoryReleasedEvent{
 		SkuID:    fmt.Sprintf("%d", req.SkuID),
 		Quantity: req.Quantity,
 	})

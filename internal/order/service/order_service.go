@@ -9,7 +9,7 @@ import (
 	"time"
 
 	couponSvc "eshop-monolith/internal/coupon/service"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/pkg/errcode"
 
 	"eshop-monolith/internal/order/api/dto"
@@ -74,10 +74,10 @@ type OrderService struct {
 	skuForOrder     repositories.SkuForOrder
 	addressForOrder repositories.IaddressForOrder
 	couponService   *couponSvc.CouponService
-	bus             *eventbus.Bus
+	rabbit          *rabbitmq.Client
 }
 
-func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, skuForOrder repositories.SkuForOrder, addressForOrder repositories.IaddressForOrder, bus *eventbus.Bus, couponService *couponSvc.CouponService) *OrderService {
+func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inventoryRepo repositories.InventoryForOrder, skuForOrder repositories.SkuForOrder, addressForOrder repositories.IaddressForOrder, rabbit *rabbitmq.Client, couponService *couponSvc.CouponService) *OrderService {
 	return &OrderService{
 		db:              db,
 		orderRepo:       orderRepo,
@@ -85,7 +85,7 @@ func NewOrderService(db *gorm.DB, orderRepo repositories.IorderRepository, inven
 		skuForOrder:     skuForOrder,
 		addressForOrder: addressForOrder,
 		couponService:   couponService,
-		bus:             bus,
+		rabbit:          rabbit,
 	}
 }
 
@@ -163,16 +163,14 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *dto.CreateOrderDTO)
 		return nil, err
 	}
 
-	if s.bus != nil {
-		s.bus.Publish(events.OrderCreatedEvent{
-			OrderID:     order.ID,
-			CustomerID:  order.CustomerID,
-			TotalAmount: order.TotalAmount,
-			Currency:    order.Currency,
-			Status:      order.Status,
-			CreatedAt:   order.CreatedAt.ToTime(),
-		})
-	}
+	s.rabbit.Publish(ctx,events.OrderCreatedEvent{
+		OrderID:     order.ID,
+		CustomerID:  order.CustomerID,
+		TotalAmount: order.TotalAmount,
+		Currency:    order.Currency,
+		Status:      order.Status,
+		CreatedAt:   order.CreatedAt.ToTime(),
+	})
 
 	return order, nil
 }
@@ -232,14 +230,12 @@ func (s *OrderService) CancelOrder(ctx context.Context, orderID int64) error {
 		return err
 	}
 
-	if s.bus != nil {
-		s.bus.Publish(events.OrderCancelledEvent{
-			OrderID:     order.ID,
-			CustomerID:  order.CustomerID,
-			TotalAmount: order.TotalAmount,
-			CancelledAt: time.Now(),
-		})
-	}
+	s.rabbit.Publish(ctx,events.OrderCancelledEvent{
+		OrderID:     order.ID,
+		CustomerID:  order.CustomerID,
+		TotalAmount: order.TotalAmount,
+		CancelledAt: time.Now(),
+	})
 
 	return nil
 }
@@ -249,10 +245,9 @@ func (s *OrderService) HandlePaidSuccess(ctx context.Context, orderID int64) err
 		return err
 	}
 
-	if s.bus != nil {
 		order, err := s.orderRepo.FindByID(ctx, orderID)
 		if err == nil {
-			s.bus.Publish(events.OrderPaidEvent{
+			s.rabbit.Publish(ctx,events.OrderPaidEvent{
 				OrderID:     order.ID,
 				CustomerID:  order.CustomerID,
 				TotalAmount: order.TotalAmount,
@@ -260,7 +255,6 @@ func (s *OrderService) HandlePaidSuccess(ctx context.Context, orderID int64) err
 				PaidAt:      time.Now(),
 			})
 		}
-	}
 
 	return nil
 }

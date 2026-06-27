@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/inventory/api/handlers"
 	"eshop-monolith/internal/inventory/service"
 	"eshop-monolith/pkg/middleware"
@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterInventoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, bus *eventbus.Bus) {
-	inventoryService := service.NewInventoryService(repos.Inventory, repos.Sku, repos.Product, bus)
+func RegisterInventoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, rabbit *rabbitmq.Client) {
+	inventoryService := service.NewInventoryService(repos.Inventory, repos.Sku, repos.Product, rabbit)
 	inventoryHandler := handlers.NewInventoryHandler(inventoryService)
 
 	inventories := v1.Group("/inventories")

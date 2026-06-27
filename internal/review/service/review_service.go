@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/query"
@@ -58,7 +58,7 @@ type UserInfoLookup func(ctx context.Context, userID int64) (*UserInfoSnapshot, 
 // ReviewService 评论服务
 type ReviewService struct {
 	repo        *repositories.ReviewRepository
-	bus         *eventbus.Bus
+	rabbit      *rabbitmq.Client
 	findOrderByItem OrderByItemLookup
 	findUser    UserInfoLookup
 }
@@ -69,13 +69,13 @@ type ReviewService struct {
 // findUser: 将 user 模块的 *userModels.UserInfo 转换为本模块快照
 func NewReviewService(
 	repo *repositories.ReviewRepository,
-	bus *eventbus.Bus,
+	rabbit *rabbitmq.Client,
 	findOrderByItem OrderByItemLookup,
 	findUser UserInfoLookup,
 ) *ReviewService {
 	return &ReviewService{
 		repo:            repo,
-		bus:             bus,
+		rabbit:          rabbit,
 		findOrderByItem: findOrderByItem,
 		findUser:        findUser,
 	}
@@ -137,15 +137,13 @@ func (s *ReviewService) CreateReview(ctx context.Context, in CreateReviewInput) 
 	}
 
 	// 发布评论创建事件（异步，不阻塞主流程；推荐/搜索系统可订阅）
-	if s.bus != nil {
-		s.bus.PublishAsync(reviewEvents.ReviewCreatedEvent{
-			ReviewID:  rv.ID,
-			ProductID: rv.ProductID,
-			UserID:    rv.UserID,
-			Rating:    rv.Rating,
-			Status:    string(rv.Status),
-		})
-	}
+	s.rabbit.Publish(context.Background(), reviewEvents.ReviewCreatedEvent{
+		ReviewID:  rv.ID,
+		ProductID: rv.ProductID,
+		UserID:    rv.UserID,
+		Rating:    rv.Rating,
+		Status:    string(rv.Status),
+	})
 	return rv, nil
 }
 
@@ -258,13 +256,11 @@ func (s *ReviewService) ModerateReview(ctx context.Context, reviewID int64, stat
 	// 审核状态变化会改变对外可见的评论数，需重算评分汇总
 	s.recomputeRatingSummary(ctx, rv.ProductID)
 
-	if s.bus != nil {
-		s.bus.PublishAsync(reviewEvents.ReviewModeratedEvent{
-			ReviewID:  reviewID,
-			ProductID: rv.ProductID,
-			Status:    string(status),
-		})
-	}
+	s.rabbit.Publish(context.Background(), reviewEvents.ReviewModeratedEvent{
+		ReviewID:  reviewID,
+		ProductID: rv.ProductID,
+		Status:    string(status),
+	})
 	return nil
 }
 
@@ -297,12 +293,10 @@ func (s *ReviewService) DeleteReview(ctx context.Context, reviewID int64) error 
 
 	s.recomputeRatingSummary(ctx, rv.ProductID)
 
-	if s.bus != nil {
-		s.bus.PublishAsync(reviewEvents.ReviewDeletedEvent{
-			ReviewID:  reviewID,
-			ProductID: rv.ProductID,
-		})
-	}
+	s.rabbit.Publish(context.Background(), reviewEvents.ReviewDeletedEvent{
+		ReviewID:  reviewID,
+		ProductID: rv.ProductID,
+	})
 	return nil
 }
 
@@ -323,13 +317,11 @@ func (s *ReviewService) recomputeRatingSummary(ctx context.Context, productID in
 		logger.Error("更新评分汇总失败", "product_id", productID, "error", err)
 		return
 	}
-	if s.bus != nil {
-		s.bus.PublishAsync(reviewEvents.RatingSummaryUpdatedEvent{
-			ProductID:     summary.ProductID,
-			AverageRating: summary.AverageRating,
-			ReviewCount:   summary.ReviewCount,
-		})
-	}
+	s.rabbit.Publish(context.Background(), reviewEvents.RatingSummaryUpdatedEvent{
+		ProductID:     summary.ProductID,
+		AverageRating: summary.AverageRating,
+		ReviewCount:   summary.ReviewCount,
+	})
 }
 
 // enrichReviewers 批量填充评论者昵称/头像

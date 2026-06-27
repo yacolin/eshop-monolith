@@ -11,7 +11,7 @@ import (
 	"eshop-monolith/internal/coupon/domain/models"
 	"eshop-monolith/internal/coupon/domain/repositories"
 	"eshop-monolith/internal/coupon/events"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 
 	"gorm.io/gorm"
 )
@@ -21,15 +21,15 @@ type CouponService struct {
 	db             *gorm.DB
 	couponRepo     repositories.IcouponRepository
 	userCouponRepo repositories.IuserCouponRepository
-	bus            *eventbus.Bus
+	rabbit         *rabbitmq.Client
 }
 
-func NewCouponService(db *gorm.DB, couponRepo repositories.IcouponRepository, userCouponRepo repositories.IuserCouponRepository, bus *eventbus.Bus) *CouponService {
+func NewCouponService(db *gorm.DB, couponRepo repositories.IcouponRepository, userCouponRepo repositories.IuserCouponRepository, rabbit *rabbitmq.Client) *CouponService {
 	return &CouponService{
 		db:             db,
 		couponRepo:     couponRepo,
 		userCouponRepo: userCouponRepo,
-		bus:            bus,
+		rabbit:         rabbit,
 	}
 }
 
@@ -134,15 +134,13 @@ func (s *CouponService) ClaimCoupon(ctx context.Context, userID int64, couponID 
 	}
 
 	// 发布事件
-	if s.bus != nil && userCoupon != nil {
-		s.bus.Publish(events.CouponIssuedEvent{
-			UserCouponID: userCoupon.ID,
-			UserID:       userCoupon.UserID,
-			CouponID:     userCoupon.CouponID,
-			CouponCode:   userCoupon.CouponCode,
-			IssuedAt:     time.Now(),
-		})
-	}
+	s.rabbit.Publish(ctx, events.CouponIssuedEvent{
+		UserCouponID: userCoupon.ID,
+		UserID:       userCoupon.UserID,
+		CouponID:     userCoupon.CouponID,
+		CouponCode:   userCoupon.CouponCode,
+		IssuedAt:     time.Now(),
+	})
 
 	return userCoupon, nil
 }
@@ -188,15 +186,13 @@ func (s *CouponService) UseCoupon(ctx context.Context, userCouponID int64, userI
 	}
 
 	// 发布事件
-	if s.bus != nil {
-		s.bus.Publish(events.CouponUsedEvent{
-			UserCouponID: userCouponID,
-			UserID:       userID,
-			OrderNo:      orderNo,
-			DiscountAmt:  discount,
-			UsedAt:       time.Now(),
-		})
-	}
+	s.rabbit.Publish(ctx, events.CouponUsedEvent{
+		UserCouponID: userCouponID,
+		UserID:       userID,
+		OrderNo:      orderNo,
+		DiscountAmt:  discount,
+		UsedAt:       time.Now(),
+	})
 
 	return discount, nil
 }

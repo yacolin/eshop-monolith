@@ -5,7 +5,7 @@ import (
 
 	addressSvc "eshop-monolith/internal/address/service"
 	couponSvc "eshop-monolith/internal/coupon/service"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/internal/order/api/handlers"
 	orderRepos "eshop-monolith/internal/order/domain/repositories"
@@ -15,15 +15,15 @@ import (
 	"gorm.io/gorm"
 )
 
-func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus, couponService *couponSvc.CouponService) *service.OrderService {
+func RegisterOrderRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, rabbit *rabbitmq.Client, couponService *couponSvc.CouponService) *service.OrderService {
 	invForOrder, ok := repos.Inventory.(orderRepos.InventoryForOrder)
 	if !ok {
 		log.Fatal("Inventory repository does not implement InventoryForOrder interface")
 	}
 	skuForOrder := orderRepos.NewSkuForOrderAdapter(db)
-	addressSvcInstance := addressSvc.NewAddressService(repos.Address, db, bus)
+	addressSvcInstance := addressSvc.NewAddressService(repos.Address, db, rabbit)
 	addressForOrder := orderRepos.NewAddressForOrderAdapter(addressSvcInstance)
-	orderService := service.NewOrderService(db, repos.Order, invForOrder, skuForOrder, addressForOrder, bus, couponService)
+	orderService := service.NewOrderService(db, repos.Order, invForOrder, skuForOrder, addressForOrder, rabbit, couponService)
 	orderHandler := handlers.NewOrderHandler(orderService)
 
 	orders := v1.Group("/orders")

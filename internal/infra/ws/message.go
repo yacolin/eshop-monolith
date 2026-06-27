@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"eshop-monolith/internal/infra/rabbitmq"
 	inventoryEvents "eshop-monolith/internal/inventory/events"
 	orderEvents "eshop-monolith/internal/order/events"
 	paymentEvents "eshop-monolith/internal/payment/events"
@@ -104,6 +105,30 @@ func parseCustomerID(customerID string) int64 {
 		return 0
 	}
 	return id
+}
+
+// extractUserIDFromMessage 从 RabbitMQ 消息中提取用户ID
+func extractUserIDFromMessage(msg rabbitmq.Message) int64 {
+	var data struct {
+		CustomerID string `json:"customer_id"`
+		UserID     int64  `json:"user_id"`
+	}
+	json.Unmarshal(msg.Payload, &data)
+	if data.UserID > 0 {
+		return data.UserID
+	}
+	id, _ := strconv.ParseInt(data.CustomerID, 10, 64)
+	return id
+}
+
+// NewPushMessageFromRaw 从原始消息创建推送消息
+func NewPushMessageFromRaw(routingKey string, payload json.RawMessage, seqID int64) *PushMessage {
+	return &PushMessage{
+		Type:       routingKey,
+		SequenceID: seqID,
+		Timestamp:  time.Now().UnixMilli(),
+		Data:       payload,
+	}
 }
 
 // RealtimeMessage 实时推送消息（全局广播，不按用户缓存）

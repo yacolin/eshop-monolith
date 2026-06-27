@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/internal/user/api/handlers"
 	usermw "eshop-monolith/internal/user/middleware"
@@ -10,8 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterUserRoutes(v1 *gin.RouterGroup, repos *repository.Repositories) {
-	userService := service.NewUserService(repos.User, repos.UserInfo, repos.AuthToken, repos.LoginHistory, nil)
+func RegisterUserRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, rabbit *rabbitmq.Client) {
+	userService := service.NewUserService(repos.User, repos.UserInfo, repos.AuthToken, repos.LoginHistory, rabbit)
 	userHandler := handlers.NewUserHandler(userService)
 	permissionService := service.NewPermissionService(repos.Permission, repos.User, repos.Role)
 	roleHandler := handlers.NewRoleHandler(permissionService)

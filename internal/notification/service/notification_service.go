@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/notification/domain/models"
 	"eshop-monolith/internal/notification/domain/repositories"
 	inventoryEvents "eshop-monolith/internal/inventory/events"
@@ -90,28 +91,54 @@ func (s *NotificationService) DeleteNotification(ctx context.Context, notificati
 }
 
 // ---------------------------------------------------------------------------
-// EventBus 事件处理器 —— 通过闭包注入 bus 完成订阅
+// RabbitMQ 消息处理器
 // ---------------------------------------------------------------------------
 
-// RegisterHandlers 注册通知模块关心的事件
-func (s *NotificationService) RegisterHandlers(bus *eventbus.Bus) {
-	// 订单事件
-	bus.Subscribe("order.OrderPaidEvent", s.handleOrderPaid)
-	bus.Subscribe("order.OrderShippedEvent", s.handleOrderShipped)
-	bus.Subscribe("order.OrderDeliveredEvent", s.handleOrderDelivered)
-	bus.Subscribe("order.OrderCancelledEvent", s.handleOrderCancelled)
-
-	// 闪购事件
-	bus.Subscribe("flashsale.FlashOrderCreatedEvent", s.handleFlashOrderCreated)
-	bus.Subscribe("flashsale.FlashOrderPaidEvent", s.handleFlashOrderPaid)
-	bus.Subscribe("flashsale.FlashOrderCancelledEvent", s.handleFlashOrderCancelled)
-
-	// 退款事件
-	bus.Subscribe("payment.RefundCreatedEvent", s.handleRefundCreated)
-	bus.Subscribe("payment.RefundFailedEvent", s.handleRefundFailed)
-
-	// 库存预警
-	bus.Subscribe("inventory.InventoryLowEvent", s.handleInventoryLow)
+// HandleMessage 处理来自 RabbitMQ 的消息
+func (s *NotificationService) HandleMessage(msg rabbitmq.Message) error {
+	switch msg.RoutingKey {
+	case "order.paid":
+		var e orderEvents.OrderPaidEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleOrderPaid(e)
+	case "order.shipped":
+		var e orderEvents.OrderShippedEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleOrderShipped(e)
+	case "order.delivered":
+		var e orderEvents.OrderDeliveredEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleOrderDelivered(e)
+	case "order.cancelled":
+		var e orderEvents.OrderCancelledEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleOrderCancelled(e)
+	case "flash-order.created":
+		var e flashEvents.FlashOrderCreatedEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleFlashOrderCreated(e)
+	case "flash-order.paid":
+		var e flashEvents.FlashOrderPaidEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleFlashOrderPaid(e)
+	case "flash-order.cancelled":
+		var e flashEvents.FlashOrderCancelledEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleFlashOrderCancelled(e)
+	case "payment.refund.created":
+		var e paymentEvents.RefundCreatedEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleRefundCreated(e)
+	case "payment.refund.failed":
+		var e paymentEvents.RefundFailedEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleRefundFailed(e)
+	case "inventory.low":
+		var e inventoryEvents.InventoryLowEvent
+		json.Unmarshal(msg.Payload, &e)
+		s.handleInventoryLow(e)
+	}
+	return nil
 }
 
 // parseCustomerID 将订单中的 CustomerID (string) 转为 int64

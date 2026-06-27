@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"eshop-monolith/internal/infra/domain/shared"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/inventory/api/dto"
 	"eshop-monolith/internal/inventory/domain/models"
 	"eshop-monolith/internal/inventory/domain/repositories"
@@ -99,7 +99,7 @@ type ProductService struct {
 	repo          repositories.IproductRepository
 	inventoryRepo repositories.IinventoryRepository
 	skuRepo       repositories.IskuRepository
-	bus           *eventbus.Bus
+	rabbit        *rabbitmq.Client
 	db            *gorm.DB
 	rdb           *redis.Client
 	localCache    *productLocalCache
@@ -113,7 +113,7 @@ func NewProductService(
 	repo repositories.IproductRepository,
 	inventoryRepo repositories.IinventoryRepository,
 	skuRepo repositories.IskuRepository,
-	bus *eventbus.Bus,
+	rabbit        *rabbitmq.Client,
 	db *gorm.DB,
 	rdb *redis.Client,
 ) *ProductService {
@@ -121,7 +121,7 @@ func NewProductService(
 		repo:          repo,
 		inventoryRepo: inventoryRepo,
 		skuRepo:       skuRepo,
-		bus:           bus,
+		rabbit:        rabbit,
 		db:            db,
 		rdb:           rdb,
 		localCache:    newProductLocalCache(),
@@ -570,7 +570,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 	if len(req.CategoryIDs) > 0 {
 		categoryIDValue = req.CategoryIDs[0]
 	}
-	s.bus.Publish(events.ProductCreatedEvent{
+	s.rabbit.Publish(ctx,events.ProductCreatedEvent{
 		ProductID:  newProduct.ID,
 		Name:       newProduct.Name,
 		CategoryID: categoryIDValue,
@@ -683,7 +683,7 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 	if len(req.CategoryIDs) > 0 {
 		categoryIDValue = req.CategoryIDs[0]
 	}
-	s.bus.Publish(events.ProductUpdatedEvent{
+	s.rabbit.Publish(ctx,events.ProductUpdatedEvent{
 		ProductID:  existingProduct.ID,
 		Name:       existingProduct.Name,
 		CategoryID: categoryIDValue,
@@ -713,7 +713,7 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
 
 	s.delayedDoubleDelete(id)
 
-	s.bus.Publish(events.ProductDeletedEvent{
+	s.rabbit.Publish(ctx,events.ProductDeletedEvent{
 		ProductID:  existingProduct.ID,
 		Name:       existingProduct.Name,
 		CategoryID: 0,

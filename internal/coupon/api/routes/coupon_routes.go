@@ -4,7 +4,7 @@ import (
 	"eshop-monolith/internal/coupon/api/handlers"
 	couponRepos "eshop-monolith/internal/coupon/domain/repositories"
 	couponSvc "eshop-monolith/internal/coupon/service"
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/pkg/middleware"
 
@@ -13,13 +13,13 @@ import (
 )
 
 // RegisterCouponRoutes 注册优惠券相关路由
-func RegisterCouponRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) *couponSvc.CouponService {
+func RegisterCouponRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, rabbit *rabbitmq.Client) *couponSvc.CouponService {
 	// 初始化仓储
 	couponRepo := couponRepos.NewCouponRepository(db)
 	userCouponRepo := couponRepos.NewUserCouponRepository(db)
 
 	// 初始化服务
-	couponService := couponSvc.NewCouponService(db, couponRepo, userCouponRepo, bus)
+	couponService := couponSvc.NewCouponService(db, couponRepo, userCouponRepo, rabbit)
 
 	// 初始化 Handler
 	couponHandler := handlers.NewCouponHandler(couponService)
@@ -56,13 +56,13 @@ func RegisterCouponRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, d
 }
 
 // RegisterPromotionRoutes 注册促销活动相关路由
-func RegisterPromotionRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) *couponSvc.PromotionService {
+func RegisterPromotionRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, rabbit *rabbitmq.Client) *couponSvc.PromotionService {
 	// 初始化仓储
 	promotionRepo := couponRepos.NewPromotionRepository(db)
 	promotionProdRepo := couponRepos.NewPromotionProductRepository(db)
 
 	// 初始化服务
-	promotionService := couponSvc.NewPromotionService(db, promotionRepo, promotionProdRepo, bus)
+	promotionService := couponSvc.NewPromotionService(db, promotionRepo, promotionProdRepo, rabbit)
 
 	// 初始化 Handler
 	promotionHandler := handlers.NewPromotionHandler(promotionService)

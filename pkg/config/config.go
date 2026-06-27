@@ -15,6 +15,19 @@ type PaginationConfig struct {
 	MaxSize     int
 }
 
+// RabbitMQConfig RabbitMQ配置
+type RabbitMQConfig struct {
+	Host          string `mapstructure:"host"`
+	Port          int    `mapstructure:"port"`
+	Username      string `mapstructure:"username"`
+	Password      string `mapstructure:"password"`
+	VHost         string `mapstructure:"vhost"`
+	Exchange      string `mapstructure:"exchange"`
+	PrefetchCount int    `mapstructure:"prefetch_count"`
+	RetryLimit    int    `mapstructure:"retry_limit"`
+	RetryDelayMs  int    `mapstructure:"retry_delay_ms"`
+}
+
 // Config 应用配置
 type Config struct {
 	Server     ServerConfig
@@ -25,6 +38,7 @@ type Config struct {
 	RateLimit  RateLimitConfig
 	CORS       CORSConfig
 	Pagination PaginationConfig
+	RabbitMQ   RabbitMQConfig
 }
 
 // ServerConfig 服务器配置
@@ -174,4 +188,15 @@ func setDefaults() {
 	// 分页配置
 	viper.SetDefault("pagination.default_size", 10)
 	viper.SetDefault("pagination.max_size", 100)
+
+	// RabbitMQ配置
+	viper.SetDefault("rabbitmq.host", "localhost")
+	viper.SetDefault("rabbitmq.port", 5672)
+	viper.SetDefault("rabbitmq.username", "guest")
+	viper.SetDefault("rabbitmq.password", "guest")
+	viper.SetDefault("rabbitmq.vhost", "/")
+	viper.SetDefault("rabbitmq.exchange", "eshop.events")
+	viper.SetDefault("rabbitmq.prefetch_count", 10)
+	viper.SetDefault("rabbitmq.retry_limit", 3)
+	viper.SetDefault("rabbitmq.retry_delay_ms", 5000)
 }

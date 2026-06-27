@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"eshop-monolith/internal/infra/eventbus"
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
 	"eshop-monolith/internal/inventory/api/handlers"
 	"eshop-monolith/internal/inventory/service"
@@ -10,8 +10,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func RegisterSkuRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, bus *eventbus.Bus) {
-	skuSvc := service.NewSkuService(repos.Sku, repos.Product, bus, db)
+func RegisterSkuRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, rabbit *rabbitmq.Client) {
+	skuSvc := service.NewSkuService(repos.Sku, repos.Product, rabbit, db)
 	skuH := handlers.NewSkuHandler(skuSvc)
 
 	skus := v1.Group("/skus")
