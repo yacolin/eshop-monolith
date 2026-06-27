@@ -53,7 +53,8 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.Charset)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		Logger:      logger.Default.LogMode(logger.Silent),
+		PrepareStmt: true,
 	})
 	if err != nil {
 		return nil, err
