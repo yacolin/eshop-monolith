@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
 
 	"eshop-monolith/internal/infra/repository/models"
 	"eshop-monolith/internal/inventory/api/dto"
@@ -141,84 +141,152 @@ func (s *ProductAttributeService) BatchCreateSkus(ctx context.Context, productID
 	}
 
 	created := make([]dto.SkuResponse, 0, len(req.Skus))
-	attrValSet := make(map[int64]struct{}) // 收集所有出现的属性值 ID
+	attrValSet := make(map[int64]struct{})
 	var failCount int
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, item := range req.Skus {
-			spec, err := s.buildSpec(ctx, tx, item.AttrValueIDs)
-			if err != nil {
-				return fmt.Errorf("构建 spec 失败: %w", err)
-			}
+		// 1. 批量查重
+		skuCodes := make([]string, len(req.Skus))
+		for i, item := range req.Skus {
+			skuCodes[i] = item.SKUCode
+		}
+		var existingCodes []string
+		tx.Model(&models.SkuPO{}).Where("sku_code IN ?", skuCodes).Pluck("sku_code", &existingCodes)
+		dupSet := make(map[string]struct{}, len(existingCodes))
+		for _, c := range existingCodes {
+			dupSet[c] = struct{}{}
+		}
 
+		// 2. 批量查询属性映射（一次 JOIN 查所有）
+		allValIDs := make([]int64, 0, len(req.Skus)*3)
+		for _, item := range req.Skus {
+			allValIDs = append(allValIDs, item.AttrValueIDs...)
+		}
+		type keyRow struct {
+			ValID    int64  `gorm:"column:val_id"`
+			AttrID   int64  `gorm:"column:attr_id"`
+			AttrName string `gorm:"column:attr_name"`
+			ValValue string `gorm:"column:val_value"`
+		}
+		var krows []keyRow
+		if len(allValIDs) > 0 {
+			if err := tx.Table("attribute_values av").
+				Select("av.id as val_id, av.attribute_id as attr_id, a.name as attr_name, av.value as val_value").
+				Joins("JOIN attribute_attributes a ON a.id = av.attribute_id").
+				Where("av.id IN ?", allValIDs).
+				Scan(&krows).Error; err != nil {
+				return err
+			}
+		}
+		attrIDByVal := make(map[int64]int64, len(krows))
+		specByVal := make(map[int64]string, len(krows))
+		nameByVal := make(map[int64]string, len(krows))
+		for _, r := range krows {
+			attrIDByVal[r.ValID] = r.AttrID
+			nameByVal[r.ValID] = r.AttrName
+			specByVal[r.ValID] = r.ValValue
+		}
+
+		// 3. 构建 SKU PO
+		type skuBuild struct {
+			po   *models.SkuPO
+			item *dto.BatchCreateSkuItem
+		}
+		builds := make([]skuBuild, 0, len(req.Skus))
+		skuPOs := make([]*models.SkuPO, 0, len(req.Skus))
+		for _, item := range req.Skus {
+			if _, dup := dupSet[item.SKUCode]; dup {
+				failCount++
+				continue
+			}
+			specMap := make(map[string]string, len(item.AttrValueIDs))
+			for _, valID := range item.AttrValueIDs {
+				if nm, ok := nameByVal[valID]; ok {
+					specMap[nm] = specByVal[valID]
+				}
+			}
 			sku := &invModels.Sku{
 				ProductID: productID,
 				Name:      item.Name,
 				Price:     item.Price,
 				SKUCode:   item.SKUCode,
 				Image:     item.Image,
-				Spec:      spec,
+				Spec:      specMap,
 			}
-			skuPO := models.SkuFromDomain(sku)
-			if err := tx.Create(skuPO).Error; err != nil {
-				if strings.Contains(err.Error(), "Duplicate") {
-					failCount++
-					continue
-				}
-				return err
-			}
-			sku.ID = skuPO.ID
-
-			for _, valID := range item.AttrValueIDs {
-				var attrID int64
-				if err := tx.Model(&invModels.AttributeValue{}).
-					Select("attribute_id").Where("id = ?", valID).
-					Scan(&attrID).Error; err != nil {
-					return fmt.Errorf("查询属性值 %d 失败: %w", valID, err)
-				}
-				if err := tx.Create(&invModels.SkuAttribute{
-					SkuID: sku.ID, AttributeID: attrID, AttributeValueID: valID,
-				}).Error; err != nil {
-					return err
-				}
-				attrValSet[valID] = struct{}{}
-			}
-
-			created = append(created, dto.SkuToResponse(sku))
+			po := models.SkuFromDomain(sku)
+			skuPOs = append(skuPOs, po)
+			builds = append(builds, skuBuild{po: po, item: &item})
+		}
+		if len(skuPOs) == 0 {
+			return nil
 		}
 
-		// 批量写入 product_attribute_values（产品-属性值关联）
-		if len(attrValSet) > 0 {
-			type attrVal struct {
-				AttrID int64
-				ValID  int64
+		// 4. 批量 Insert SKU PO（50 条一批）
+		if err := tx.CreateInBatches(skuPOs, 50).Error; err != nil {
+			return fmt.Errorf("批量创建 SKU 失败: %w", err)
+		}
+
+		// 5. 批量构建 sku_attributes 并 Insert
+		skuAttrs := make([]*invModels.SkuAttribute, 0, len(builds)*3)
+		for i, b := range builds {
+			po := skuPOs[i]
+			sku := &invModels.Sku{
+				ID:        po.ID,
+				ProductID: po.ProductID,
+				Name:      po.Name,
+				Price:     po.Price,
+				SKUCode:   po.SKUCode,
+				Image:     po.Image,
+				Spec:      parseSpec(po.Spec),
 			}
+			for _, valID := range b.item.AttrValueIDs {
+				attrID, ok := attrIDByVal[valID]
+				if !ok {
+					continue
+				}
+				skuAttrs = append(skuAttrs, &invModels.SkuAttribute{
+					SkuID: po.ID, AttributeID: attrID, AttributeValueID: valID,
+				})
+				attrValSet[valID] = struct{}{}
+			}
+			created = append(created, dto.SkuToResponse(sku))
+		}
+		if len(skuAttrs) > 0 {
+			if err := tx.Create(skuAttrs).Error; err != nil {
+				return fmt.Errorf("批量创建 sku_attributes 失败: %w", err)
+			}
+		}
+
+		// 6. 批量写入 product_attribute_values
+		if len(attrValSet) > 0 {
 			valIDs := make([]int64, 0, len(attrValSet))
 			for id := range attrValSet {
 				valIDs = append(valIDs, id)
 			}
-			var mappings []attrVal
+			type attrVal struct{ AttrID int64; ValID int64 }
+			var avMappings []attrVal
 			if err := tx.Model(&invModels.AttributeValue{}).
 				Select("attribute_id as attr_id, id as val_id").
 				Where("id IN ?", valIDs).
-				Scan(&mappings).Error; err != nil {
+				Scan(&avMappings).Error; err != nil {
 				return err
 			}
-			for _, m := range mappings {
-				if err := tx.Where("product_id = ? AND attribute_value_id = ?", productID, m.ValID).
-					Delete(&invModels.ProductAttributeValue{}).Error; err != nil {
-					return err
-				}
-				if err := tx.Create(&invModels.ProductAttributeValue{
+			// 批量删除旧的关联
+			tx.Where("product_id = ? AND attribute_value_id IN ?", productID, valIDs).
+				Delete(&invModels.ProductAttributeValue{})
+			// 批量插入新的关联
+			pavs := make([]*invModels.ProductAttributeValue, 0, len(avMappings))
+			for _, m := range avMappings {
+				pavs = append(pavs, &invModels.ProductAttributeValue{
 					ProductID: productID, AttributeID: m.AttrID, AttributeValueID: m.ValID,
-				}).Error; err != nil {
-					return err
-				}
+				})
+			}
+			if err := tx.Create(pavs).Error; err != nil {
+				return err
 			}
 		}
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -232,6 +300,7 @@ func (s *ProductAttributeService) BatchCreateSkus(ctx context.Context, productID
 		Skus:    created,
 	}, nil
 }
+
 
 // buildSpec 根据属性值 ID 列表查询属性名→值名 映射
 func (s *ProductAttributeService) buildSpec(_ context.Context, tx *gorm.DB, valIDs []int64) (map[string]string, error) {
@@ -263,4 +332,17 @@ func (s *ProductAttributeService) syncProductMinPrice(ctx context.Context, produ
 		Where("product_id = ?", productID).Scan(&r)
 	s.db.WithContext(ctx).Table("products").
 		Where("id = ?", productID).Update("min_price", r.Price)
+}
+
+
+// parseSpec 将 PO 中的 JSON 字符串 Spec 解析为 map
+func parseSpec(specStr string) map[string]string {
+	if specStr == "" {
+		return nil
+	}
+	var spec map[string]string
+	if err := json.Unmarshal([]byte(specStr), &spec); err != nil {
+		return nil
+	}
+	return spec
 }
