@@ -558,34 +558,35 @@ func (s *ProductService) GetProductByID(ctx context.Context, id int64) (*models.
 	return s.repo.FindByID(ctx, id)
 }
 
-// GetSkusByProductID 根据产品ID查询所有SKU
-func (s *ProductService) GetSkusByProductID(ctx context.Context, productID int64) ([]models.Sku, error) {
-	return s.skuRepo.FindByProductID(ctx, productID)
-}
-
-// GetSkusWithInventory 获取产品的 SKU 列表并批量注入库存信息
+// GetSkusWithInventory 获取产品的 SKU 列表并批量注入库存信息（单次 LEFT JOIN）
 func (s *ProductService) GetSkusWithInventory(ctx context.Context, productID int64) ([]dto.SkuDetailResponse, error) {
-	skus, err := s.GetSkusByProductID(ctx, productID)
+	rows, err := s.skuRepo.FindByProductIDWithInventory(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
-	skuIDs := make([]int64, len(skus))
-	for i, sku := range skus {
-		skuIDs[i] = sku.ID
-	}
-	invMap, err := s.inventoryRepo.FindInventoriesBySkuIDs(ctx, skuIDs)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]dto.SkuDetailResponse, len(skus))
-	for i, sku := range skus {
+
+	result := make([]dto.SkuDetailResponse, len(rows))
+	for i, row := range rows {
 		availableQuantity := 0
 		inventoryStatus := string(models.InventoryStatusOutOfStock)
-		if inv, ok := invMap[sku.ID]; ok {
-			availableQuantity = inv.Quantity - inv.Reserved
-			inventoryStatus = inv.Status
+		if row.Quantity != nil {
+			availableQuantity = *row.Quantity - *row.Reserved
+			if row.Status != nil {
+				inventoryStatus = *row.Status
+			}
 		}
-		result[i] = dto.SkuDetailToResponse(&sku, availableQuantity, inventoryStatus)
+		sku := &models.Sku{
+			ID:        row.ID,
+			ProductID: row.ProductID,
+			Name:      row.Name,
+			Price:     row.Price,
+			SKUCode:   row.SKUCode,
+			Image:     row.Image,
+		}
+		if row.Spec != "" && row.Spec != "null" {
+			_ = sonic.Unmarshal([]byte(row.Spec), &sku.Spec)
+		}
+		result[i] = dto.SkuDetailToResponse(sku, availableQuantity, inventoryStatus)
 	}
 	return result, nil
 }

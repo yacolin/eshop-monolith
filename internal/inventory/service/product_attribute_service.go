@@ -14,25 +14,23 @@ import (
 )
 
 type ProductAttributeService struct {
-	attrRepo     repositories.IproductAttributeRepository
-	skuRepo      repositories.IskuRepository
-	productRepo  repositories.IproductRepository
-	catAttrRepo  repositories.IcategoryAttributeRepository
-	db           *gorm.DB
+	attrRepo    repositories.IproductAttributeRepository
+	skuRepo     repositories.IskuRepository
+	productRepo repositories.IproductRepository
+	db          *gorm.DB
 }
 
 func NewProductAttributeService(
 	attrRepo repositories.IproductAttributeRepository,
 	skuRepo repositories.IskuRepository,
 	productRepo repositories.IproductRepository,
-	catAttrRepo repositories.IcategoryAttributeRepository,
+	_ repositories.IcategoryAttributeRepository,
 	db *gorm.DB,
 ) *ProductAttributeService {
 	return &ProductAttributeService{
 		attrRepo:    attrRepo,
 		skuRepo:     skuRepo,
 		productRepo: productRepo,
-		catAttrRepo: catAttrRepo,
 		db:          db,
 	}
 }
@@ -77,28 +75,24 @@ func (s *ProductAttributeService) GetProductAttributes(ctx context.Context, prod
 	return result, nil
 }
 
-// getAllowedAttributes 查询产品品类的允许属性集合，无品类关联时返回 nil（不限）
+// getAllowedAttributes 查询产品品类的允许属性集合（单次 SQL 替代多次往返）
 func (s *ProductAttributeService) getAllowedAttributes(ctx context.Context, productID int64) (map[int64]struct{}, error) {
-	var categoryIDs []int64
-	if err := s.db.WithContext(ctx).Table("product_categories").
-		Where("product_id = ?", productID).Pluck("category_id", &categoryIDs).Error; err != nil {
+	var attrIDs []int64
+	if err := s.db.WithContext(ctx).Raw(`
+		SELECT DISTINCT ca.attribute_id
+		FROM product_categories pc
+		JOIN categories c ON c.id = pc.category_id
+		JOIN category_attributes ca ON (ca.category_id = c.id OR ca.category_id = c.parent_id)
+		WHERE pc.product_id = ?
+	`, productID).Scan(&attrIDs).Error; err != nil {
 		return nil, err
 	}
-	if len(categoryIDs) == 0 {
+	if len(attrIDs) == 0 {
 		return nil, nil
 	}
-
-	// 批量查询所有品类（含父品类递归）的属性
-	attrs, err := s.catAttrRepo.FindByCategoryIDs(ctx, categoryIDs)
-	if err != nil {
-		return nil, err
-	}
-	if len(attrs) == 0 {
-		return nil, nil
-	}
-	allowed := make(map[int64]struct{}, len(attrs))
-	for _, a := range attrs {
-		allowed[a.ID] = struct{}{}
+	allowed := make(map[int64]struct{}, len(attrIDs))
+	for _, id := range attrIDs {
+		allowed[id] = struct{}{}
 	}
 	return allowed, nil
 }

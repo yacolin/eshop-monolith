@@ -11,6 +11,23 @@ import (
 	"gorm.io/gorm"
 )
 
+// SkuInventoryRow SKU+库存 LEFT JOIN 查询结果行
+type SkuInventoryRow struct {
+	// SKU 字段
+	ID        int64  `gorm:"column:id"`
+	ProductID int64  `gorm:"column:product_id"`
+	Name      string `gorm:"column:name"`
+	Price     int64  `gorm:"column:price"`
+	SKUCode   string `gorm:"column:sku_code"`
+	Image     string `gorm:"column:image"`
+	Spec      string `gorm:"column:spec"`
+	// 库存字段（LEFT JOIN，可为 NULL）
+	Quantity  *int   `gorm:"column:quantity"`
+	Status    *string `gorm:"column:status"`
+	Reserved  *int   `gorm:"column:reserved"`
+	Threshold *int   `gorm:"column:threshold"`
+}
+
 type IskuRepository interface {
 	Create(ctx context.Context, sku *domain.Sku) error
 	FindByID(ctx context.Context, id int64) (*domain.Sku, error)
@@ -22,6 +39,8 @@ type IskuRepository interface {
 	DeleteByProductIDWithTx(tx *gorm.DB, productID int64) error
 	FindAll(ctx context.Context, q dto.SkuListQuery, offset, limit int) ([]domain.Sku, error)
 	Count(ctx context.Context, q dto.SkuListQuery) (int64, error)
+	// FindByProductIDWithInventory 单次 LEFT JOIN 查询产品 SKU+库存
+	FindByProductIDWithInventory(ctx context.Context, productID int64) ([]SkuInventoryRow, error)
 }
 
 type SkuRepository struct{ db *gorm.DB }
@@ -116,6 +135,18 @@ func (r *SkuRepository) Count(ctx context.Context, q dto.SkuListQuery) (int64, e
 		return 0, err
 	}
 	return total, nil
+}
+
+// FindByProductIDWithInventory 单次 LEFT JOIN 查询产品 SKU+库存
+func (r *SkuRepository) FindByProductIDWithInventory(ctx context.Context, productID int64) ([]SkuInventoryRow, error) {
+	var rows []SkuInventoryRow
+	err := r.db.WithContext(ctx).Table("skus").
+		Select("skus.id, skus.product_id, skus.name, skus.price, skus.sku_code, skus.image, skus.spec, i.quantity, i.status, i.reserved, i.threshold").
+		Joins("LEFT JOIN inventories i ON i.sku_id = skus.id").
+		Where("skus.product_id = ?", productID).
+		Order("skus.id ASC").
+		Scan(&rows).Error
+	return rows, err
 }
 
 func (r *SkuRepository) applySkuConditions(ctx context.Context, q dto.SkuListQuery) *gorm.DB {
