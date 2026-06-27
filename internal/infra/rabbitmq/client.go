@@ -91,12 +91,11 @@ func (c *Client) reconnectLoop() {
 	for {
 		err := <-c.notify
 		c.mu.Lock()
-		if c.closed {
-			c.mu.Unlock()
-			close(c.notify)
+		closed := c.closed
+		c.mu.Unlock()
+		if closed {
 			return
 		}
-		c.mu.Unlock()
 
 		if err != nil {
 			log.Printf("rabbitmq: 连接断开: %v, 准备重连...", err)
@@ -106,12 +105,11 @@ func (c *Client) reconnectLoop() {
 			time.Sleep(3 * time.Second)
 
 			c.mu.Lock()
-			if c.closed {
-				c.mu.Unlock()
-				close(c.notify)
+			closed = c.closed
+			c.mu.Unlock()
+			if closed {
 				return
 			}
-			c.mu.Unlock()
 
 			if err := c.connect(); err != nil {
 				log.Printf("rabbitmq: 重连失败: %v", err)
