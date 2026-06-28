@@ -17,6 +17,7 @@ import (
 
 	"eshop-monolith/pkg/config"
 	"fmt"
+	"os"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -48,11 +49,24 @@ type RedisConfig struct {
 }
 
 // InitDB 初始化数据库连接
+// resolveSocket 解析 socket 路径：配置明确设置时直接使用，否则自动探测常见路径
+func resolveSocket(cfgSocket string) string {
+	if cfgSocket != "" {
+		return cfgSocket
+	}
+	for _, p := range []string{"/tmp/mysql.sock", "/var/run/mysqld/mysqld.sock"} {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
+}
 func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	var dsn string
-	if cfg.Socket != "" {
+	sock := resolveSocket(cfg.Socket)
+	if sock != "" {
 		dsn = fmt.Sprintf("%s:%s@unix(%s)/%s?charset=%s&parseTime=True&loc=Local",
-			cfg.Username, cfg.Password, cfg.Socket, cfg.Database, cfg.Charset)
+			cfg.Username, cfg.Password, sock, cfg.Database, cfg.Charset)
 	} else {
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
 			cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.Charset)

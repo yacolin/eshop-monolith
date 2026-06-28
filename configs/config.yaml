@@ -11,8 +11,7 @@ mysql:
   password: 123456
   database: eshop_db
   charset: utf8mb4
-  # macOS 可啟用 Unix socket 避免 TCP port 耗盡；Windows/WSL 請留空走 TCP
-  # socket: /tmp/mysql.sock
+  # Unix socket 路径（留空自动探测 /tmp/mysql.sock 或 /var/run/mysqld/mysqld.sock）
   max_idle_conns: 200
   max_open_conns: 200
 
