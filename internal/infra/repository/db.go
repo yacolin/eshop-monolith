@@ -50,9 +50,9 @@ type RedisConfig struct {
 // InitDB 初始化数据库连接
 func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	var dsn string
-	if cfg.Host == "localhost" || cfg.Host == "127.0.0.1" {
-		dsn = fmt.Sprintf("%s:%s@unix(/tmp/mysql.sock)/%s?charset=%s&parseTime=True&loc=Local",
-			cfg.Username, cfg.Password, cfg.Database, cfg.Charset)
+	if cfg.Socket != "" {
+		dsn = fmt.Sprintf("%s:%s@unix(%s)/%s?charset=%s&parseTime=True&loc=Local",
+			cfg.Username, cfg.Password, cfg.Socket, cfg.Database, cfg.Charset)
 	} else {
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
 			cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.Charset)

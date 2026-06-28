@@ -57,6 +57,7 @@ type MySQLConfig struct {
 	Password     string
 	Database     string
 	Charset      string
+	Socket       string
 	MaxIdleConns int
 	MaxOpenConns int
 }
@@ -154,6 +155,7 @@ func setDefaults() {
 	viper.SetDefault("mysql.password", "root")
 	viper.SetDefault("mysql.database", "eshop_db")
 	viper.SetDefault("mysql.charset", "utf8mb4")
+	viper.SetDefault("mysql.socket", "")
 	viper.SetDefault("mysql.max_idle_conns", 10)
 	viper.SetDefault("mysql.max_open_conns", 100)
 
