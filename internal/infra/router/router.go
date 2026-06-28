@@ -44,6 +44,7 @@ import (
 // SetupRouter 设置路由
 func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB, mqClient *rabbitmq.Client) *gin.Engine {
 	router := gin.New()
+	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
 	// 创建 WebSocket Hub 并启动（传入Redis客户端支持断线重连和增量同步）
@@ -77,6 +78,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	var orderSvc *orderSvcPkg.OrderService
 	var flashSvc *flashSvcPkg.FlashService
 	var productSvc *invSvcPkg.ProductService
+	var categorySvc *invSvcPkg.CategoryService
 	var dashboardSvc *dashboardSvcPkg.DashboardService
 	var notifSvc *notifSvcPkg.NotificationService
 	var warmupDone atomic.Bool
@@ -111,7 +113,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		})
 
 		// 公开路由（按领域拆分注册）
-		invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
+		categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
 		productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)
 		invRoutes.RegisterInventoryRoutes(v1, repos, mqClient)
 		invRoutes.RegisterSkuRoutes(v1, repos, db, mqClient)
@@ -158,6 +160,18 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 				logger.Info("Product cache warmup completed", "total", total)
 			}
 			warmupDone.Store(true)
+		}()
+	}
+	// 启动时异步预热分类缓存
+	if categorySvc != nil {
+		go func() {
+			logger.Info("Starting category cache warmup...")
+			total, err := categorySvc.WarmupCategoryCache(context.Background())
+			if err != nil {
+				logger.Error("Category cache warmup failed", "error", err)
+			} else {
+				logger.Info("Category cache warmup completed", "total", total)
+			}
 		}()
 	}
 	// 仪表盘缓存预热 + 定时刷新（每4分钟刷新，略短于5分钟 TTL 防止过期）

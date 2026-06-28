@@ -21,6 +21,8 @@ type IcategoryRepository interface {
 	ListAll(ctx context.Context) ([]invModels.Category, error)
 	// ListRoot 列出根分类
 	ListRoot(ctx context.Context) ([]invModels.Category, error)
+	// ListNonRoot 列出非根分类
+	ListNonRoot(ctx context.Context) ([]invModels.Category, error)
 	// ListByParent 列出子分类
 	ListByParent(ctx context.Context, parentID int64) ([]invModels.Category, error)
 	// Update 更新分类
@@ -78,6 +80,21 @@ func (r *CategoryRepository) FindByPath(ctx context.Context, path string) (*invM
 func (r *CategoryRepository) ListRoot(ctx context.Context) ([]invModels.Category, error) {
 	var pos []models.CategoryPO
 	err := r.db.WithContext(ctx).Where("parent_id IS NULL").Order("id ASC").Find(&pos).Error
+	if err != nil {
+		return nil, err
+	}
+
+	categories := make([]invModels.Category, len(pos))
+	for i, po := range pos {
+		categories[i] = *po.ToDomain()
+	}
+	return categories, nil
+}
+
+// ListNonRoot 列出非根分类
+func (r *CategoryRepository) ListNonRoot(ctx context.Context) ([]invModels.Category, error) {
+	var pos []models.CategoryPO
+	err := r.db.WithContext(ctx).Where("parent_id IS NOT NULL").Order("id ASC").Find(&pos).Error
 	if err != nil {
 		return nil, err
 	}

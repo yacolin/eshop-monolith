@@ -68,6 +68,78 @@ func (h *CategoryHandler) ListRootCategories(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// ListNonRootCategories 从缓存列出非根分类
+// @Summary 从缓存列出非根分类
+// @Description 从 Redis 缓存中读取所有非根分类列表（仅返回 id 和 name）
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=dto.CachedCategoryListResult}
+// @Router /api/v1/categories/non-root [get]
+func (h *CategoryHandler) ListNonRootCategories(c *gin.Context) {
+	result, err := h.categoryService.ListNonRootCategories(c)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
+// ListCachedCategories 从缓存列出全部分类
+// @Summary 从缓存列出全部分类
+// @Description 从 Redis 缓存中读取全部分类列表，仅返回 id 和 name
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=[]dto.CachedCategoryItem}
+// @Router /api/v1/categories/cache [get]
+func (h *CategoryHandler) ListCachedCategories(c *gin.Context) {
+	items, err := h.categoryService.ListCachedCategories(c)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, items)
+}
+
+// GetCachedCategory 从缓存查询单个分类
+// @Summary 从缓存查询分类
+// @Description 从 Redis 缓存中根据 ID 查询单个分类，仅返回 id 和 name
+// @Tags categories
+// @Produce json
+// @Param id path int true "分类ID"
+// @Success 200 {object} response.Response{data=dto.CachedCategoryItem}
+// @Router /api/v1/categories/cache/{id} [get]
+func (h *CategoryHandler) GetCachedCategory(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	item, err := h.categoryService.GetCachedCategoryByID(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, item)
+}
+
+// WarmupCategoryCache 预热分类缓存
+// @Summary 预热分类缓存
+// @Description 将全部分类数据加载到 Redis 缓存中
+// @Tags categories
+// @Produce json
+// @Success 200 {object} response.Response{data=map[string]int}
+// @Router /api/v1/categories/cache/warmup [post]
+func (h *CategoryHandler) WarmupCategoryCache(c *gin.Context) {
+	total, err := h.categoryService.WarmupCategoryCache(c)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, gin.H{"total": total})
+}
+
 // ListSubCategories 列出子分类
 // @Summary 列出子分类
 // @Description 根据父分类ID获取子分类列表

@@ -10,14 +10,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, rabbit *rabbitmq.Client) {
-	categoryService := service.NewCategoryService(repos.Category, repos.CategoryAttribute, rabbit)
+func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, rabbit *rabbitmq.Client) *service.CategoryService {
+	categoryService := service.NewCategoryService(repos.Category, repos.CategoryAttribute, rabbit, repos.Redis)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
 	categories := v1.Group("/categories")
 	{
 		categories.GET("", categoryHandler.ListCategories)
 		categories.GET("/root", categoryHandler.ListRootCategories)
+		categories.GET("/non-root", categoryHandler.ListNonRootCategories)
+		categories.GET("/cache", categoryHandler.ListCachedCategories)
+		categories.GET("/cache/:id", categoryHandler.GetCachedCategory)
+		categories.POST("/cache/warmup", categoryHandler.WarmupCategoryCache)
 		categories.GET("/:id/children", categoryHandler.ListSubCategories)
 		categories.GET("/:id", categoryHandler.GetCategoryByID)
 		// 品类-属性关联
@@ -34,4 +38,6 @@ func RegisterCategoryRoutes(v1 *gin.RouterGroup, repos *repository.Repositories,
 		// 品类-属性关联写操作
 		auth.PUT("/:id/attributes", categoryHandler.SetCategoryAttributes)
 	}
+
+	return categoryService
 }

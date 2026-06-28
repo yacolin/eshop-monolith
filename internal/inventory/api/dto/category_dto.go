@@ -44,3 +44,15 @@ type CategoryAttributeResponse struct {
 type SetCategoryAttributesDTO struct {
 	AttributeIDs []int64 `json:"attribute_ids" binding:"required"`
 }
+
+// CachedCategoryItem 分类缓存精简 DTO，仅包含 id 和 name
+type CachedCategoryItem struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// CachedCategoryListResult 分类缓存列表结果
+type CachedCategoryListResult struct {
+	Total int                `json:"total"`
+	List  []CachedCategoryItem `json:"list"`
+}

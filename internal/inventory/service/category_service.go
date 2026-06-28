@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strconv"
 
 	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/inventory/api/dto"
@@ -9,25 +10,39 @@ import (
 	"eshop-monolith/internal/inventory/domain/repositories"
 	"eshop-monolith/internal/inventory/events"
 	"eshop-monolith/pkg/errcode"
+
+	"github.com/bytedance/sonic"
+	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/singleflight"
+)
+
+const (
+	categoryCacheZSet     = "category:zset"
+	categoryNonRootZSet   = "category:non-root:zset"
+	categoryInfoPrefix    = "category:info:"
 )
 
 // CategoryService 分类服务
 type CategoryService struct {
-	repo    repositories.IcategoryRepository
-	catAttr repositories.IcategoryAttributeRepository
-	rabbit  *rabbitmq.Client
+	repo        repositories.IcategoryRepository
+	catAttr     repositories.IcategoryAttributeRepository
+	rabbit      *rabbitmq.Client
+	rdb         *redis.Client
+	singleGroup singleflight.Group
 }
 
 // NewCategoryService 创建分类服务
 func NewCategoryService(
 	repo repositories.IcategoryRepository,
 	catAttr repositories.IcategoryAttributeRepository,
-	rabbit  *rabbitmq.Client,
+	rabbit *rabbitmq.Client,
+	rdb *redis.Client,
 ) *CategoryService {
 	return &CategoryService{
 		repo:    repo,
 		catAttr: catAttr,
 		rabbit:  rabbit,
+		rdb:     rdb,
 	}
 }
 
@@ -57,6 +72,25 @@ func (s *CategoryService) CreateCategory(ctx context.Context, req *dto.CreateCat
 		ParentID:   newCategory.ParentID,
 	})
 
+	// 写入缓存
+	cacheItem := dto.CachedCategoryItem{
+		ID:   newCategory.ID,
+		Name: newCategory.Name,
+	}
+	if data, err := sonic.Marshal(cacheItem); err == nil {
+		s.rdb.Set(context.Background(), categoryInfoPrefix+strconv.FormatInt(newCategory.ID, 10), data, 0)
+		s.rdb.ZAdd(context.Background(), categoryCacheZSet, redis.Z{
+			Score:  float64(newCategory.ID),
+			Member: newCategory.ID,
+		})
+		if newCategory.ParentID != nil {
+			s.rdb.ZAdd(context.Background(), categoryNonRootZSet, redis.Z{
+				Score:  float64(newCategory.ID),
+				Member: newCategory.ID,
+			})
+		}
+	}
+
 	return newCategory, nil
 }
 
@@ -83,6 +117,47 @@ func (s *CategoryService) ListRootCategories(ctx context.Context) (*dto.Category
 	return &dto.CategoryListResult{
 		List:  list,
 		Total: int64(len(list)),
+	}, nil
+}
+
+// ListNonRootCategories 从缓存列出非根分类
+func (s *CategoryService) ListNonRootCategories(ctx context.Context) (*dto.CachedCategoryListResult, error) {
+	ctxBg := context.Background()
+
+	ids, err := s.rdb.ZRange(ctxBg, categoryNonRootZSet, 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ids) == 0 {
+		return &dto.CachedCategoryListResult{}, nil
+	}
+
+	keys := make([]string, len(ids))
+	for i, id := range ids {
+		keys[i] = categoryInfoPrefix + id
+	}
+
+	values, err := s.rdb.MGet(ctxBg, keys...).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]dto.CachedCategoryItem, 0, len(values))
+	for _, data := range values {
+		if data == nil {
+			continue
+		}
+		var item dto.CachedCategoryItem
+		if err := sonic.Unmarshal([]byte(data.(string)), &item); err != nil {
+			continue
+		}
+		items = append(items, item)
+	}
+
+	return &dto.CachedCategoryListResult{
+		Total: len(items),
+		List:  items,
 	}, nil
 }
 
@@ -122,6 +197,23 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, id int64, req *dto
 		ParentID:   existingCategory.ParentID,
 	})
 
+	// 更新缓存
+	cacheItem := dto.CachedCategoryItem{
+		ID:   existingCategory.ID,
+		Name: existingCategory.Name,
+	}
+	if data, err := sonic.Marshal(cacheItem); err == nil {
+		s.rdb.Set(context.Background(), categoryInfoPrefix+strconv.FormatInt(existingCategory.ID, 10), data, 0)
+	}
+	if existingCategory.ParentID != nil {
+		s.rdb.ZAdd(context.Background(), categoryNonRootZSet, redis.Z{
+			Score:  float64(existingCategory.ID),
+			Member: existingCategory.ID,
+		})
+	} else {
+		s.rdb.ZRem(context.Background(), categoryNonRootZSet, existingCategory.ID)
+	}
+
 	return existingCategory, nil
 }
 
@@ -145,6 +237,11 @@ func (s *CategoryService) DeleteCategory(ctx context.Context, id int64) error {
 		ParentID:   existingCategory.ParentID,
 	})
 
+	// 删除缓存
+	s.rdb.Del(context.Background(), categoryInfoPrefix+strconv.FormatInt(id, 10))
+	s.rdb.ZRem(context.Background(), categoryCacheZSet, id)
+	s.rdb.ZRem(context.Background(), categoryNonRootZSet, id)
+
 	return nil
 }
 
@@ -164,6 +261,111 @@ func (s *CategoryService) ListCategories(ctx context.Context, q dto.CategoryList
 		List:  list,
 		Total: total,
 	}, nil
+}
+
+// WarmupCategoryCache 全量预热分类到 Redis
+func (s *CategoryService) WarmupCategoryCache(ctx context.Context) (int, error) {
+	list, err := s.repo.ListAll(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	pipe := s.rdb.Pipeline()
+	ctxBg := context.Background()
+
+	pipe.Del(ctxBg, categoryCacheZSet)
+	pipe.Del(ctxBg, categoryNonRootZSet)
+
+	for _, c := range list {
+		item := dto.CachedCategoryItem{
+			ID:   c.ID,
+			Name: c.Name,
+		}
+		data, err := sonic.Marshal(item)
+		if err != nil {
+			return 0, err
+		}
+		pipe.Set(ctxBg, categoryInfoPrefix+strconv.FormatInt(c.ID, 10), data, 0)
+		pipe.ZAdd(ctxBg, categoryCacheZSet, redis.Z{
+			Score:  float64(c.ID),
+			Member: c.ID,
+		})
+		if c.ParentID != nil {
+			pipe.ZAdd(ctxBg, categoryNonRootZSet, redis.Z{
+				Score:  float64(c.ID),
+				Member: c.ID,
+			})
+		}
+	}
+
+	if _, err = pipe.Exec(ctxBg); err != nil {
+		return 0, err
+	}
+
+	return len(list), nil
+}
+
+// ListCachedCategories 从缓存列出全部分类
+func (s *CategoryService) ListCachedCategories(ctx context.Context) ([]dto.CachedCategoryItem, error) {
+	ctxBg := context.Background()
+
+	ids, err := s.rdb.ZRange(ctxBg, categoryCacheZSet, 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ids) == 0 {
+		return []dto.CachedCategoryItem{}, nil
+	}
+
+	keys := make([]string, len(ids))
+	for i, id := range ids {
+		keys[i] = categoryInfoPrefix + id
+	}
+
+	values, err := s.rdb.MGet(ctxBg, keys...).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]dto.CachedCategoryItem, 0, len(values))
+	for _, data := range values {
+		if data == nil {
+			continue
+		}
+		var item dto.CachedCategoryItem
+		if err := sonic.Unmarshal([]byte(data.(string)), &item); err != nil {
+			continue
+		}
+		items = append(items, item)
+	}
+
+	return items, nil
+}
+
+// GetCachedCategoryByID 从缓存查询单个分类
+func (s *CategoryService) GetCachedCategoryByID(ctx context.Context, id int64) (*dto.CachedCategoryItem, error) {
+	sfKey := "category:" + strconv.FormatInt(id, 10)
+	v, err, _ := s.singleGroup.Do(sfKey, func() (any, error) {
+		data, err := s.rdb.Get(context.Background(), categoryInfoPrefix+strconv.FormatInt(id, 10)).Bytes()
+		if err == redis.Nil {
+			return nil, errcode.ErrNotFound
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		var item dto.CachedCategoryItem
+		if err := sonic.Unmarshal(data, &item); err != nil {
+			return nil, err
+		}
+		return &item, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return v.(*dto.CachedCategoryItem), nil
 }
 
 
