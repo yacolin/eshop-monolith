@@ -34,6 +34,7 @@ func NewProductHandler(productService *service.ProductService) *ProductHandler {
 // @Param size query int false "每页条数" default(10)
 // @Param name query string false "产品名称模糊搜索"
 // @Param sku query string false "SKU精确搜索"
+// @Param category_id query int false "分类ID筛选"
 // @Success 200 {object} response.Response{data=dto.ProductListResult}
 // @Router /api/v1/products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
@@ -333,12 +334,13 @@ func (h *ProductHandler) WarmupCache(c *gin.Context) {
 
 // ListCachedProducts 从缓存中获取产品列表
 // @Summary 从缓存获取产品列表
-// @Description 从 Redis 缓存中读取产品列表，支持分页和排序
+// @Description 从 Redis 缓存中读取产品列表，支持分页、排序和分类筛选
 // @Tags products
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
+// @Param category_id query int false "分类ID筛选"
 // @Param sort_by query string false "排序字段 (id, name, price)"
 // @Param order query string false "排序方向 (asc, desc)" default(asc)
 // @Success 200 {object} response.Response{data=dto.ProductListResult}

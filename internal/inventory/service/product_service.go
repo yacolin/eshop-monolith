@@ -25,6 +25,7 @@ import (
 const (
 	productCacheZSet     = "product:zset"
 	productInfoPrefix    = "product:info:"
+	productCategoryZSet  = "product:zset:category:" // + categoryID
 	cachedProductListTTL = time.Hour
 	hotKeyThreshold      = 1000
 	hotKeyWindow         = 10 * time.Second
@@ -60,6 +61,10 @@ var zrangeByScoreScript = redis.NewScript(`
 	local values = redis.call("MGET", unpack(keys))
 	return {total, values, ids[#ids]}
 `)
+
+func categoryZSetKey(categoryID int64) string {
+	return productCategoryZSet + strconv.FormatInt(categoryID, 10)
+}
 
 type hotKeyCounter struct {
 	mu       sync.Mutex
@@ -113,7 +118,7 @@ func NewProductService(
 	repo repositories.IproductRepository,
 	inventoryRepo repositories.IinventoryRepository,
 	skuRepo repositories.IskuRepository,
-	rabbit        *rabbitmq.Client,
+	rabbit *rabbitmq.Client,
 	db *gorm.DB,
 	rdb *redis.Client,
 ) *ProductService {
@@ -177,6 +182,28 @@ func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 		})
 	}
 
+	// 加载所有产品-分类关系，构建每个分类的 ZSET
+	var rels []struct {
+		ProductID  int64 `gorm:"column:product_id"`
+		CategoryID int64 `gorm:"column:category_id"`
+	}
+	if err := s.db.WithContext(ctxBg).Table("product_categories").Find(&rels).Error; err != nil {
+		return 0, err
+	}
+
+	// 按 category_id 分组
+	catMap := make(map[int64][]int64)
+	for _, rel := range rels {
+		catMap[rel.CategoryID] = append(catMap[rel.CategoryID], rel.ProductID)
+	}
+	for catID, productIDs := range catMap {
+		key := categoryZSetKey(catID)
+		pipe.Del(ctxBg, key)
+		for _, pid := range productIDs {
+			pipe.ZAdd(ctxBg, key, redis.Z{Score: float64(pid), Member: pid})
+		}
+	}
+
 	if _, err = pipe.Exec(ctxBg); err != nil {
 		return 0, err
 	}
@@ -235,7 +262,13 @@ func (s *ProductService) warmupListPages(items []dto.CachedProductItem) {
 }
 
 func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductListQuery) (*query.ListResult[dto.CachedProductItem], error) {
-	cacheKey := "list:" + strconv.FormatInt(int64(q.Page), 10) + ":" + strconv.FormatInt(int64(q.Size), 10) + ":" + q.Order
+	var catPart string
+	zsetKey := productCacheZSet
+	if q.CategoryID != nil {
+		catPart = "cat_" + strconv.FormatInt(*q.CategoryID, 10) + ":"
+		zsetKey = categoryZSetKey(*q.CategoryID)
+	}
+	cacheKey := "list:" + catPart + strconv.FormatInt(int64(q.Page), 10) + ":" + strconv.FormatInt(int64(q.Size), 10) + ":" + q.Order
 	if result, ok := s.localCache.getList(cacheKey); ok {
 		return result, nil
 	}
@@ -249,7 +282,7 @@ func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductLi
 		order = "desc"
 	}
 
-	result, err := zrangeMGetScript.Run(ctxBg, s.rdb, []string{productCacheZSet}, offset, stop, order, productInfoPrefix).Result()
+	result, err := zrangeMGetScript.Run(ctxBg, s.rdb, []string{zsetKey}, offset, stop, order, productInfoPrefix).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -287,38 +320,17 @@ func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductLi
 }
 
 // ListCachedProductsByCursor 基于游标从缓存查询产品列表（深分页优化）
-// 当指定 category_id 等筛选条件时自动降级到 DB 游标查询
+// 支持 category_id 筛选，通过分类 ZSET 实现
 func (s *ProductService) ListCachedProductsByCursor(ctx context.Context, q dto.ProductCacheCursorQuery) (*dto.ProductCacheCursorResult, error) {
-	// 有筛选条件时降级到 DB 游标
-	if q.CategoryID != nil {
-		dbQ := dto.ProductCursorQuery{
-			Cursor:     q.Cursor,
-			Size:       q.Size,
-			CategoryID: q.CategoryID,
-		}
-		dbResult, err := s.ListProductsByCursor(ctx, dbQ)
-		if err != nil {
-			return nil, err
-		}
-		items := make([]dto.CachedProductItem, len(dbResult.List))
-		for i, p := range dbResult.List {
-			items[i] = dto.CachedProductItem{
-				ID:       p.ID,
-				Name:     p.Name,
-				MinPrice: p.MinPrice,
-			}
-		}
-		return &dto.ProductCacheCursorResult{
-			List:       items,
-			NextCursor: dbResult.NextCursor,
-			HasMore:    dbResult.HasMore,
-		}, nil
-	}
-
 	ctxBg := context.Background()
 	limit := q.Size + 1
 
-	result, err := zrangeByScoreScript.Run(ctxBg, s.rdb, []string{productCacheZSet}, q.Cursor, limit, productInfoPrefix).Result()
+	zsetKey := productCacheZSet
+	if q.CategoryID != nil {
+		zsetKey = categoryZSetKey(*q.CategoryID)
+	}
+
+	result, err := zrangeByScoreScript.Run(ctxBg, s.rdb, []string{zsetKey}, q.Cursor, limit, productInfoPrefix).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -587,11 +599,16 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 
 	s.bloomFilter.add(newProduct.ID)
 
+	// 添加到每个分类的 ZSET
+	for _, catID := range req.CategoryIDs {
+		s.rdb.ZAdd(context.Background(), categoryZSetKey(catID), redis.Z{Score: float64(newProduct.ID), Member: newProduct.ID})
+	}
+
 	categoryIDValue := int64(0)
 	if len(req.CategoryIDs) > 0 {
 		categoryIDValue = req.CategoryIDs[0]
 	}
-	s.rabbit.Publish(ctx,events.ProductCreatedEvent{
+	s.rabbit.Publish(ctx, events.ProductCreatedEvent{
 		ProductID:  newProduct.ID,
 		Name:       newProduct.Name,
 		CategoryID: categoryIDValue,
@@ -675,6 +692,12 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 		existingProduct.Description = *req.Description
 	}
 
+	// 记录旧的分类 ID，用于更新后清理旧的分类 ZSET
+	var oldCategoryIDs []int64
+	if req.CategoryIDs != nil {
+		s.db.WithContext(ctx).Table("product_categories").Where("product_id = ?", id).Pluck("category_id", &oldCategoryIDs)
+	}
+
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(existingProduct).Error; err != nil {
 			return err
@@ -699,13 +722,23 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id int64, req *dto.U
 		return nil, err
 	}
 
+	// 更新分类 ZSET：从旧的移除，添加到新的
+	if req.CategoryIDs != nil {
+		for _, catID := range oldCategoryIDs {
+			s.rdb.ZRem(context.Background(), categoryZSetKey(catID), id)
+		}
+		for _, catID := range req.CategoryIDs {
+			s.rdb.ZAdd(context.Background(), categoryZSetKey(catID), redis.Z{Score: float64(id), Member: id})
+		}
+	}
+
 	s.delayedDoubleDelete(id)
 
 	categoryIDValue := int64(0)
 	if len(req.CategoryIDs) > 0 {
 		categoryIDValue = req.CategoryIDs[0]
 	}
-	s.rabbit.Publish(ctx,events.ProductUpdatedEvent{
+	s.rabbit.Publish(ctx, events.ProductUpdatedEvent{
 		ProductID:  existingProduct.ID,
 		Name:       existingProduct.Name,
 		CategoryID: categoryIDValue,
@@ -720,6 +753,10 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
 		return err
 	}
 
+	// 查询产品所属分类，用于后续清理分类 ZSET
+	var catIDs []int64
+	s.db.WithContext(ctx).Table("product_categories").Where("product_id = ?", id).Pluck("category_id", &catIDs)
+
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("product_id = ?", id).Delete(&shared.ProductCategory{}).Error; err != nil {
 			return err
@@ -733,9 +770,14 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id int64) error {
 		return err
 	}
 
+	// 从每个分类 ZSET 中移除
+	for _, catID := range catIDs {
+		s.rdb.ZRem(context.Background(), categoryZSetKey(catID), id)
+	}
+
 	s.delayedDoubleDelete(id)
 
-	s.rabbit.Publish(ctx,events.ProductDeletedEvent{
+	s.rabbit.Publish(ctx, events.ProductDeletedEvent{
 		ProductID:  existingProduct.ID,
 		Name:       existingProduct.Name,
 		CategoryID: 0,

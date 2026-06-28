@@ -111,19 +111,25 @@ func (r *ProductRepository) FindBySKU(ctx context.Context, sku string) (*invMode
 	return po.ToDomain(), nil
 }
 
-// ListByCategory 根据分类查询产品
+// ListByCategory 根据分类查询产品（通过 product_categories 中间表子查询）
 func (r *ProductRepository) ListByCategory(ctx context.Context, categoryID int64, page, pageSize int) ([]invModels.Product, int64, error) {
 	var pos []models.ProductPO
 	var total int64
 
+	subQuery := r.db.Table("product_categories").Select("product_id").Where("category_id = ?", categoryID)
+
 	// 计算总数
-	if err := r.db.WithContext(ctx).Model(&models.ProductPO{}).Where("category_id = ?", categoryID).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.ProductPO{}).
+		Where("id IN (?)", subQuery).
+		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// 查询数据
 	offset := (page - 1) * pageSize
-	err := r.db.WithContext(ctx).Where("category_id = ?", categoryID).Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&pos).Error
+	err := r.db.WithContext(ctx).
+		Where("id IN (?)", subQuery).
+		Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&pos).Error
 	if err != nil {
 		return nil, 0, err
 	}
