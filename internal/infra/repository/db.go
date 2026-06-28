@@ -49,12 +49,17 @@ type RedisConfig struct {
 
 // InitDB 初始化数据库连接
 func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
-		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.Charset)
+	var dsn string
+	if cfg.Host == "localhost" || cfg.Host == "127.0.0.1" {
+		dsn = fmt.Sprintf("%s:%s@unix(/tmp/mysql.sock)/%s?charset=%s&parseTime=True&loc=Local",
+			cfg.Username, cfg.Password, cfg.Database, cfg.Charset)
+	} else {
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
+			cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, cfg.Charset)
+	}
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger:      logger.Default.LogMode(logger.Silent),
-		PrepareStmt: true,
+		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		return nil, err
@@ -68,6 +73,7 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 
 	// 自动迁移表结构
 	if err := db.AutoMigrate(

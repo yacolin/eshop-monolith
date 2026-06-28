@@ -208,3 +208,6 @@ resume.md
 
 
 docs/
+
+scripts/*.sh
+scripts/*.bash

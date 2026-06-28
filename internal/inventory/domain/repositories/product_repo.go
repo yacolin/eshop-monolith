@@ -217,19 +217,24 @@ func (r *ProductRepository) CountProducts(ctx context.Context, q dto.ProductList
 	return total, nil
 }
 
-// productWithTotalRow 窗口函数查询结果行
+// productWithTotalRow 标量子查询结果行
 type productWithTotalRow struct {
 	models.ProductPO
 	TotalCount int64 `gorm:"column:total_count"`
 }
 
-// ListProductsWithTotal 一次查询返回列表+总数（窗口函数 COUNT(*) OVER()）
+// ListProductsWithTotal 单次查询：COUNT 用 GORM 子查询生成，复用过滤条件
 func (r *ProductRepository) ListProductsWithTotal(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]invModels.Product, int64, error) {
 	var rows []productWithTotalRow
-	db := r.applyQueryConditions(ctx, q)
-	db = r.applyOrder(db, q)
 
-	err := db.Select("id, name, min_price, created_at, updated_at, COUNT(*) OVER() AS total_count").
+	// 子查询：复用相同过滤条件生成 COUNT
+	countDB := r.db.WithContext(ctx).Model(&models.ProductPO{})
+	countDB = applyQueryConditionsOnDB(countDB, q)
+
+	dataDB := r.applyQueryConditions(ctx, q)
+	dataDB = r.applyOrder(dataDB, q)
+
+	err := dataDB.Select("id, name, min_price, created_at, updated_at, (?) AS total_count", countDB.Select("COUNT(*)")).
 		Offset(offset).Limit(limit).Find(&rows).Error
 	if err != nil {
 		return nil, 0, err
@@ -308,7 +313,12 @@ func (r *ProductRepository) applyCursorQueryConditions(ctx context.Context, q dt
 
 // applyQueryConditions 应用查询条件（不包含排序）
 func (r *ProductRepository) applyQueryConditions(ctx context.Context, q dto.ProductListQuery) *gorm.DB {
-	db := r.db.WithContext(ctx).Model(&models.ProductPO{})
+	return applyQueryConditionsOnDB(r.db.WithContext(ctx), q)
+}
+
+// applyQueryConditionsOnDB 在指定 DB 上应用查询条件（不绑定 repo）
+func applyQueryConditionsOnDB(db *gorm.DB, q dto.ProductListQuery) *gorm.DB {
+	db = db.Model(&models.ProductPO{})
 	if q.Name != "" {
 		db = db.Where("name LIKE ?", "%"+q.Name+"%")
 	}
@@ -317,7 +327,7 @@ func (r *ProductRepository) applyQueryConditions(ctx context.Context, q dto.Prod
 	}
 	if q.CategoryID != nil {
 		db = db.Where("id IN (?)",
-			r.db.Table("product_categories").Select("product_id").Where("category_id = ?", *q.CategoryID),
+			db.Session(&gorm.Session{NewDB: true}).Table("product_categories").Select("product_id").Where("category_id = ?", *q.CategoryID),
 		)
 	}
 	return db

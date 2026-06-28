@@ -11,7 +11,7 @@ mysql:
   password: 123456
   database: eshop_db
   charset: utf8mb4
-  max_idle_conns: 50
+  max_idle_conns: 200
   max_open_conns: 200
 
 redis:
