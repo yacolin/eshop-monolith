@@ -185,7 +185,53 @@ func (s *ProductService) WarmupProductCache(ctx context.Context) (int, error) {
 	s.bloomFilter.addAll(ids)
 	s.localCache.warmup(items)
 
+	// 预加载热门列表页（前 3 页）到 L1 缓存，避免启动后首次请求 miss
+	s.warmupListPages(items)
+
 	return len(products), nil
+}
+
+// warmupListPages 预加载热门列表页到 L1 本地缓存
+func (s *ProductService) warmupListPages(items []dto.CachedProductItem) {
+	const pageSize = 10
+	total := int64(len(items))
+	for page := 1; page <= 3; page++ {
+		start := (page - 1) * pageSize
+		if start >= len(items) {
+			break
+		}
+		end := start + pageSize
+		if end > len(items) {
+			end = len(items)
+		}
+
+		// ASC 页
+		ascList := make([]dto.CachedProductItem, end-start)
+		copy(ascList, items[start:end])
+		ascKey := "list:" + strconv.Itoa(page) + ":" + strconv.Itoa(pageSize) + ":asc"
+		s.localCache.setList(ascKey, &query.ListResult[dto.CachedProductItem]{
+			List:  ascList,
+			Total: total,
+		})
+
+		// DESC 页（从尾部取，倒序）
+		descStart := len(items) - end
+		if descStart < 0 {
+			descStart = 0
+		}
+		descEnd := len(items) - start
+		if descStart < descEnd {
+			descItems := make([]dto.CachedProductItem, descEnd-descStart)
+			for i, j := 0, descEnd-1; j >= descStart; i, j = i+1, j-1 {
+				descItems[i] = items[j]
+			}
+			descKey := "list:" + strconv.Itoa(page) + ":" + strconv.Itoa(pageSize) + ":desc"
+			s.localCache.setList(descKey, &query.ListResult[dto.CachedProductItem]{
+				List:  descItems,
+				Total: total,
+			})
+		}
+	}
 }
 
 func (s *ProductService) ListCachedProducts(ctx context.Context, q dto.ProductListQuery) (*query.ListResult[dto.CachedProductItem], error) {
@@ -704,12 +750,7 @@ func (s *ProductService) ListAllProducts(ctx context.Context, page, pageSize int
 
 func (s *ProductService) ListProducts(ctx context.Context, q dto.ProductListQuery) (*dto.ProductListResult, error) {
 	offset := (q.Page - 1) * q.Size
-	list, err := s.repo.ListProducts(ctx, q, offset, q.Size)
-	if err != nil {
-		return nil, err
-	}
-
-	total, err := s.repo.CountProducts(ctx, q)
+	list, total, err := s.repo.ListProductsWithTotal(ctx, q, offset, q.Size)
 	if err != nil {
 		return nil, err
 	}

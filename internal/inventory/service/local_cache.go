@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	localCacheSize     = 8192
-	localCacheTTL      = 60 * time.Second
+	localCacheSize     = 16384
+	localCacheTTL      = 120 * time.Second
 	localCacheTTLJitter = 0.2
-	listCacheSize      = 512
-	listCacheTTL       = 30 * time.Second
+	listCacheSize      = 2048
+	listCacheTTL       = 60 * time.Second
 	listCacheTTLJitter = 0.2
 )
 

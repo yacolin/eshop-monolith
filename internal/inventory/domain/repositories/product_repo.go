@@ -45,6 +45,8 @@ type IproductRepository interface {
 
 	// ListProducts 列出产品
 	ListProducts(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]invModels.Product, error)
+	// ListProductsWithTotal 一次查询返回列表+总数（窗口函数）
+	ListProductsWithTotal(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]invModels.Product, int64, error)
 	// CountProducts 统计产品数量
 	CountProducts(ctx context.Context, q dto.ProductListQuery) (int64, error)
 	// FindAll 查询所有产品（不分页）
@@ -189,8 +191,8 @@ func (r *ProductRepository) ListProducts(ctx context.Context, q dto.ProductListQ
 	db := r.applyQueryConditions(ctx, q)
 	db = r.applyOrder(db, q)
 
-	// 执行查询
-	err := db.Offset(offset).Limit(limit).Find(&pos).Error
+	// 列表查询不读取 TEXT description 字段，减少 I/O
+	err := db.Select("id, name, min_price, created_at, updated_at").Offset(offset).Limit(limit).Find(&pos).Error
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +215,35 @@ func (r *ProductRepository) CountProducts(ctx context.Context, q dto.ProductList
 	}
 
 	return total, nil
+}
+
+// productWithTotalRow 窗口函数查询结果行
+type productWithTotalRow struct {
+	models.ProductPO
+	TotalCount int64 `gorm:"column:total_count"`
+}
+
+// ListProductsWithTotal 一次查询返回列表+总数（窗口函数 COUNT(*) OVER()）
+func (r *ProductRepository) ListProductsWithTotal(ctx context.Context, q dto.ProductListQuery, offset, limit int) ([]invModels.Product, int64, error) {
+	var rows []productWithTotalRow
+	db := r.applyQueryConditions(ctx, q)
+	db = r.applyOrder(db, q)
+
+	err := db.Select("id, name, min_price, created_at, updated_at, COUNT(*) OVER() AS total_count").
+		Offset(offset).Limit(limit).Find(&rows).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total := int64(0)
+	if len(rows) > 0 {
+		total = rows[0].TotalCount
+	}
+	products := make([]invModels.Product, len(rows))
+	for i := range rows {
+		products[i] = *rows[i].ProductPO.ToDomain()
+	}
+	return products, total, nil
 }
 
 // ListProductsByCursor 基于游标查询产品列表（深分页优化）

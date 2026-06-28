@@ -21,6 +21,8 @@ import (
 	"eshop-monolith/internal/infra/router"
 	"eshop-monolith/pkg/config"
 	"eshop-monolith/pkg/logger"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -31,6 +33,9 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 	log.Printf("Config loaded successfully: Server port %d", cfg.Server.Port)
+
+	// 设置 Gin 运行模式（debug/release/test）
+	gin.SetMode(cfg.Server.Mode)
 
 	// 日志已通过 init() 函数自动初始化
 	log.Println("Logger initialized")

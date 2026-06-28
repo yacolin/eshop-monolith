@@ -43,7 +43,8 @@ import (
 
 // SetupRouter 设置路由
 func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB, mqClient *rabbitmq.Client) *gin.Engine {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
 
 	// 创建 WebSocket Hub 并启动（传入Redis客户端支持断线重连和增量同步）
 	wsHub := ws.NewHub(repos.Redis)
