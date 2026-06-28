@@ -12,8 +12,8 @@ mysql:
   database: eshop_db
   charset: utf8mb4
   # Unix socket 路径（留空自动探测 /tmp/mysql.sock 或 /var/run/mysqld/mysqld.sock）
-  max_idle_conns: 200
-  max_open_conns: 200
+  max_idle_conns: 50
+  max_open_conns: 50
 
 redis:
   host: localhost

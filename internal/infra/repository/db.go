@@ -54,7 +54,12 @@ func resolveSocket(cfgSocket string) string {
 	if cfgSocket != "" {
 		return cfgSocket
 	}
-	for _, p := range []string{"/tmp/mysql.sock", "/var/run/mysqld/mysqld.sock"} {
+	for _, p := range []string{
+		"/tmp/mysql.sock",                // macOS Homebrew
+		"/var/run/mysqld/mysqld.sock",   // Linux/WSL2 Debian/Ubuntu
+		"/run/mysqld/mysqld.sock",       // Linux/WSL2 systemd
+		"/var/lib/mysql/mysql.sock",     // Linux RPM/CentOS
+	} {
 		if _, err := os.Stat(p); err == nil {
 			return p
 		}

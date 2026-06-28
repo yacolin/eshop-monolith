@@ -96,7 +96,11 @@ func main() {
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Error("Server forced to shutdown", "error", err)
-		os.Exit(1)
+	}
+
+	// 显式关闭 DB 连接池，避免残留连接累积到 MySQL max_connections 上限
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.Close()
 	}
 
 	logger.Info("Server exited")

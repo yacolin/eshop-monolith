@@ -198,6 +198,10 @@ func (c *Client) NewChannel() (*amqp.Channel, error) {
 
 func (c *Client) Close() error {
 	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		return nil
+	}
 	c.closed = true
 	conn := c.conn
 	ch := c.ch
@@ -209,7 +213,13 @@ func (c *Client) Close() error {
 		ch.Close()
 	}
 	if conn != nil {
-		return conn.Close()
+		// 异步关闭避免等待 broker 回应阻塞退出
+		done := make(chan error, 1)
+		go func() { done <- conn.Close() }()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+		}
 	}
 	return nil
 }
