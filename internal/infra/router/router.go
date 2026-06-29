@@ -13,7 +13,6 @@ import (
 	"eshop-monolith/internal/promotion"
 	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
 	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
-	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
 	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	notifSvcPkg "eshop-monolith/internal/notification/service"
@@ -135,7 +134,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		userRoutes.RegisterUserRoutes(v1, repos, mqClient)
 			// [DEPRECATED] payRoutes.RegisterPaymentRoutes(v1, repos, mqClient, db)
 		// [DEPRECATED] cartRoutes.RegisterCartRoutes(v1, repos, db, mqClient)
-		flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, mqClient)
+		// [DEPRECATED] flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, mqClient)
 		userRoutes.RegisterAuthRoutes(v1, repos, db)
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)
 		userRoutes.RegisterRoleRoutes(v1, repos, db)

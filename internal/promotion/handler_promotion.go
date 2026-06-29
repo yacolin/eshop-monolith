@@ -119,4 +119,14 @@ func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 		coupon.POST("/use", ch.Use)
 		coupon.GET("/mine", ch.ListUserCoupons)
 	}
+
+	// 秒杀
+	flashSvc := NewFlashService(repo, db)
+	fh := NewFlashHandler(flashSvc)
+	flash := v1.Group("/flash")
+	flash.Use(middleware.JWTAuth())
+	{
+		flash.POST("/buy", fh.Buy)
+		flash.POST("/confirm", fh.Confirm)
+	}
 }
