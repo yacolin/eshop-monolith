@@ -13,7 +13,7 @@ import (
 	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	notifSvcPkg "eshop-monolith/internal/notification/service"
-	reviewRoutes "eshop-monolith/internal/review/api/routes"
+	"eshop-monolith/internal/review"
 	"eshop-monolith/internal/user"
 
 	"eshop-monolith/internal/infra/rabbitmq"
@@ -123,7 +123,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		user.RegisterPermissionRoutes(v1, db, repos.Permission, repos.Role)
 		user.RegisterRoleRoutes(v1, db, repos.Role)
 		notifSvc = notifRoutes.RegisterNotificationRoutes(v1, repos, db, mqClient)
-		reviewRoutes.RegisterReviewRoutes(v1, repos, db, mqClient)
+		review.RegisterReviewRoutes(v1, repos, db)
 		user.RegisterAddressRoutes(v1, db)
 		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, mqClient)
 
