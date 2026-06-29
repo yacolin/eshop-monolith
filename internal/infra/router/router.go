@@ -8,6 +8,7 @@ import (
 
 	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/cart"
+	"eshop-monolith/internal/payment"
 	"eshop-monolith/internal/inventory"
 	couponRoutes "eshop-monolith/internal/coupon/api/routes"
 	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
@@ -18,7 +19,6 @@ import (
 	notifSvcPkg "eshop-monolith/internal/notification/service"
 	orderRoutes "eshop-monolith/internal/order/api/routes"
 	orderSvcPkg "eshop-monolith/internal/order/service"
-	payRoutes "eshop-monolith/internal/payment/api/routes"
 	reviewRoutes "eshop-monolith/internal/review/api/routes"
 	addressRoutes "eshop-monolith/internal/address/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
@@ -131,7 +131,8 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 
 		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
 		userRoutes.RegisterUserRoutes(v1, repos, mqClient)
-		payRoutes.RegisterPaymentRoutes(v1, repos, mqClient, db)
+		payment.RegisterPaymentRoutes(v1, db)
+			// [DEPRECATED] payRoutes.RegisterPaymentRoutes(v1, repos, mqClient, db)
 		// [DEPRECATED] cartRoutes.RegisterCartRoutes(v1, repos, db, mqClient)
 		flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, mqClient)
 		userRoutes.RegisterAuthRoutes(v1, repos, db)

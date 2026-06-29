@@ -103,6 +103,11 @@ var (
 	ErrInventoryNotFound    = &BizError{Code: 5001, Message: "inventory not found"}
 	ErrInsufficientStock    = &BizError{Code: 5002, Message: "insufficient stock"}
 	ErrInvalidStockChange   = &BizError{Code: 5003, Message: "invalid stock change"}
+
+	// ==================== 域：交易（6001-6099） ====================
+	ErrPaymentNotFound    = &BizError{Code: 6001, Message: "payment not found"}
+	ErrRefundNotFound     = &BizError{Code: 6010, Message: "refund not found"}
+	ErrRefundFailed       = &BizError{Code: 6011, Message: "refund failed"}
 )
 
 // ==================== 域：评论评分（3001-3999） ====================
