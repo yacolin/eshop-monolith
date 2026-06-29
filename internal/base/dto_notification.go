@@ -1,4 +1,4 @@
-package notification
+package base
 
 import "eshop-monolith/pkg/query"
 

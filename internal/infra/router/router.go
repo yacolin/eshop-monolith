@@ -11,7 +11,7 @@ import (
 	"eshop-monolith/internal/marketing"
 	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
 	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
-	"eshop-monolith/internal/notification"
+	"eshop-monolith/internal/base"
 	"eshop-monolith/internal/review"
 	"eshop-monolith/internal/user"
 
@@ -63,7 +63,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 
 	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册和启动预热）
 	var dashboardSvc *dashboardSvcPkg.DashboardService
-	var notifSvc *notification.NotificationService
+	var notifSvc *base.NotificationService
 	var warmupDone atomic.Bool
 	warmupDone.Store(true)
 
@@ -121,7 +121,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		user.RegisterAuthRoutes(v1, db, tokenService, repos.Role, repos.User, repos.UserInfo, repos.LoginHistory)
 		user.RegisterPermissionRoutes(v1, db, repos.Permission, repos.Role)
 		user.RegisterRoleRoutes(v1, db, repos.Role)
-		notifSvc = notification.RegisterNotificationRoutes(v1, repos, db)
+		notifSvc = base.RegisterNotificationRoutes(v1, repos, db)
 		review.RegisterReviewRoutes(v1, repos, db)
 		user.RegisterAddressRoutes(v1, db)
 		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, mqClient)
