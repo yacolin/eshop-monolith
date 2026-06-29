@@ -1,13 +1,15 @@
 package product
 
 import (
+
 	"context"
 	"errors"
 	"fmt"
 
+	"gorm.io/gorm"
+
 	"eshop-monolith/pkg/errcode"
 
-	"gorm.io/gorm"
 )
 
 type CategoryService struct {

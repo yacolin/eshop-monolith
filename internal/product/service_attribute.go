@@ -1,12 +1,14 @@
 package product
 
 import (
+
 	"context"
 	"errors"
 
+	"gorm.io/gorm"
+
 	"eshop-monolith/pkg/errcode"
 
-	"gorm.io/gorm"
 )
 
 type AttributeService struct {
