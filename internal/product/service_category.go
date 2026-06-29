@@ -90,6 +90,19 @@ type CategoryListResult struct {
 	List  []*Category `json:"list"`
 }
 
+func (s *CategoryService) List(ctx context.Context, req *CategoryListReq) (*CategoryListResult, error) {
+	req.Normalize()
+	list, total, err := s.repo.List(ctx, req.Name, req.Status, req.Level, req.Page, req.Size)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]*Category, len(list))
+	for i := range list {
+		items[i] = &list[i]
+	}
+	return &CategoryListResult{Total: total, List: items}, nil
+}
+
 // ListRoot 根类目
 func (s *CategoryService) ListRoot(ctx context.Context) ([]*Category, error) {
 	list, err := s.repo.ListRoot(ctx)

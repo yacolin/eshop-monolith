@@ -70,7 +70,7 @@ func (h *AttributeHandler) GetByID(c *gin.Context) {
 // @Success 200 {object} response.Response{data=[]Attribute}
 // @Router /api/v1/attributes [get]
 func (h *AttributeHandler) ListByCategory(c *gin.Context) {
-	categoryID, err := utils.ParseIntParam(c, "category_id")
+	categoryID, err := utils.ParseQueryIntParam(c, "category_id")
 	if err != nil {
 		// 没有 category_id 时查全部
 		result, err := h.svc.ListAll(c)
@@ -97,7 +97,7 @@ func (h *AttributeHandler) ListByCategory(c *gin.Context) {
 // @Success 200 {object} response.Response{data=[]Attribute}
 // @Router /api/v1/attributes/searchable [get]
 func (h *AttributeHandler) ListSearchable(c *gin.Context) {
-	categoryID, err := utils.ParseIntParam(c, "category_id")
+	categoryID, err := utils.ParseQueryIntParam(c, "category_id")
 	if err != nil {
 		c.Error(err)
 		return
@@ -118,7 +118,7 @@ func (h *AttributeHandler) ListSearchable(c *gin.Context) {
 // @Success 200 {object} response.Response{data=[]Attribute}
 // @Router /api/v1/attributes/sku-spec [get]
 func (h *AttributeHandler) ListSkuSpec(c *gin.Context) {
-	categoryID, err := utils.ParseIntParam(c, "category_id")
+	categoryID, err := utils.ParseQueryIntParam(c, "category_id")
 	if err != nil {
 		c.Error(err)
 		return

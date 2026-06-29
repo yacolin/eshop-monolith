@@ -10,6 +10,7 @@ type IcategoryRepository interface {
 	Create(ctx context.Context, cat *Category) error
 	FindByID(ctx context.Context, id int64) (*Category, error)
 	FindByName(ctx context.Context, name string, parentID int64) (*Category, error)
+	List(ctx context.Context, name string, status, level *int8, page, size int) ([]Category, int64, error)
 	ListRoot(ctx context.Context) ([]Category, error)
 	ListByParent(ctx context.Context, parentID int64) ([]Category, error)
 	ListByLevel(ctx context.Context, level int8) ([]Category, error)
@@ -65,6 +66,29 @@ func (r *CategoryRepository) ListAll(ctx context.Context) ([]Category, error) {
 	var list []Category
 	err := r.db.WithContext(ctx).Order("level ASC, sort_order ASC, id ASC").Find(&list).Error
 	return list, err
+}
+
+func (r *CategoryRepository) List(ctx context.Context, name string, status, level *int8, page, size int) ([]Category, int64, error) {
+	db := r.db.WithContext(ctx).Model(&Category{})
+	if name != "" {
+		db = db.Where("name LIKE ?", "%"+name+"%")
+	}
+	if status != nil {
+		db = db.Where("status = ?", *status)
+	}
+	if level != nil {
+		db = db.Where("level = ?", *level)
+	}
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []Category
+	offset := (page - 1) * size
+	if err := db.Offset(offset).Limit(size).Order("level ASC, sort_order ASC, id ASC").Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 func (r *CategoryRepository) Update(ctx context.Context, cat *Category) error {

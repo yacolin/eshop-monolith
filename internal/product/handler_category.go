@@ -62,6 +62,32 @@ func (h *CategoryHandler) GetByID(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// List 类目列表（分页）
+// @Summary 类目列表
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页条数" default(10)
+// @Param name query string false "类目名称模糊搜索"
+// @Param status query int false "状态 1-启用 0-禁用"
+// @Param level query int false "层级 1-3"
+// @Success 200 {object} response.Response{data=CategoryListResult}
+// @Router /api/v1/categories [get]
+func (h *CategoryHandler) List(c *gin.Context) {
+	var req CategoryListReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.Error(err)
+		return
+	}
+	result, err := h.svc.List(c, &req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
 // ListRoot 根类目列表
 // @Summary 根类目列表
 // @Tags categories
@@ -191,6 +217,7 @@ func RegisterCategoryRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 
 	cats := v1.Group("/categories")
 	{
+		cats.GET("", h.List)
 		cats.GET("/root", h.ListRoot)
 		cats.GET("/all", h.ListAll)
 		cats.GET("/level/:level", h.ListByLevel)
