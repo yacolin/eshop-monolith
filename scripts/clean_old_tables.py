@@ -144,11 +144,7 @@ def main():
     elif args.dry_run:
         dry_run(conn)
     elif args.execute:
-        confirm = input("确认删除 23 张旧表？(yes/no): ")
-        if confirm == "yes":
-            execute(conn)
-        else:
-            print("取消操作")
+        execute(conn)
     conn.close()
 
 
