@@ -6,7 +6,7 @@ import (
 	"eshop-monolith/internal/notification/api/handlers"
 	"eshop-monolith/internal/notification/domain/repositories"
 	"eshop-monolith/internal/notification/service"
-	usermw "eshop-monolith/internal/user/middleware"
+	"eshop-monolith/internal/user"
 	"eshop-monolith/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -32,8 +32,8 @@ func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositor
 	}
 
 	// 系统通知发送（需要管理员权限）
-	roleCfg := usermw.NewRequireRoleConfig(repos.Role)
-	notify.POST("/system", usermw.RequireAdmin(roleCfg), notifHandler.SendSystemNotification)
+	roleCfg := user.NewRequireRoleConfig(repos.Role)
+	notify.POST("/system", user.RequireAdmin(roleCfg), notifHandler.SendSystemNotification)
 
 	return notifSvc
 }

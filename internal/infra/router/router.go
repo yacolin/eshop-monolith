@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	notifSvcPkg "eshop-monolith/internal/notification/service"
 	reviewRoutes "eshop-monolith/internal/review/api/routes"
 	"eshop-monolith/internal/user"
-	userRoutes "eshop-monolith/internal/user/api/routes"
 
 	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/rabbitmq/consumers"
@@ -50,23 +48,15 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	go wsHub.Run()
 
 	// 设置用户信息查询回调（用于实时在线事件广播）
-	wsHub.SetUserInfoProvider(func(userID int64) (string, string, error) {
+	wsHub.SetUserInfoProvider(func(uid int64) (string, string, error) {
 		ctx := context.Background()
 
-		// 查询用户名 (provider=password 的 identifier)
-		uid := strconv.FormatInt(userID, 10)
-		identity, err := repos.UserIdentity.GetByUserIDAndProvider(ctx, uid, "password")
+		user, err := repos.User.FindByID(ctx, uid)
 		if err != nil {
 			return "", "", err
 		}
-		username := identity.Identifier
 
-		// 查询昵称
-		info, err := repos.UserInfo.GetUserInfoByUserID(ctx, userID)
-		if err != nil {
-			return username, "", nil // 用户名有值即可，昵称为空不影响
-		}
-		return username, info.Nickname, nil
+		return user.Username, user.Nickname, nil
 	})
 
 	// 添加全局错误处理中间件
@@ -127,13 +117,11 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		// [DEPRECATED] couponRoutes.RegisterPromotionRoutes(v1, repos, db, mqClient)
 
 			// [DEPRECATED] orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
-		userRoutes.RegisterUserRoutes(v1, repos, mqClient)
-			// [DEPRECATED] payRoutes.RegisterPaymentRoutes(v1, repos, mqClient, db)
-		// [DEPRECATED] cartRoutes.RegisterCartRoutes(v1, repos, db, mqClient)
-		// [DEPRECATED] flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, mqClient)
-		userRoutes.RegisterAuthRoutes(v1, repos, db)
-		userRoutes.RegisterPermissionRoutes(v1, repos, db)
-		userRoutes.RegisterRoleRoutes(v1, repos, db)
+		tokenService := user.NewTokenService("your-secret-key-change-in-production", repos.Role)
+		user.RegisterUserRoutes(v1, db, repos.User, repos.UserInfo)
+		user.RegisterAuthRoutes(v1, db, tokenService, repos.Role, repos.User, repos.UserInfo, repos.LoginHistory)
+		user.RegisterPermissionRoutes(v1, db, repos.Permission, repos.Role)
+		user.RegisterRoleRoutes(v1, db, repos.Role)
 		notifSvc = notifRoutes.RegisterNotificationRoutes(v1, repos, db, mqClient)
 		reviewRoutes.RegisterReviewRoutes(v1, repos, db, mqClient)
 		user.RegisterAddressRoutes(v1, db)

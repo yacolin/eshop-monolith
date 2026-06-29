@@ -1,16 +1,13 @@
 package repository
 
 import (
-	repoModels "eshop-monolith/internal/infra/repository/models"
-
 	"eshop-monolith/internal/product"
+	"eshop-monolith/internal/user"
 
 	invRepos "eshop-monolith/internal/inventory/domain/repositories"
 	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
 
 	orderRepos "eshop-monolith/internal/order/domain/repositories"
-
-	userRepos "eshop-monolith/internal/user/domain/repositories"
 
 	"eshop-monolith/pkg/config"
 	"fmt"
@@ -24,7 +21,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Config 数据库配置
 type Config struct {
 	Host         string
 	Port         int
@@ -36,7 +32,6 @@ type Config struct {
 	MaxOpenConns int
 }
 
-// RedisConfig Redis配置
 type RedisConfig struct {
 	Host     string
 	Port     int
@@ -45,17 +40,15 @@ type RedisConfig struct {
 	PoolSize int
 }
 
-// InitDB 初始化数据库连接
-// resolveSocket 解析 socket 路径：配置明确设置时直接使用，否则自动探测常见路径
 func resolveSocket(cfgSocket string) string {
 	if cfgSocket != "" {
 		return cfgSocket
 	}
 	for _, p := range []string{
-		"/tmp/mysql.sock",                // macOS Homebrew
-		"/var/run/mysqld/mysqld.sock",   // Linux/WSL2 Debian/Ubuntu
-		"/run/mysqld/mysqld.sock",       // Linux/WSL2 systemd
-		"/var/lib/mysql/mysql.sock",     // Linux RPM/CentOS
+		"/tmp/mysql.sock",
+		"/var/run/mysqld/mysqld.sock",
+		"/run/mysqld/mysqld.sock",
+		"/var/lib/mysql/mysql.sock",
 	} {
 		if _, err := os.Stat(p); err == nil {
 			return p
@@ -63,6 +56,7 @@ func resolveSocket(cfgSocket string) string {
 	}
 	return ""
 }
+
 func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	var dsn string
 	sock := resolveSocket(cfg.Socket)
@@ -91,20 +85,7 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 	sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 
-	// 自动迁移表结构
 	if err := db.AutoMigrate(
-
-		&repoModels.UserPO{},
-		&repoModels.UserInfoPO{},
-		&repoModels.PermissionPO{},
-		&repoModels.RolePO{},
-		&repoModels.UserIdentityPO{},
-		&repoModels.UserRolePO{},
-		&repoModels.RolePermissionPO{},
-		&repoModels.AuthTokenPO{},
-		&repoModels.LoginHistoryPO{},
-
-		&repoModels.NotificationPO{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
@@ -112,7 +93,6 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 	return db, nil
 }
 
-// InitRedis 初始化Redis连接
 func InitRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
@@ -124,23 +104,19 @@ func InitRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	return client, nil
 }
 
-// Repositories 仓储集合（旧仓库字段保留桩类型供下游模块编译）
 type Repositories struct {
 	Redis        *redis.Client
 	Brand        product.IbrandRepository
 	Inventory    invRepos.IinventoryRepository
 	Order        orderRepos.IorderRepository
 	Payment      paymentRepos.IPaymentRepository
-	User         userRepos.IuserRepository
-	UserInfo     userRepos.IuserInfoRepository
-	UserIdentity userRepos.IuserIdentityRepository
-	AuthToken    userRepos.IauthTokenRepository
-	LoginHistory userRepos.IloginHistoryRepository
-	Role         userRepos.IroleRepository
-	Permission   userRepos.IpermissionRepository
+	User         user.IuserRepository
+	UserInfo     user.IuserInfoRepository
+	LoginHistory user.IloginHistoryRepository
+	Role         user.IroleRepository
+	Permission   user.IpermissionRepository
 }
 
-// NewRepositories 创建仓储集合
 func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 	return &Repositories{
 		Redis:        redisClient,
@@ -148,12 +124,10 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Inventory:    invRepos.NewInventoryRepository(db),
 		Order:        orderRepos.NewOrderRepository(db),
 		Payment:      paymentRepos.NewPaymentRepository(db),
-		User:         userRepos.NewUserRepository(db),
-		UserInfo:     userRepos.NewUserInfoRepository(db),
-		UserIdentity: userRepos.NewUserIdentityRepository(db),
-		AuthToken:    userRepos.NewAuthTokenRepository(db),
-		LoginHistory: userRepos.NewLoginHistoryRepository(db),
-		Role:         userRepos.NewRoleRepository(db),
-		Permission:   userRepos.NewPermissionRepository(db),
+		User:         user.NewUserRepository(db),
+		UserInfo:     user.NewUserInfoRepository(db),
+		LoginHistory: user.NewLoginHistoryRepository(db),
+		Role:         user.NewRoleRepository(db),
+		Permission:   user.NewPermissionRepository(db),
 	}
 }

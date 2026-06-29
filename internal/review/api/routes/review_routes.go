@@ -8,7 +8,7 @@ import (
 	"eshop-monolith/internal/review/api/handlers"
 	"eshop-monolith/internal/review/domain/repositories"
 	"eshop-monolith/internal/review/service"
-	usermw "eshop-monolith/internal/user/middleware"
+	"eshop-monolith/internal/user"
 	"eshop-monolith/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -48,9 +48,9 @@ func RegisterReviewRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, d
 	}
 
 	// ---- 管理端路由（需要管理员权限）：审核、回复、删除 ----
-	roleConfig := usermw.NewRequireRoleConfig(repos.Role)
+	roleConfig := user.NewRequireRoleConfig(repos.Role)
 	admin := v1.Group("/admin/reviews")
-	admin.Use(middleware.JWTAuth(), usermw.RequireAdmin(roleConfig))
+	admin.Use(middleware.JWTAuth(), user.RequireAdmin(roleConfig))
 	{
 		admin.GET("/pending", reviewHandler.ListPendingReviews)
 		admin.PATCH("/:id/moderate", reviewHandler.ModerateReview)
@@ -103,17 +103,16 @@ func buildOrderLookup(repos *repository.Repositories, db *gorm.DB) service.Order
 // buildUserLookup 构造「用户 ID → 用户信息快照」适配器
 func buildUserLookup(repos *repository.Repositories) service.UserInfoLookup {
 	return func(ctx context.Context, userID int64) (*service.UserInfoSnapshot, error) {
-		info, err := repos.UserInfo.GetUserInfoByUserID(ctx, userID)
+		user, err := repos.User.FindByID(ctx, userID)
 		if err != nil {
-			// 用户信息缺失时返回空快照，使评论仍可展示（昵称为空）
 			if err == gorm.ErrRecordNotFound {
 				return &service.UserInfoSnapshot{}, nil
 			}
 			return nil, err
 		}
 		return &service.UserInfoSnapshot{
-			Nickname: info.Nickname,
-			Avatar:   info.Avatar,
+			Nickname: user.Nickname,
+			Avatar:   user.Avatar,
 		}, nil
 	}
 }
