@@ -1,11 +1,9 @@
 package repository
 
 import (
+	"eshop-monolith/internal/inventory"
 	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/user"
-
-	invRepos "eshop-monolith/internal/inventory/domain/repositories"
-	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
 
 	orderRepos "eshop-monolith/internal/order/domain/repositories"
 
@@ -107,9 +105,8 @@ func InitRedis(cfg config.RedisConfig) (*redis.Client, error) {
 type Repositories struct {
 	Redis        *redis.Client
 	Brand        product.IbrandRepository
-	Inventory    invRepos.IinventoryRepository
+	Inventory    inventory.IinventoryRepository
 	Order        orderRepos.IorderRepository
-	Payment      paymentRepos.IPaymentRepository
 	User         user.IuserRepository
 	UserInfo     user.IuserInfoRepository
 	LoginHistory user.IloginHistoryRepository
@@ -121,9 +118,8 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 	return &Repositories{
 		Redis:        redisClient,
 		Brand:        product.NewBrandRepository(db),
-		Inventory:    invRepos.NewInventoryRepository(db),
+		Inventory:    inventory.NewInventoryRepository(db),
 		Order:        orderRepos.NewOrderRepository(db),
-		Payment:      paymentRepos.NewPaymentRepository(db),
 		User:         user.NewUserRepository(db),
 		UserInfo:     user.NewUserInfoRepository(db),
 		LoginHistory: user.NewLoginHistoryRepository(db),
