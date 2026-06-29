@@ -20,8 +20,17 @@ func NewAddressHandler(svc *AddressService) *AddressHandler {
 // currentUserID 从 JWT 上下文中提取当前用户 ID
 func currentUserID(c *gin.Context) int64 {
 	v, _ := c.Get("user_id")
-	id, _ := v.(int64)
-	return id
+	switch id := v.(type) {
+	case int64:
+		return id
+	case uint:
+		return int64(id)
+	case float64:
+		return int64(id)
+	case int:
+		return int64(id)
+	}
+	return 0
 }
 
 // Create 创建地址
