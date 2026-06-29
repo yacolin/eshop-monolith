@@ -13,14 +13,14 @@ import (
 
 // RegisterCartRoutes 注册购物车相关路由
 func RegisterCartRoutes(router *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, rabbit *rabbitmq.Client) {
-	// 创建库存服务实例
-	inventoryService := invService.NewInventoryService(repos.Inventory, repos.Sku, repos.Product, rabbit)
+	// 创建旧库存服务实例（桩，原依赖已迁移至商品中心/库存中心）
+	inventoryService := invService.NewInventoryService()
 
-	// 创建产品服务实例
-	productService := invService.NewProductService(repos.Product, repos.Inventory, repos.Sku, rabbit, nil, repos.Redis)
+	// 创建旧产品服务实例（桩）
+	productService := invService.NewProductService()
 
-	// 创建 SKU 服务实例
-	skuService := invService.NewSkuService(repos.Sku, repos.Product, rabbit, db)
+	// 创建旧 SKU 服务实例（桩）
+	skuService := invService.NewSkuService()
 
 	// 创建购物车服务实例
 	cartService := service.NewCartService(repos.Cart, inventoryService, productService, skuService, rabbit)

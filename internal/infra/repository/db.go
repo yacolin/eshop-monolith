@@ -98,15 +98,6 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 
 	// 自动迁移表结构
 	if err := db.AutoMigrate(
-		&repoModels.CategoryPO{},
-		&repoModels.AttributePO{},
-		&repoModels.AttributeValuePO{},
-		&repoModels.ProductPO{},
-		&repoModels.InventoryPO{},
-
-		&repoModels.ProductCategoryPO{},
-		&repoModels.CategoryAttributePO{},
-
 		&repoModels.OrderPO{},
 		&repoModels.OrderItemPO{},
 
@@ -133,9 +124,6 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&repoModels.PromotionPO{},
 		&repoModels.PromotionProductPO{},
 
-			&repoModels.SkuPO{},
-			&repoModels.SkuAttributePO{},
-			&repoModels.ProductAttributeValuePO{},
 
 		&repoModels.NotificationPO{},
 
@@ -159,13 +147,11 @@ func InitRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	return client, nil
 }
 
-// Repositories 仓储集合
+// Repositories 仓储集合（旧仓库字段保留桩类型供下游模块编译）
 type Repositories struct {
 	Redis        *redis.Client
 	Brand        product.IbrandRepository
 	Inventory    invRepos.IinventoryRepository
-	Product      invRepos.IproductRepository
-	Category     invRepos.IcategoryRepository
 	Order        orderRepos.IorderRepository
 	User         userRepos.IuserRepository
 	UserInfo     userRepos.IuserInfoRepository
@@ -176,11 +162,7 @@ type Repositories struct {
 	Permission   userRepos.IpermissionRepository
 	Cart         cartRepos.IcartRepository
 	Payment      paymentRepos.IPaymentRepository
-	Sku                  invRepos.IskuRepository
-	ProductAttribute     invRepos.IproductAttributeRepository
-	Attribute            invRepos.IattributeRepository
-	CategoryAttribute    invRepos.IcategoryAttributeRepository
-	Address              addressRepos.IaddressRepository
+	Address      addressRepos.IaddressRepository
 }
 
 // NewRepositories 创建仓储集合
@@ -189,8 +171,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Redis:        redisClient,
 		Brand:        product.NewBrandRepository(db),
 		Inventory:    invRepos.NewInventoryRepository(db),
-		Product:      invRepos.NewProductRepository(db),
-		Category:     invRepos.NewCategoryRepository(db),
 		Order:        orderRepos.NewOrderRepository(db),
 		User:         userRepos.NewUserRepository(db),
 		UserInfo:     userRepos.NewUserInfoRepository(db),
@@ -201,10 +181,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Permission:   userRepos.NewPermissionRepository(db),
 		Cart:         cartRepos.NewCachedCartRepository(cartRepos.NewCartRepository(db), redisClient, db),
 		Payment:      paymentRepos.NewPaymentRepository(db),
-		Sku:                  invRepos.NewSkuRepository(db),
-		ProductAttribute:     invRepos.NewProductAttributeRepository(db),
-		Attribute:            invRepos.NewAttributeRepository(db),
-		CategoryAttribute:    invRepos.NewCategoryAttributeRepository(db),
-		Address:              addressRepos.NewAddressRepository(db),
+		Address:      addressRepos.NewAddressRepository(db),
 	}
 }

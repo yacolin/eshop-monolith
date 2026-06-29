@@ -210,4 +210,4 @@ resume.md
 docs/
 
 scripts/*.sh
-scripts/*.bashbin/
+scripts/demo.bash
