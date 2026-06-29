@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 
-	flashEvents "eshop-monolith/internal/flashsale/events"
 	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/inventory"
 	"eshop-monolith/internal/trade"
@@ -92,18 +91,6 @@ func (s *NotificationService) HandleMessage(msg rabbitmq.Message) error {
 		var e trade.OrderCancelledEvent
 		json.Unmarshal(msg.Payload, &e)
 		s.handleOrderCancelled(e)
-	case "flash-order.created":
-		var e flashEvents.FlashOrderCreatedEvent
-		json.Unmarshal(msg.Payload, &e)
-		s.handleFlashOrderCreated(e)
-	case "flash-order.paid":
-		var e flashEvents.FlashOrderPaidEvent
-		json.Unmarshal(msg.Payload, &e)
-		s.handleFlashOrderPaid(e)
-	case "flash-order.cancelled":
-		var e flashEvents.FlashOrderCancelledEvent
-		json.Unmarshal(msg.Payload, &e)
-		s.handleFlashOrderCancelled(e)
 	case "payment.refund.created":
 		var e trade.RefundCreatedEvent
 		json.Unmarshal(msg.Payload, &e)
@@ -163,30 +150,6 @@ func (s *NotificationService) handleOrderCancelled(e trade.OrderCancelledEvent) 
 	}
 	s.CreateNotification(context.Background(), userID, "订单已取消",
 		fmt.Sprintf("您的订单 #%d 已取消", e.OrderID), ChannelInApp, CategoryOrder)
-}
-
-func (s *NotificationService) handleFlashOrderCreated(e flashEvents.FlashOrderCreatedEvent) {
-	if e.UserID == 0 {
-		return
-	}
-	s.CreateNotification(context.Background(), e.UserID, "抢购成功",
-		fmt.Sprintf("您已成功抢购商品，订单 #%d 待支付", e.OrderID), ChannelInApp, CategoryMarketing)
-}
-
-func (s *NotificationService) handleFlashOrderPaid(e flashEvents.FlashOrderPaidEvent) {
-	if e.UserID == 0 {
-		return
-	}
-	s.CreateNotification(context.Background(), e.UserID, "闪购订单支付成功",
-		fmt.Sprintf("闪购订单 #%d 已支付", e.OrderID), ChannelInApp, CategoryMarketing)
-}
-
-func (s *NotificationService) handleFlashOrderCancelled(e flashEvents.FlashOrderCancelledEvent) {
-	if e.UserID == 0 {
-		return
-	}
-	s.CreateNotification(context.Background(), e.UserID, "闪购订单已取消",
-		fmt.Sprintf("闪购订单 #%d 已取消", e.OrderID), ChannelInApp, CategoryMarketing)
 }
 
 func (s *NotificationService) handleRefundCreated(e trade.RefundCreatedEvent) {

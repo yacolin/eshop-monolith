@@ -1,6 +1,7 @@
 package trade
 
 import (
+	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/product"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
@@ -68,10 +69,10 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 	response.Success(c, result)
 }
 
-func RegisterOrderRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
+func RegisterOrderRoutes(v1 *gin.RouterGroup, db *gorm.DB, mqClient *rabbitmq.Client) {
 	repo := NewOrderRepository(db)
 	skuA := &skuAdapter{repo: product.NewSpuRepository(db)}
-	svc := NewOrderService(repo, skuA, &inventorySvc{}, db)
+	svc := NewOrderService(repo, skuA, &inventorySvc{}, db, mqClient)
 	h := NewOrderHandler(svc)
 
 	orders := v1.Group("/orders")

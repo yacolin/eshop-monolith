@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"eshop-monolith/internal/infra/rabbitmq"
-	flashEvents "eshop-monolith/internal/flashsale/events"
 	"eshop-monolith/internal/inventory"
 	"eshop-monolith/internal/trade"
 )
@@ -40,12 +39,6 @@ func NewPushMessage(event interface{}, sequenceID int64) *PushMessage {
 	case trade.RefundCreatedEvent:
 		return &PushMessage{Type: "refund.created", SequenceID: sequenceID, Timestamp: now, Data: e}
 
-	// case flashEvents.FlashOrderCreatedEvent:
-		return &PushMessage{Type: "flash.created", SequenceID: sequenceID, Timestamp: now, Data: e}
-	case flashEvents.FlashOrderPaidEvent:
-		return &PushMessage{Type: "flash.paid", SequenceID: sequenceID, Timestamp: now, Data: e}
-	case flashEvents.FlashOrderCancelledEvent:
-		return &PushMessage{Type: "flash.cancelled", SequenceID: sequenceID, Timestamp: now, Data: e}
 
 	case inventory.InventoryLowEvent:
 		return &PushMessage{Type: "inventory.low", SequenceID: sequenceID, Timestamp: now, Data: e}
@@ -76,12 +69,6 @@ func extractUserID(event interface{}) int64 {
 	case trade.OrderCancelledEvent:
 		return parseCustomerID(e.CustomerID)
 
-	// case flashEvents.FlashOrderCreatedEvent:
-		return e.UserID
-	case flashEvents.FlashOrderPaidEvent:
-		return e.UserID
-	case flashEvents.FlashOrderCancelledEvent:
-		return e.UserID
 
 	case trade.PaymentSuccessEvent:
 		return 0

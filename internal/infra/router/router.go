@@ -102,7 +102,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		product.RegisterProductRoutes(v1, db)
 		product.RegisterCategoryBrandRoutes(v1, db)
 		marketing.RegisterPromotionRoutes(v1, db)
-		trade.RegisterTradeRoutes(v1, db)
+		trade.RegisterTradeRoutes(v1, db, mqClient)
 			inventory.RegisterInventoryRoutes(v1, db)
 		// categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
 		// productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)

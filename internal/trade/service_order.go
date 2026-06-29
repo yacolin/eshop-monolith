@@ -3,22 +3,24 @@ package trade
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
-)
 
-// ── 外部依赖接口 ─────────────────────────────────
+	"eshop-monolith/internal/infra/rabbitmq"
+)
 
 type OrderService struct {
 	repo     IorderRepository
 	skuSvc   SkuProvider
 	invSvc   InventoryService
 	db       *gorm.DB
+	eventBus *rabbitmq.Client
 }
 
-func NewOrderService(repo IorderRepository, skuSvc SkuProvider, invSvc InventoryService, db *gorm.DB) *OrderService {
-	return &OrderService{repo: repo, skuSvc: skuSvc, invSvc: invSvc, db: db}
+func NewOrderService(repo IorderRepository, skuSvc SkuProvider, invSvc InventoryService, db *gorm.DB, eventBus *rabbitmq.Client) *OrderService {
+	return &OrderService{repo: repo, skuSvc: skuSvc, invSvc: invSvc, db: db, eventBus: eventBus}
 }
 
 type OrderListResult struct {
@@ -141,7 +143,39 @@ func (s *OrderService) UpdateStatus(ctx context.Context, orderNo string, req *Up
 	s.db.Model(order).Updates(updates)
 	s.repo.CreateLog(ctx, &OrderLog{OrderID: order.ID, OrderNo: orderNo, FromStatus: order.Status, ToStatus: req.Status, Note: req.Note})
 	order.Status = req.Status
+
+	s.publishOrderEvent(ctx, order, req.Status)
 	return order, nil
+}
+
+func (s *OrderService) publishOrderEvent(ctx context.Context, order *Order, status string) {
+	if s.eventBus == nil {
+		return
+	}
+	switch status {
+	case "paid":
+		s.eventBus.Publish(ctx, OrderPaidEvent{
+			CustomerID:  strconv.FormatInt(order.UserID, 10),
+			OrderID:     order.ID,
+			TotalAmount: order.PayAmount,
+		})
+	case "shipped":
+		s.eventBus.Publish(ctx, OrderShippedEvent{
+			CustomerID: strconv.FormatInt(order.UserID, 10),
+			OrderID:    order.ID,
+		})
+	case "delivered":
+		s.eventBus.Publish(ctx, OrderDeliveredEvent{
+			CustomerID: strconv.FormatInt(order.UserID, 10),
+			OrderID:    order.ID,
+		})
+	case "cancelled":
+		s.eventBus.Publish(ctx, OrderCancelledEvent{
+			CustomerID: strconv.FormatInt(order.UserID, 10),
+			OrderID:    order.ID,
+			UserID:     order.UserID,
+		})
+	}
 }
 
 var validTransitions = map[string][]string{
