@@ -15,7 +15,7 @@ SELECT (SELECT id FROM usr_roles WHERE name = 'admin'), id FROM usr_permissions;
 -- ==================== user 角色：基础购物操作 ====================
 INSERT INTO usr_role_permissions (role_id, permission_id)
 SELECT (SELECT id FROM usr_roles WHERE name = 'user'), id FROM usr_permissions WHERE name IN (
-    'product:read', 'category:read', 'inventory:read', 'sku:read',
+    'product:read', 'category:read', 'brand:read', 'inventory:read', 'sku:read',
     'attr:read', 'attr_val:read',
     'address:read', 'address:create', 'address:update', 'address:delete',
     'order:read', 'order:create', 'order:cancel',
@@ -31,11 +31,11 @@ SELECT (SELECT id FROM usr_roles WHERE name = 'user'), id FROM usr_permissions W
 -- ==================== operator 角色：运营操作 ====================
 INSERT INTO usr_role_permissions (role_id, permission_id)
 SELECT (SELECT id FROM usr_roles WHERE name = 'operator'), id FROM usr_permissions WHERE name IN (
-    'product:read', 'category:read', 'inventory:read', 'sku:read',
+    'product:read', 'category:read', 'brand:read', 'inventory:read', 'sku:read',
     'attr:read', 'attr_val:read', 'address:read',
     'order:read', 'order:update', 'order:cancel',
     'payment:read', 'refund:read', 'refund:update',
-    'review:read', 'review:moderate',
+    'review:read', 'review:moderate', 'review:reply',
     'notification:read', 'notification:update', 'notification:send',
     'promotion:read',
     'user:read'
@@ -50,7 +50,7 @@ SELECT (SELECT id FROM usr_roles WHERE name = 'editor'), id FROM usr_permissions
     'attr:read', 'attr_val:read', 'address:read',
     'order:read',
     'promotion:read', 'promotion:create', 'promotion:update',
-    'review:read', 'review:moderate',
+    'review:read', 'review:moderate', 'review:reply',
     'notification:read',
     'user:read'
 );
@@ -97,7 +97,7 @@ SELECT (SELECT id FROM usr_roles WHERE name = 'support'), id FROM usr_permission
     'attr:read', 'attr_val:read', 'address:read',
     'order:read', 'order:update', 'order:cancel',
     'payment:read', 'refund:read', 'refund:update',
-    'review:read', 'review:moderate',
+    'review:read', 'review:moderate', 'review:reply',
     'notification:read', 'notification:update', 'notification:send',
     'user:read', 'dashboard:read'
 );
@@ -105,7 +105,7 @@ SELECT (SELECT id FROM usr_roles WHERE name = 'support'), id FROM usr_permission
 -- ==================== analyst 角色：数据分析 ====================
 INSERT INTO usr_role_permissions (role_id, permission_id)
 SELECT (SELECT id FROM usr_roles WHERE name = 'analyst'), id FROM usr_permissions WHERE name IN (
-    'product:read', 'category:read', 'inventory:read',
+    'product:read', 'category:read', 'brand:read', 'inventory:read',
     'order:read', 'cart:read', 'payment:read', 'refund:read',
     'promotion:read', 'review:read', 'notification:read', 'user:read',
     'sku:read', 'attr:read', 'attr_val:read', 'address:read',
