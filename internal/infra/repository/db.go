@@ -6,14 +6,14 @@ import (
 	"eshop-monolith/internal/product"
 
 	invRepos "eshop-monolith/internal/inventory/domain/repositories"
-
-	userRepos "eshop-monolith/internal/user/domain/repositories"
+	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
 
 	orderRepos "eshop-monolith/internal/order/domain/repositories"
 
-	cartRepos "eshop-monolith/internal/cart/domain/repositories"
+	userRepos "eshop-monolith/internal/user/domain/repositories"
 
-	paymentRepos "eshop-monolith/internal/payment/domain/repositories"
+
+
 
 	addressRepos "eshop-monolith/internal/address/domain/repositories"
 
@@ -98,8 +98,6 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 
 	// 自动迁移表结构
 	if err := db.AutoMigrate(
-		&repoModels.OrderPO{},
-		&repoModels.OrderItemPO{},
 
 		&repoModels.UserPO{},
 		&repoModels.UserInfoPO{},
@@ -111,18 +109,8 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&repoModels.AuthTokenPO{},
 		&repoModels.LoginHistoryPO{},
 
-		&repoModels.PaymentPO{},
-		&repoModels.PaymentMethodPO{},
-		&repoModels.PaymentTransactionPO{},
-		&repoModels.RefundPO{},
 
-		&repoModels.CartPO{},
-		&repoModels.CartItemPO{},
 
-		&repoModels.CouponPO{},
-		&repoModels.UserCouponPO{},
-		&repoModels.PromotionPO{},
-		&repoModels.PromotionProductPO{},
 
 
 		&repoModels.NotificationPO{},
@@ -153,6 +141,7 @@ type Repositories struct {
 	Brand        product.IbrandRepository
 	Inventory    invRepos.IinventoryRepository
 	Order        orderRepos.IorderRepository
+	Payment      paymentRepos.IPaymentRepository
 	User         userRepos.IuserRepository
 	UserInfo     userRepos.IuserInfoRepository
 	UserIdentity userRepos.IuserIdentityRepository
@@ -160,8 +149,6 @@ type Repositories struct {
 	LoginHistory userRepos.IloginHistoryRepository
 	Role         userRepos.IroleRepository
 	Permission   userRepos.IpermissionRepository
-	Cart         cartRepos.IcartRepository
-	Payment      paymentRepos.IPaymentRepository
 	Address      addressRepos.IaddressRepository
 }
 
@@ -172,6 +159,7 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		Brand:        product.NewBrandRepository(db),
 		Inventory:    invRepos.NewInventoryRepository(db),
 		Order:        orderRepos.NewOrderRepository(db),
+		Payment:      paymentRepos.NewPaymentRepository(db),
 		User:         userRepos.NewUserRepository(db),
 		UserInfo:     userRepos.NewUserInfoRepository(db),
 		UserIdentity: userRepos.NewUserIdentityRepository(db),
@@ -179,8 +167,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		LoginHistory: userRepos.NewLoginHistoryRepository(db),
 		Role:         userRepos.NewRoleRepository(db),
 		Permission:   userRepos.NewPermissionRepository(db),
-		Cart:         cartRepos.NewCachedCartRepository(cartRepos.NewCartRepository(db), redisClient, db),
-		Payment:      paymentRepos.NewPaymentRepository(db),
 		Address:      addressRepos.NewAddressRepository(db),
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/cart"
+	orderSvcPkg "eshop-monolith/internal/order/service"
 	"eshop-monolith/internal/order"
 	"eshop-monolith/internal/payment"
 	"eshop-monolith/internal/inventory"
@@ -18,7 +19,6 @@ import (
 	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	notifSvcPkg "eshop-monolith/internal/notification/service"
-	orderSvcPkg "eshop-monolith/internal/order/service"
 	reviewRoutes "eshop-monolith/internal/review/api/routes"
 	addressRoutes "eshop-monolith/internal/address/api/routes"
 	userRoutes "eshop-monolith/internal/user/api/routes"
@@ -41,8 +41,12 @@ import (
 	"gorm.io/gorm"
 )
 
+
 // SetupRouter 设置路由
 func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB, mqClient *rabbitmq.Client) *gin.Engine {
+	orderSvc := &orderSvcPkg.OrderService{}
+	
+
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -75,7 +79,6 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	router.Use(middleware.ErrorHandler())
 
 	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册和启动预热）
-	var orderSvc *orderSvcPkg.OrderService
 	var flashSvc *flashSvcPkg.FlashService
 	var dashboardSvc *dashboardSvcPkg.DashboardService
 	var notifSvc *notifSvcPkg.NotificationService
