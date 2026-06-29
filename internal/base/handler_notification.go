@@ -23,8 +23,17 @@ func NewNotificationHandler(svc *NotificationService) *NotificationHandler {
 
 func currentUserID(c *gin.Context) int64 {
 	v, _ := c.Get("user_id")
-	id, _ := v.(int64)
-	return id
+	switch id := v.(type) {
+	case int64:
+		return id
+	case uint:
+		return int64(id)
+	case float64:
+		return int64(id)
+	case int:
+		return int64(id)
+	}
+	return 0
 }
 
 // ListNotifications 通知列表
