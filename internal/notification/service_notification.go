@@ -21,13 +21,14 @@ func NewNotificationService(repo InotificationRepository) *NotificationService {
 	return &NotificationService{repo: repo}
 }
 
-func (s *NotificationService) CreateNotification(ctx context.Context, userID int64, title, content string, notifType string) (*Notification, error) {
+func (s *NotificationService) CreateNotification(ctx context.Context, userID int64, title, content string, channel, category int8) (*Notification, error) {
 	n := &Notification{
-		UserID:  userID,
-		Title:   title,
-		Content: content,
-		Type:    notifType,
-		IsRead:  false,
+		UserID:   userID,
+		Title:    title,
+		Content:  content,
+		Channel:  channel,
+		Category: category,
+		IsRead:   false,
 	}
 	if err := s.repo.Create(ctx, n); err != nil {
 		return nil, fmt.Errorf("create notification failed: %w", err)
@@ -134,7 +135,7 @@ func (s *NotificationService) handleOrderPaid(e trade.OrderPaidEvent) {
 		return
 	}
 	s.CreateNotification(context.Background(), userID, "订单支付成功",
-		fmt.Sprintf("您的订单 #%d 已支付成功", e.OrderID), NotifTypeOrder)
+		fmt.Sprintf("您的订单 #%d 已支付成功", e.OrderID), ChannelInApp, CategoryOrder)
 }
 
 func (s *NotificationService) handleOrderShipped(e trade.OrderShippedEvent) {
@@ -143,7 +144,7 @@ func (s *NotificationService) handleOrderShipped(e trade.OrderShippedEvent) {
 		return
 	}
 	s.CreateNotification(context.Background(), userID, "订单已发货",
-		fmt.Sprintf("您的订单 #%d 已发货", e.OrderID), NotifTypeOrder)
+		fmt.Sprintf("您的订单 #%d 已发货", e.OrderID), ChannelInApp, CategoryOrder)
 }
 
 func (s *NotificationService) handleOrderDelivered(e trade.OrderDeliveredEvent) {
@@ -152,7 +153,7 @@ func (s *NotificationService) handleOrderDelivered(e trade.OrderDeliveredEvent) 
 		return
 	}
 	s.CreateNotification(context.Background(), userID, "订单已签收",
-		fmt.Sprintf("您的订单 #%d 已签收", e.OrderID), NotifTypeOrder)
+		fmt.Sprintf("您的订单 #%d 已签收", e.OrderID), ChannelInApp, CategoryOrder)
 }
 
 func (s *NotificationService) handleOrderCancelled(e trade.OrderCancelledEvent) {
@@ -161,7 +162,7 @@ func (s *NotificationService) handleOrderCancelled(e trade.OrderCancelledEvent) 
 		return
 	}
 	s.CreateNotification(context.Background(), userID, "订单已取消",
-		fmt.Sprintf("您的订单 #%d 已取消", e.OrderID), NotifTypeOrder)
+		fmt.Sprintf("您的订单 #%d 已取消", e.OrderID), ChannelInApp, CategoryOrder)
 }
 
 func (s *NotificationService) handleFlashOrderCreated(e flashEvents.FlashOrderCreatedEvent) {
@@ -169,7 +170,7 @@ func (s *NotificationService) handleFlashOrderCreated(e flashEvents.FlashOrderCr
 		return
 	}
 	s.CreateNotification(context.Background(), e.UserID, "抢购成功",
-		fmt.Sprintf("您已成功抢购商品，订单 #%d 待支付", e.OrderID), NotifTypeFlash)
+		fmt.Sprintf("您已成功抢购商品，订单 #%d 待支付", e.OrderID), ChannelInApp, CategoryMarketing)
 }
 
 func (s *NotificationService) handleFlashOrderPaid(e flashEvents.FlashOrderPaidEvent) {
@@ -177,7 +178,7 @@ func (s *NotificationService) handleFlashOrderPaid(e flashEvents.FlashOrderPaidE
 		return
 	}
 	s.CreateNotification(context.Background(), e.UserID, "闪购订单支付成功",
-		fmt.Sprintf("闪购订单 #%d 已支付", e.OrderID), NotifTypeFlash)
+		fmt.Sprintf("闪购订单 #%d 已支付", e.OrderID), ChannelInApp, CategoryMarketing)
 }
 
 func (s *NotificationService) handleFlashOrderCancelled(e flashEvents.FlashOrderCancelledEvent) {
@@ -185,7 +186,7 @@ func (s *NotificationService) handleFlashOrderCancelled(e flashEvents.FlashOrder
 		return
 	}
 	s.CreateNotification(context.Background(), e.UserID, "闪购订单已取消",
-		fmt.Sprintf("闪购订单 #%d 已取消", e.OrderID), NotifTypeFlash)
+		fmt.Sprintf("闪购订单 #%d 已取消", e.OrderID), ChannelInApp, CategoryMarketing)
 }
 
 func (s *NotificationService) handleRefundCreated(e trade.RefundCreatedEvent) {
@@ -198,5 +199,5 @@ func (s *NotificationService) handleRefundFailed(e trade.RefundFailedEvent) {
 
 func (s *NotificationService) handleInventoryLow(e inventory.InventoryLowEvent) {
 	s.CreateNotification(context.Background(), 0, "库存预警",
-		fmt.Sprintf("商品 %s 库存不足，当前库存 %d，阈值 %d", e.SkuID, e.Quantity, e.Threshold), NotifTypeSystem)
+		fmt.Sprintf("商品 %s 库存不足，当前库存 %d，阈值 %d", e.SkuID, e.Quantity, e.Threshold), ChannelInApp, CategorySystem)
 }

@@ -7,18 +7,31 @@ type NotificationListReq struct {
 }
 
 type NotificationResp struct {
-	ID        int64  `json:"id"`
-	UserID    int64  `json:"user_id"`
-	Title     string `json:"title"`
-	Content   string `json:"content"`
-	Type      string `json:"type"`
-	IsRead    bool   `json:"is_read"`
-	ReadAt    int64  `json:"read_at,omitempty"`
-	CreatedAt int64  `json:"created_at"`
+	ID              int64  `json:"id"`
+	UserID          int64  `json:"user_id"`
+	Title           string `json:"title"`
+	Content         string `json:"content"`
+	ContentTemplate string `json:"content_template,omitempty"`
+	TemplateParams  string `json:"template_params,omitempty"`
+	Channel         int8   `json:"channel"`
+	Category        int8   `json:"category"`
+	TargetType      string `json:"target_type,omitempty"`
+	TargetID        *int64 `json:"target_id,omitempty"`
+	RedirectURL     string `json:"redirect_url,omitempty"`
+	IconURL         string `json:"icon_url,omitempty"`
+	IsRead          bool   `json:"is_read"`
+	ReadAt          int64  `json:"read_at,omitempty"`
+	IsProcessed     bool   `json:"is_processed"`
+	ProcessedAt     int64  `json:"processed_at,omitempty"`
+	ProcessResult   string `json:"process_result,omitempty"`
+	Priority        int8   `json:"priority"`
+	CreatedBy       int64  `json:"created_by"`
+	CreatedAt       int64  `json:"created_at"`
+	UpdatedAt       int64  `json:"updated_at"`
 }
 
 type NotificationListResult struct {
-	Total int64              `json:"total"`
+	Total int64               `json:"total"`
 	List  []*NotificationResp `json:"list"`
 }
 

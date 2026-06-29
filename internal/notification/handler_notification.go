@@ -137,7 +137,7 @@ func (h *NotificationHandler) SendSystemNotification(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	if _, err := h.svc.CreateNotification(c, req.UserID, req.Title, req.Content, NotifTypeSystem); err != nil {
+	if _, err := h.svc.CreateNotification(c, req.UserID, req.Title, req.Content, ChannelInApp, CategorySystem); err != nil {
 		c.Error(err)
 		return
 	}
@@ -148,16 +148,31 @@ func (h *NotificationHandler) SendSystemNotification(c *gin.Context) {
 
 func toResp(n *Notification) *NotificationResp {
 	r := &NotificationResp{
-		ID:        n.ID,
-		UserID:    n.UserID,
-		Title:     n.Title,
-		Content:   n.Content,
-		Type:      n.Type,
-		IsRead:    n.IsRead,
-		CreatedAt: n.CreatedAt.UnixMilli(),
+		ID:              n.ID,
+		UserID:          n.UserID,
+		Title:           n.Title,
+		Content:         n.Content,
+		ContentTemplate: n.ContentTemplate,
+		TemplateParams:  n.TemplateParams,
+		Channel:         n.Channel,
+		Category:        n.Category,
+		TargetType:      n.TargetType,
+		TargetID:        n.TargetID,
+		RedirectURL:     n.RedirectURL,
+		IconURL:         n.IconURL,
+		IsRead:          n.IsRead,
+		IsProcessed:     n.IsProcessed,
+		ProcessResult:   n.ProcessResult,
+		Priority:        n.Priority,
+		CreatedBy:       n.CreatedBy,
+		CreatedAt:       n.CreatedAt.UnixMilli(),
+		UpdatedAt:       n.UpdatedAt.UnixMilli(),
 	}
 	if n.ReadAt != nil {
 		r.ReadAt = n.ReadAt.UnixMilli()
+	}
+	if n.ProcessedAt != nil {
+		r.ProcessedAt = n.ProcessedAt.UnixMilli()
 	}
 	return r
 }
