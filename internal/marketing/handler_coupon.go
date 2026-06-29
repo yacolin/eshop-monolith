@@ -6,6 +6,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func userID(c *gin.Context) int64 {
+	v, _ := c.Get("user_id")
+	switch id := v.(type) {
+	case int64:
+		return id
+	case uint:
+		return int64(id)
+	case float64:
+		return int64(id)
+	case int:
+		return int64(id)
+	}
+	return 0
+}
+
 type CouponHandler struct {
 	svc      *PromotionService
 	couponSvc *CouponService
@@ -25,13 +40,13 @@ func NewCouponHandler(svc *PromotionService, couponSvc *CouponService) *CouponHa
 // @Success 200 {object} response.Response
 // @Router /api/v1/coupons/claim [post]
 func (h *CouponHandler) Claim(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	
 	var req ClaimCouponReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
 	}
-	result, err := h.couponSvc.Claim(c, userID.(int64), &req)
+	result, err := h.couponSvc.Claim(c, userID(c), &req)
 	if err != nil {
 		c.Error(err)
 		return
@@ -49,13 +64,13 @@ func (h *CouponHandler) Claim(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Router /api/v1/coupons/use [post]
 func (h *CouponHandler) Use(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	
 	var req UseCouponReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
 	}
-	if err := h.couponSvc.Use(c, userID.(int64), &req); err != nil {
+	if err := h.couponSvc.Use(c, userID(c), &req); err != nil {
 		c.Error(err)
 		return
 	}
@@ -72,13 +87,13 @@ func (h *CouponHandler) Use(c *gin.Context) {
 // @Success 200 {object} response.Response{data=UserPromotionListResult}
 // @Router /api/v1/coupons/me [get]
 func (h *CouponHandler) ListUserCoupons(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	
 	var req UserPromotionListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.Error(err)
 		return
 	}
-	result, err := h.couponSvc.ListUserCoupons(c, userID.(int64), &req)
+	result, err := h.couponSvc.ListUserCoupons(c, userID(c), &req)
 	if err != nil {
 		c.Error(err)
 		return
