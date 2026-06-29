@@ -159,8 +159,7 @@ func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 	{
 		coupon.POST("/claim", ch.Claim)
 		coupon.POST("/use", ch.Use)
-		coupon.GET("", ch.ListUserCoupons)
-		coupon.GET("/mine", ch.ListUserCoupons)
+		coupon.GET("/me", ch.ListUserCoupons)
 	}
 
 	// 秒杀

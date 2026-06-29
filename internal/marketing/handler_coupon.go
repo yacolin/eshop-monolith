@@ -70,7 +70,7 @@ func (h *CouponHandler) Use(c *gin.Context) {
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
 // @Success 200 {object} response.Response{data=UserPromotionListResult}
-// @Router /api/v1/coupons [get]
+// @Router /api/v1/coupons/me [get]
 func (h *CouponHandler) ListUserCoupons(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	var req UserPromotionListReq
