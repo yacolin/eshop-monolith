@@ -346,7 +346,7 @@ func RegisterReviewRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, d
 func buildOrderLookup(repos *repository.Repositories, db *gorm.DB) OrderByItemLookup {
 	return func(ctx context.Context, orderItemID int64) (*OrderSnapshot, error) {
 		var orderID int64
-		if err := db.WithContext(ctx).Table("order_items").
+		if err := db.WithContext(ctx).Table("tx_order_items").
 			Select("order_id").Where("id = ?", orderItemID).
 			Scan(&orderID).Error; err != nil {
 			return nil, err
@@ -358,12 +358,16 @@ func buildOrderLookup(repos *repository.Repositories, db *gorm.DB) OrderByItemLo
 		if err != nil {
 			return nil, err
 		}
-		items := make([]OrderItemSnapshot, 0, len(order.Items))
-		for _, it := range order.Items {
-			items = append(items, OrderItemSnapshot{ID: it.ID, ProductID: it.ProductID})
+		items, err := repos.Order.ListItems(ctx, orderID)
+		if err != nil {
+			return nil, err
+		}
+		itemsSnapshot := make([]OrderItemSnapshot, 0, len(items))
+		for _, it := range items {
+			itemsSnapshot = append(itemsSnapshot, OrderItemSnapshot{ID: it.ID, ProductID: strconv.FormatInt(it.ProductID, 10)})
 		}
 		return &OrderSnapshot{
-			ID: order.ID, CustomerID: order.CustomerID, OrderNo: order.OrderNo, Items: items,
+			ID: order.ID, CustomerID: strconv.FormatInt(order.UserID, 10), OrderNo: order.OrderNo, Items: itemsSnapshot,
 		}, nil
 	}
 }
