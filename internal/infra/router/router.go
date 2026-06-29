@@ -15,7 +15,7 @@ import (
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	notifSvcPkg "eshop-monolith/internal/notification/service"
 	reviewRoutes "eshop-monolith/internal/review/api/routes"
-	addressRoutes "eshop-monolith/internal/address/api/routes"
+	"eshop-monolith/internal/user"
 	userRoutes "eshop-monolith/internal/user/api/routes"
 
 	"eshop-monolith/internal/infra/rabbitmq"
@@ -136,7 +136,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		userRoutes.RegisterRoleRoutes(v1, repos, db)
 		notifSvc = notifRoutes.RegisterNotificationRoutes(v1, repos, db, mqClient)
 		reviewRoutes.RegisterReviewRoutes(v1, repos, db, mqClient)
-		addressRoutes.RegisterAddressRoutes(v1, db, mqClient)
+		user.RegisterAddressRoutes(v1, db)
 		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, mqClient)
 
 		// WebSocket 路由

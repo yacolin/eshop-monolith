@@ -109,6 +109,10 @@ var (
 	ErrRefundNotFound     = &BizError{Code: 6010, Message: "refund not found"}
 	ErrRefundFailed       = &BizError{Code: 6011, Message: "refund failed"}
 
+	// ==================== 域：用户/地址（9001-9099） ====================
+	ErrAddressLimit   = &BizError{Code: 9001, Message: "address limit reached"}
+	ErrAddressNotFound = &BizError{Code: 9002, Message: "address not found"}
+
 	// ==================== 域：订单（7001-7099） ====================
 	ErrInvalidOrderStatus = &BizError{Code: 7002, Message: "invalid order status transition"}
 

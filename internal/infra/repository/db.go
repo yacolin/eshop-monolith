@@ -12,11 +12,6 @@ import (
 
 	userRepos "eshop-monolith/internal/user/domain/repositories"
 
-
-
-
-	addressRepos "eshop-monolith/internal/address/domain/repositories"
-
 	"eshop-monolith/pkg/config"
 	"fmt"
 	"os"
@@ -109,13 +104,7 @@ func InitDB(cfg config.MySQLConfig) (*gorm.DB, error) {
 		&repoModels.AuthTokenPO{},
 		&repoModels.LoginHistoryPO{},
 
-
-
-
-
 		&repoModels.NotificationPO{},
-
-		&repoModels.AddressPO{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
@@ -149,7 +138,6 @@ type Repositories struct {
 	LoginHistory userRepos.IloginHistoryRepository
 	Role         userRepos.IroleRepository
 	Permission   userRepos.IpermissionRepository
-	Address      addressRepos.IaddressRepository
 }
 
 // NewRepositories 创建仓储集合
@@ -167,6 +155,5 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		LoginHistory: userRepos.NewLoginHistoryRepository(db),
 		Role:         userRepos.NewRoleRepository(db),
 		Permission:   userRepos.NewPermissionRepository(db),
-		Address:      addressRepos.NewAddressRepository(db),
 	}
 }
