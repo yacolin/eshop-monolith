@@ -1,4 +1,4 @@
-package promotion
+package marketing
 
 type ClaimCouponReq struct {
 	PromotionID int64 `json:"promotion_id" binding:"required"`

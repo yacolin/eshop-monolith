@@ -1,4 +1,4 @@
-package promotion
+package marketing
 
 type CreatePromotionReq struct {
 	PromoName     string  `json:"promo_name" binding:"required,max=100"`
