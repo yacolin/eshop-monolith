@@ -83,6 +83,12 @@ var (
 	ErrCannotDeleteSystemRole  = &BizError{Code: 2004, Message: "cannot delete system role"}
 )
 
+// ==================== 域：品牌/类目（4001-4099） ====================
+var (
+	ErrBrandNotFound     = &BizError{Code: 4001, Message: "brand not found"}
+	ErrBrandNameExists   = &BizError{Code: 4002, Message: "brand name already exists"}
+)
+
 // ==================== 域：评论评分（3001-3999） ====================
 var (
 	ErrReviewNotFound         = &BizError{Code: 3001, Message: "review not found"}
