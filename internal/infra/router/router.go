@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"eshop-monolith/internal/product"
+	"eshop-monolith/internal/inventory"
 	cartRoutes "eshop-monolith/internal/cart/api/routes"
 	couponRoutes "eshop-monolith/internal/coupon/api/routes"
 	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
@@ -115,6 +116,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		product.RegisterAttributeRoutes(v1, db)
 		product.RegisterProductRoutes(v1, db)
 		product.RegisterCategoryBrandRoutes(v1, db)
+		inventory.RegisterInventoryRoutes(v1, db)
 		// categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
 		// productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)
 		// invRoutes.RegisterInventoryRoutes(v1, repos, mqClient)

@@ -98,6 +98,11 @@ var (
 	ErrSPUInvalidStatus     = &BizError{Code: 4032, Message: "invalid product status transition"}
 	ErrProductAttrDuplicate = &BizError{Code: 4033, Message: "duplicate product attribute"}
 	ErrSPUHasNoSKU          = &BizError{Code: 4034, Message: "product must have at least one sku"}
+
+	// ==================== 域：库存（5001-5099） ====================
+	ErrInventoryNotFound    = &BizError{Code: 5001, Message: "inventory not found"}
+	ErrInsufficientStock    = &BizError{Code: 5002, Message: "insufficient stock"}
+	ErrInvalidStockChange   = &BizError{Code: 5003, Message: "invalid stock change"}
 )
 
 // ==================== 域：评论评分（3001-3999） ====================
