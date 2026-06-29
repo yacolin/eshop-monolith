@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"eshop-monolith/internal/product"
-	"eshop-monolith/internal/cart"
+	"eshop-monolith/internal/trade"
 	orderSvcPkg "eshop-monolith/internal/order/service"
-	"eshop-monolith/internal/order"
-	"eshop-monolith/internal/payment"
 	"eshop-monolith/internal/inventory"
 	couponRoutes "eshop-monolith/internal/coupon/api/routes"
 	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
@@ -119,8 +117,8 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		product.RegisterAttributeRoutes(v1, db)
 		product.RegisterProductRoutes(v1, db)
 		product.RegisterCategoryBrandRoutes(v1, db)
-		cart.RegisterCartRoutes(v1, db)
-		inventory.RegisterInventoryRoutes(v1, db)
+		trade.RegisterTradeRoutes(v1, db)
+			inventory.RegisterInventoryRoutes(v1, db)
 		// categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
 		// productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)
 		// invRoutes.RegisterInventoryRoutes(v1, repos, mqClient)
@@ -132,10 +130,8 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		couponRoutes.RegisterCouponRoutes(v1, repos, db, mqClient)
 		couponRoutes.RegisterPromotionRoutes(v1, repos, db, mqClient)
 
-		order.RegisterOrderRoutes(v1, db)
 			// [DEPRECATED] orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
 		userRoutes.RegisterUserRoutes(v1, repos, mqClient)
-		payment.RegisterPaymentRoutes(v1, db)
 			// [DEPRECATED] payRoutes.RegisterPaymentRoutes(v1, repos, mqClient, db)
 		// [DEPRECATED] cartRoutes.RegisterCartRoutes(v1, repos, db, mqClient)
 		flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, mqClient)
