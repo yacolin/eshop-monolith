@@ -20,6 +20,29 @@ func NewSKUHandler(svc *SKUService) *SKUHandler {
 	return &SKUHandler{svc: svc}
 }
 
+// Create 创建 SKU
+// @Summary 创建 SKU
+// @Tags skus
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param request body CreateSKUReq true "SKU 信息"
+// @Success 200 {object} response.Response{data=SKU}
+// @Router /api/v1/skus [post]
+func (h *SKUHandler) Create(c *gin.Context) {
+	var req CreateSKUReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		return
+	}
+	result, err := h.svc.Create(c, &req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
 // GetByID 获取 SKU 详情
 // @Summary 获取 SKU 详情
 // @Tags skus
@@ -149,6 +172,7 @@ func RegisterSKURoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 	auth := v1.Group("/skus")
 	auth.Use(middleware.JWTAuth())
 	{
+		auth.POST("", h.Create)
 		auth.PUT("/:id", h.Update)
 		auth.DELETE("/:id", h.Delete)
 	}

@@ -8,6 +8,7 @@ import (
 
 type IspuRepository interface {
 	CreateSPUWithTx(tx *gorm.DB, spu *SPU) error
+	CreateSKU(ctx context.Context, sku *SKU) error
 	CreateSKUWithTx(tx *gorm.DB, sku *SKU) error
 	CreateDescriptionWithTx(tx *gorm.DB, desc *Description) error
 	CreateProductAttrWithTx(tx *gorm.DB, pa *ProductAttribute) error
@@ -38,6 +39,10 @@ func NewSpuRepository(db *gorm.DB) IspuRepository {
 
 func (r *SpuRepository) CreateSPUWithTx(tx *gorm.DB, spu *SPU) error {
 	return tx.Create(spu).Error
+}
+
+func (r *SpuRepository) CreateSKU(ctx context.Context, sku *SKU) error {
+	return r.db.WithContext(ctx).Create(sku).Error
 }
 
 func (r *SpuRepository) CreateSKUWithTx(tx *gorm.DB, sku *SKU) error {

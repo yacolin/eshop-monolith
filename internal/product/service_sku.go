@@ -17,6 +17,29 @@ func NewSKUService(repo IspuRepository) *SKUService {
 	return &SKUService{repo: repo}
 }
 
+func (s *SKUService) Create(ctx context.Context, req *CreateSKUReq) (*SKU, error) {
+	sku := &SKU{
+		ProductID:   req.ProductID,
+		SkuCode:     req.SkuCode,
+		Barcode:     req.Barcode,
+		Spec:        req.Spec,
+		Price:       req.Price,
+		MarketPrice: req.MarketPrice,
+		CostPrice:   req.CostPrice,
+		Weight:      req.Weight,
+		Volume:      req.Volume,
+		Length:      req.Length,
+		Width:       req.Width,
+		Height:      req.Height,
+		Image:       req.Image,
+		Status:      1,
+	}
+	if err := s.repo.CreateSKU(ctx, sku); err != nil {
+		return nil, err
+	}
+	return sku, nil
+}
+
 func (s *SKUService) GetByID(ctx context.Context, id int64) (*SKU, error) {
 	sku, err := s.repo.FindSKUByID(ctx, id)
 	if err != nil {

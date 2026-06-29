@@ -2,6 +2,22 @@ package product
 
 import "eshop-monolith/pkg/query"
 
+type CreateSKUReq struct {
+	ProductID   int64   `json:"product_id" binding:"required,gt=0"`
+	SkuCode     string  `json:"sku_code" binding:"required,max=100"`
+	Barcode     string  `json:"barcode" binding:"max=50"`
+	Spec        string  `json:"spec" binding:"required"`
+	Price       int64   `json:"price" binding:"required,gt=0"`
+	MarketPrice int64   `json:"market_price"`
+	CostPrice   int64   `json:"cost_price"`
+	Weight      float64 `json:"weight"`
+	Volume      float64 `json:"volume"`
+	Length      float64 `json:"length"`
+	Width       float64 `json:"width"`
+	Height      float64 `json:"height"`
+	Image       string  `json:"image" binding:"max=512"`
+}
+
 type UpdateSKUReq struct {
 	Price       *int64   `json:"price" binding:"omitempty,gt=0"`
 	MarketPrice *int64   `json:"market_price" binding:"omitempty,gte=0"`
