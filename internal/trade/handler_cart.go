@@ -73,6 +73,13 @@ func NewCartHandler(svc *CartService) *CartHandler {
 	return &CartHandler{svc: svc}
 }
 
+// GetCart 获取购物车
+// @Summary 获取购物车
+// @Tags carts
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {object} response.Response{data=Cart}
+// @Router /api/v1/carts [get]
 func (h *CartHandler) GetCart(c *gin.Context) {
 	result, err := h.svc.GetCart(c, getCurrentUser(c), c.Query("session_id"))
 	if err != nil {
@@ -82,6 +89,15 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// AddItem 添加商品到购物车
+// @Summary 添加商品到购物车
+// @Tags carts
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param request body AddItemReq true "商品信息"
+// @Success 200 {object} response.Response
+// @Router /api/v1/carts [post]
 func (h *CartHandler) AddItem(c *gin.Context) {
 	var req AddItemReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -96,6 +112,15 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// UpdateItem 更新购物车商品
+// @Summary 更新购物车商品
+// @Tags carts
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param request body UpdateItemReq true "更新信息"
+// @Success 200 {object} response.Response
+// @Router /api/v1/carts [put]
 func (h *CartHandler) UpdateItem(c *gin.Context) {
 	var req UpdateItemReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -110,6 +135,14 @@ func (h *CartHandler) UpdateItem(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// RemoveItem 删除购物车商品
+// @Summary 删除购物车商品
+// @Tags carts
+// @Security ApiKeyAuth
+// @Produce json
+// @Param sku_id query int true "SKU ID"
+// @Success 200 {object} response.Response
+// @Router /api/v1/carts [delete]
 func (h *CartHandler) RemoveItem(c *gin.Context) {
 	var req struct{ SkuID int64 `form:"sku_id" binding:"required"` }
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -124,6 +157,14 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// ClearCart 清空购物车
+// @Summary 清空购物车
+// @Tags carts
+// @Security ApiKeyAuth
+// @Produce json
+// @Param session_id query string false "会话ID"
+// @Success 200 {object} response.Response
+// @Router /api/v1/carts/clear [post]
 func (h *CartHandler) ClearCart(c *gin.Context) {
 	if err := h.svc.ClearCart(c, getCurrentUser(c), c.Query("session_id")); err != nil {
 		c.Error(err)
