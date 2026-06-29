@@ -9,8 +9,7 @@ import (
 	"eshop-monolith/internal/trade"
 	"eshop-monolith/internal/inventory"
 	"eshop-monolith/internal/marketing"
-	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
-	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
+	"eshop-monolith/internal/dashboard"
 	"eshop-monolith/internal/base"
 	"eshop-monolith/internal/review"
 	"eshop-monolith/internal/user"
@@ -62,7 +61,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	router.Use(middleware.ErrorHandler())
 
 	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册和启动预热）
-	var dashboardSvc *dashboardSvcPkg.DashboardService
+	var dashboardSvc *dashboard.DashboardService
 	var notifSvc *base.NotificationService
 	var warmupDone atomic.Bool
 	warmupDone.Store(true)
@@ -124,7 +123,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		notifSvc = base.RegisterNotificationRoutes(v1, repos, db)
 		review.RegisterReviewRoutes(v1, repos, db)
 		user.RegisterAddressRoutes(v1, db)
-		dashboardSvc = dashboardRoutes.RegisterDashboardRoutes(v1, repos, db, mqClient)
+		dashboardSvc = dashboard.RegisterDashboardRoutes(v1, repos, db, mqClient)
 
 		// WebSocket 路由
 		ws.RegisterWSRoutes(v1, wsHub)
