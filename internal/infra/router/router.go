@@ -8,6 +8,7 @@ import (
 
 	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/cart"
+	"eshop-monolith/internal/order"
 	"eshop-monolith/internal/payment"
 	"eshop-monolith/internal/inventory"
 	couponRoutes "eshop-monolith/internal/coupon/api/routes"
@@ -17,7 +18,6 @@ import (
 	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	notifSvcPkg "eshop-monolith/internal/notification/service"
-	orderRoutes "eshop-monolith/internal/order/api/routes"
 	orderSvcPkg "eshop-monolith/internal/order/service"
 	reviewRoutes "eshop-monolith/internal/review/api/routes"
 	addressRoutes "eshop-monolith/internal/address/api/routes"
@@ -126,10 +126,11 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		// invRoutes.RegisterAttributeRoutes(v1, repos, db)
 
 		// 优惠券系统（需先于订单初始化，用于结算时优惠校验）
-		couponSvc := couponRoutes.RegisterCouponRoutes(v1, repos, db, mqClient)
+		couponRoutes.RegisterCouponRoutes(v1, repos, db, mqClient)
 		couponRoutes.RegisterPromotionRoutes(v1, repos, db, mqClient)
 
-		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
+		order.RegisterOrderRoutes(v1, db)
+			// [DEPRECATED] orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
 		userRoutes.RegisterUserRoutes(v1, repos, mqClient)
 		payment.RegisterPaymentRoutes(v1, db)
 			// [DEPRECATED] payRoutes.RegisterPaymentRoutes(v1, repos, mqClient, db)

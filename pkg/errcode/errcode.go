@@ -108,6 +108,10 @@ var (
 	ErrPaymentNotFound    = &BizError{Code: 6001, Message: "payment not found"}
 	ErrRefundNotFound     = &BizError{Code: 6010, Message: "refund not found"}
 	ErrRefundFailed       = &BizError{Code: 6011, Message: "refund failed"}
+
+	// ==================== 域：订单（7001-7099） ====================
+	ErrInvalidOrderStatus = &BizError{Code: 7002, Message: "invalid order status transition"}
+	ErrOrderItemNotFound  = &BizError{Code: 7003, Message: "order item not found"}
 )
 
 // ==================== 域：评论评分（3001-3999） ====================
