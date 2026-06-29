@@ -7,11 +7,10 @@ import (
 	"strconv"
 
 	"eshop-monolith/internal/infra/rabbitmq"
+	"eshop-monolith/internal/inventory"
+	"eshop-monolith/internal/trade"
 	"eshop-monolith/internal/notification/domain/models"
 	"eshop-monolith/internal/notification/domain/repositories"
-	inventoryEvents "eshop-monolith/internal/inventory/events"
-	orderEvents "eshop-monolith/internal/order/events"
-	paymentEvents "eshop-monolith/internal/payment/events"
 	flashEvents "eshop-monolith/internal/flashsale/events"
 	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/query"
@@ -98,19 +97,19 @@ func (s *NotificationService) DeleteNotification(ctx context.Context, notificati
 func (s *NotificationService) HandleMessage(msg rabbitmq.Message) error {
 	switch msg.RoutingKey {
 	case "order.paid":
-		var e orderEvents.OrderPaidEvent
+		var e trade.OrderPaidEvent
 		json.Unmarshal(msg.Payload, &e)
 		s.handleOrderPaid(e)
 	case "order.shipped":
-		var e orderEvents.OrderShippedEvent
+		var e trade.OrderShippedEvent
 		json.Unmarshal(msg.Payload, &e)
 		s.handleOrderShipped(e)
 	case "order.delivered":
-		var e orderEvents.OrderDeliveredEvent
+		var e trade.OrderDeliveredEvent
 		json.Unmarshal(msg.Payload, &e)
 		s.handleOrderDelivered(e)
 	case "order.cancelled":
-		var e orderEvents.OrderCancelledEvent
+		var e trade.OrderCancelledEvent
 		json.Unmarshal(msg.Payload, &e)
 		s.handleOrderCancelled(e)
 	case "flash-order.created":
@@ -126,15 +125,15 @@ func (s *NotificationService) HandleMessage(msg rabbitmq.Message) error {
 		json.Unmarshal(msg.Payload, &e)
 		s.handleFlashOrderCancelled(e)
 	case "payment.refund.created":
-		var e paymentEvents.RefundCreatedEvent
+		var e trade.RefundCreatedEvent
 		json.Unmarshal(msg.Payload, &e)
 		s.handleRefundCreated(e)
 	case "payment.refund.failed":
-		var e paymentEvents.RefundFailedEvent
+		var e trade.RefundFailedEvent
 		json.Unmarshal(msg.Payload, &e)
 		s.handleRefundFailed(e)
 	case "inventory.low":
-		var e inventoryEvents.InventoryLowEvent
+		var e inventory.InventoryLowEvent
 		json.Unmarshal(msg.Payload, &e)
 		s.handleInventoryLow(e)
 	}
@@ -153,7 +152,7 @@ func parseCustomerID(customerID string) int64 {
 
 // handleOrderPaid 订单支付成功
 func (s *NotificationService) handleOrderPaid(event any) {
-	e, ok := event.(orderEvents.OrderPaidEvent)
+	e, ok := event.(trade.OrderPaidEvent)
 	if !ok {
 		return
 	}
@@ -172,7 +171,7 @@ func (s *NotificationService) handleOrderPaid(event any) {
 
 // handleOrderShipped 订单发货
 func (s *NotificationService) handleOrderShipped(event any) {
-	e, ok := event.(orderEvents.OrderShippedEvent)
+	e, ok := event.(trade.OrderShippedEvent)
 	if !ok {
 		return
 	}
@@ -191,7 +190,7 @@ func (s *NotificationService) handleOrderShipped(event any) {
 
 // handleOrderDelivered 订单已签收
 func (s *NotificationService) handleOrderDelivered(event any) {
-	e, ok := event.(orderEvents.OrderDeliveredEvent)
+	e, ok := event.(trade.OrderDeliveredEvent)
 	if !ok {
 		return
 	}
@@ -210,7 +209,7 @@ func (s *NotificationService) handleOrderDelivered(event any) {
 
 // handleOrderCancelled 订单已取消
 func (s *NotificationService) handleOrderCancelled(event any) {
-	e, ok := event.(orderEvents.OrderCancelledEvent)
+	e, ok := event.(trade.OrderCancelledEvent)
 	if !ok {
 		return
 	}
@@ -289,7 +288,7 @@ func (s *NotificationService) handleRefundCreated(event any) {
 
 // handleRefundFailed 退款失败
 func (s *NotificationService) handleRefundFailed(event any) {
-	e, ok := event.(paymentEvents.RefundFailedEvent)
+	e, ok := event.(trade.RefundFailedEvent)
 	if !ok {
 		return
 	}
@@ -298,7 +297,7 @@ func (s *NotificationService) handleRefundFailed(event any) {
 
 // handleInventoryLow 库存预警（推送给管理员 userID=0 表示全体管理员）
 func (s *NotificationService) handleInventoryLow(event any) {
-	e, ok := event.(inventoryEvents.InventoryLowEvent)
+	e, ok := event.(inventory.InventoryLowEvent)
 	if !ok {
 		return
 	}

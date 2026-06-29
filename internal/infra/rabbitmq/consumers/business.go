@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"eshop-monolith/internal/infra/rabbitmq"
-	paymentEvents "eshop-monolith/internal/payment/events"
+	"eshop-monolith/internal/trade"
 
 	flashService "eshop-monolith/internal/flashsale/service"
 	notifService "eshop-monolith/internal/notification/service"
@@ -27,7 +27,7 @@ func StartBusinessConsumer(ctx context.Context, client *rabbitmq.Client, oSvc *o
 	consumer.HandleFunc("*", func(msg rabbitmq.Message) error {
 		switch msg.RoutingKey {
 		case "payment.success":
-			var e paymentEvents.PaymentSuccessEvent
+			var e trade.PaymentSuccessEvent
 			if err := json.Unmarshal(msg.Payload, &e); err != nil {
 				return err
 			}
@@ -35,7 +35,7 @@ func StartBusinessConsumer(ctx context.Context, client *rabbitmq.Client, oSvc *o
 				return oSvc.HandlePaidSuccess(context.Background(), e.OrderID)
 			}
 		case "flash-order.paid":
-			var e paymentEvents.PaymentSuccessEvent
+			var e trade.PaymentSuccessEvent
 			if err := json.Unmarshal(msg.Payload, &e); err != nil {
 				return err
 			}

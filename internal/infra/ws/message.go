@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"eshop-monolith/internal/infra/rabbitmq"
-	inventoryEvents "eshop-monolith/internal/inventory/events"
-	orderEvents "eshop-monolith/internal/order/events"
-	paymentEvents "eshop-monolith/internal/payment/events"
+	"eshop-monolith/internal/inventory"
+	"eshop-monolith/internal/trade"
 	flashEvents "eshop-monolith/internal/flashsale/events"
 )
 
@@ -25,20 +24,20 @@ func NewPushMessage(event interface{}, sequenceID int64) *PushMessage {
 	now := time.Now().UnixMilli()
 
 	switch e := event.(type) {
-	case orderEvents.OrderPaidEvent:
+	case trade.OrderPaidEvent:
 		return &PushMessage{Type: "order.paid", SequenceID: sequenceID, Timestamp: now, Data: e}
-	case orderEvents.OrderShippedEvent:
+	case trade.OrderShippedEvent:
 		return &PushMessage{Type: "order.shipped", SequenceID: sequenceID, Timestamp: now, Data: e}
-	case orderEvents.OrderDeliveredEvent:
+	case trade.OrderDeliveredEvent:
 		return &PushMessage{Type: "order.delivered", SequenceID: sequenceID, Timestamp: now, Data: e}
-	case orderEvents.OrderCancelledEvent:
+	case trade.OrderCancelledEvent:
 		return &PushMessage{Type: "order.cancelled", SequenceID: sequenceID, Timestamp: now, Data: e}
 
-	case paymentEvents.PaymentSuccessEvent:
+	case trade.PaymentSuccessEvent:
 		return &PushMessage{Type: "payment.success", SequenceID: sequenceID, Timestamp: now, Data: e}
-	case paymentEvents.PaymentFailedEvent:
+	case trade.PaymentFailedEvent:
 		return &PushMessage{Type: "payment.failed", SequenceID: sequenceID, Timestamp: now, Data: e}
-	case paymentEvents.RefundCreatedEvent:
+	case trade.RefundCreatedEvent:
 		return &PushMessage{Type: "refund.created", SequenceID: sequenceID, Timestamp: now, Data: e}
 
 	case flashEvents.FlashOrderCreatedEvent:
@@ -48,7 +47,7 @@ func NewPushMessage(event interface{}, sequenceID int64) *PushMessage {
 	case flashEvents.FlashOrderCancelledEvent:
 		return &PushMessage{Type: "flash.cancelled", SequenceID: sequenceID, Timestamp: now, Data: e}
 
-	case inventoryEvents.InventoryLowEvent:
+	case inventory.InventoryLowEvent:
 		return &PushMessage{Type: "inventory.low", SequenceID: sequenceID, Timestamp: now, Data: e}
 	}
 
@@ -68,13 +67,13 @@ func (m *PushMessage) Unmarshal(data []byte) error {
 // extractUserID 从事件中提取 user_id
 func extractUserID(event interface{}) int64 {
 	switch e := event.(type) {
-	case orderEvents.OrderPaidEvent:
+	case trade.OrderPaidEvent:
 		return parseCustomerID(e.CustomerID)
-	case orderEvents.OrderShippedEvent:
+	case trade.OrderShippedEvent:
 		return parseCustomerID(e.CustomerID)
-	case orderEvents.OrderDeliveredEvent:
+	case trade.OrderDeliveredEvent:
 		return parseCustomerID(e.CustomerID)
-	case orderEvents.OrderCancelledEvent:
+	case trade.OrderCancelledEvent:
 		return parseCustomerID(e.CustomerID)
 
 	case flashEvents.FlashOrderCreatedEvent:
@@ -84,11 +83,11 @@ func extractUserID(event interface{}) int64 {
 	case flashEvents.FlashOrderCancelledEvent:
 		return e.UserID
 
-	case paymentEvents.PaymentSuccessEvent:
+	case trade.PaymentSuccessEvent:
 		return 0
-	case paymentEvents.PaymentFailedEvent:
+	case trade.PaymentFailedEvent:
 		return 0
-	case paymentEvents.RefundCreatedEvent:
+	case trade.RefundCreatedEvent:
 		return 0
 	}
 
