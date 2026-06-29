@@ -14,14 +14,14 @@ description: "检查重构后项目代码是否符合新的扁平化代码规范
 1. **一个模块一个 package** — 不拆分子 package，所有文件在模块根目录平铺
 2. **model 即 PO** — 无 `ToDomain()`/`FromDomain()` 双重模型转换
 3. **文件按实体前缀命名** — `model_spu.go` `repo_spu.go` `service_spu.go`
-4. **DTO/Handler 单文件** — `dto.go` 放所有 DTO，`handler.go` 放 handler + 路由注册
+4. **DTO/Handler 按实体拆分** — `dto_{entity}.go`、`handler_{entity}.go`
 
 ## 1. 目录结构
 
 ```
 internal/{module}/           # 一个 package
-├── dto.go                   #   所有请求/响应 DTO
-├── handler.go               #   Handler + 路由注册
+├── dto_{entity}.go          #   请求/响应 DTO
+├── handler_{entity}.go      #   Handler + 路由注册
 ├── model_{entity}.go        #   GORM 模型（同时也是 PO）
 ├── repo_{entity}.go         #   接口 + 实现（同一文件）
 └── service_{entity}.go      #   业务逻辑
@@ -31,8 +31,10 @@ internal/{module}/           # 一个 package
 
 ```
 internal/product/
-├── dto.go                   # CreateBrandReq, UpdateBrandReq, BrandListReq
-├── handler.go               # BrandHandler + RegisterBrandRoutes()
+├── dto_brand.go             # CreateBrandReq, UpdateBrandReq, BrandListReq
+├── dto_category.go          # CreateCategoryReq, UpdateCategoryReq
+├── handler_brand.go         # BrandHandler + RegisterBrandRoutes()
+├── handler_category.go      # CategoryHandler + RegisterCategoryRoutes()
 ├── model_brand.go           # Brand → sp_brands
 ├── model_spu.go             # SPU → sp_products
 ├── model_sku.go             # SKU → sp_skus
@@ -53,14 +55,14 @@ internal/product/
 | `model_` | GORM 模型（同时也是 PO） | `model_spu.go`, `model_sku.go` |
 | `repo_` | Repository 接口 + 实现 | `repo_spu.go`, `repo_category.go` |
 | `service_` | 业务逻辑 | `service_spu.go`, `service_brand.go` |
-| `dto` | 所有请求/响应 DTO（单文件） | `dto.go` |
-| `handler` | Handler + 路由注册（单文件） | `handler.go` |
+| `dto` | 请求/响应 DTO | `dto_brand.go`, `dto_category.go` |
+| `handler` | Handler + 路由注册 | `handler_brand.go`, `handler_category.go` |
 
 ### 规则
 
 - 一个文件只包含一个实体的定义（model/repo/service 各一个文件）
 - Repository 接口 + 实现在**同一个文件**，不拆分
-- `dto.go` 和 `handler.go` 始终是单文件，不按实体拆分
+- `dto_` 和 `handler_` 都按实体拆分（`dto_brand.go`、`handler_category.go`）
 - 文件名使用蛇形命名：`model_product_attribute.go`
 
 ## 3. 包命名
@@ -120,7 +122,7 @@ func (Brand) TableName() string { return "sp_brands" }
 | 列表查询 | `{Entity}ListReq` | `BrandListReq` |
 | 列表结果 | `{Entity}ListResult` | `BrandListResult` |
 
-- 所有 DTO 放在单文件 `dto.go` 中
+- 每个实体独立的 DTO 文件，如 `dto_brand.go`、`dto_category.go`
 - JSON 标签使用蛇形命名：`json:"first_letter"`
 - 表单参数使用 `form` 标签：`form:"first_letter"`
 - 校验使用 `binding` 标签：`binding:"required,max=100"`
@@ -240,9 +242,9 @@ type BrandListResult struct {
 
 ### 规范
 
-- `dto.go` 和 `handler.go` 始终是单文件
+- `dto_` 和 `handler_` 都按实体拆分
 - Handler 结构体组合对应 Service
-- 路由注册写在 handler.go 末尾，函数名 `Register{Module}Routes`
+- 路由注册写在 handler 文件末尾，函数名 `Register{Module}Routes`
 - 路由注册直接创建 repo → service → handler，不经过 `infra/repository/db.go`
 - 不通过 `Repositories` 聚合注册新模块的 repo
 - 旧模块的 `infra/repository/db.go` 和 `infra/router/router.go` 只做桥接
@@ -273,10 +275,10 @@ func (h *BrandHandler) Create(c *gin.Context) {
 }
 ```
 
-### 路由注册
+### 路由注册（写在 `handler_brand.go` 末尾）
 
 ```go
-// ── Route ────────────────────────────────────────
+// ── Routes ────────────────────────────────────────
 
 func RegisterBrandRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
     repo := NewBrandRepository(db)
@@ -341,7 +343,7 @@ import (
 ### 项目结构
 - [ ] 模块内文件是否全部平铺，无子目录
 - [ ] 是否使用 `{type}_{entity}.go` 前缀命名
-- [ ] `dto.go` 和 `handler.go` 是否单文件
+- [ ] `dto_` 和 `handler_` 是否都按实体拆分
 
 ### 模型
 - [ ] 模型是否同时是 PO，无 `ToDomain()`/`FromDomain()`

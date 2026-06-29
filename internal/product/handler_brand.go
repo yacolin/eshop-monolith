@@ -9,8 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ── Handler ──────────────────────────────────────
-
 type BrandHandler struct {
 	svc *BrandService
 }
@@ -136,7 +134,7 @@ func (h *BrandHandler) Delete(c *gin.Context) {
 	response.Success(c, gin.H{"message": "deleted"})
 }
 
-// ── Route ────────────────────────────────────────
+// ── Routes ────────────────────────────────────────
 
 func RegisterBrandRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 	repo := NewBrandRepository(db)

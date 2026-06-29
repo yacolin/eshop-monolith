@@ -87,6 +87,11 @@ var (
 var (
 	ErrBrandNotFound     = &BizError{Code: 4001, Message: "brand not found"}
 	ErrBrandNameExists   = &BizError{Code: 4002, Message: "brand name already exists"}
+	ErrCategoryNotFound  = &BizError{Code: 4010, Message: "category not found"}
+	ErrCategoryNameExists = &BizError{Code: 4011, Message: "category name already exists"}
+	ErrCategoryHasChildren = &BizError{Code: 4012, Message: "category has children, cannot delete"}
+	ErrCategoryParentNotFound = &BizError{Code: 4013, Message: "parent category not found"}
+	ErrCategoryLevelExceed = &BizError{Code: 4014, Message: "category level exceeds maximum (3)"}
 )
 
 // ==================== 域：评论评分（3001-3999） ====================
