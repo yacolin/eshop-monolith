@@ -7,10 +7,10 @@ import (
 	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/trade"
 
-	notifService "eshop-monolith/internal/notification/service"
+	"eshop-monolith/internal/notification"
 )
 
-func StartBusinessConsumer(ctx context.Context, client *rabbitmq.Client, nSvc *notifService.NotificationService) error {
+func StartBusinessConsumer(ctx context.Context, client *rabbitmq.Client, nSvc *notification.NotificationService) error {
 	consumer := rabbitmq.NewConsumer(client, rabbitmq.ConsumerConfig{
 		Queue: "eshop.business",
 		Bindings: []string{
