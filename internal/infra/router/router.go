@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"eshop-monolith/internal/product"
+	"eshop-monolith/internal/cart"
 	"eshop-monolith/internal/inventory"
-	cartRoutes "eshop-monolith/internal/cart/api/routes"
 	couponRoutes "eshop-monolith/internal/coupon/api/routes"
 	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
 	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
@@ -116,6 +116,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		product.RegisterAttributeRoutes(v1, db)
 		product.RegisterProductRoutes(v1, db)
 		product.RegisterCategoryBrandRoutes(v1, db)
+		cart.RegisterCartRoutes(v1, db)
 		inventory.RegisterInventoryRoutes(v1, db)
 		// categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
 		// productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)
@@ -131,7 +132,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
 		userRoutes.RegisterUserRoutes(v1, repos, mqClient)
 		payRoutes.RegisterPaymentRoutes(v1, repos, mqClient, db)
-		cartRoutes.RegisterCartRoutes(v1, repos, db, mqClient)
+		// [DEPRECATED] cartRoutes.RegisterCartRoutes(v1, repos, db, mqClient)
 		flashSvc = flashRoutes.RegisterFlashRoutes(v1, repos, db, mqClient)
 		userRoutes.RegisterAuthRoutes(v1, repos, db)
 		userRoutes.RegisterPermissionRoutes(v1, repos, db)

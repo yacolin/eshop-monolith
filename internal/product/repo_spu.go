@@ -18,6 +18,7 @@ type IspuRepository interface {
 	FindDescriptionByProductID(ctx context.Context, productID int64) (*Description, error)
 	FindProductAttrsByProductID(ctx context.Context, productID int64) ([]ProductAttribute, error)
 	FindSKUByCode(ctx context.Context, code string) (*SKU, error)
+	FindSKUByID(ctx context.Context, id int64) (*SKU, error)
 
 	List(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, page, size int) ([]SPU, int64, error)
 
@@ -86,6 +87,12 @@ func (r *SpuRepository) FindProductAttrsByProductID(ctx context.Context, product
 func (r *SpuRepository) FindSKUByCode(ctx context.Context, code string) (*SKU, error) {
 	var sku SKU
 	err := r.db.WithContext(ctx).Where("sku_code = ?", code).First(&sku).Error
+	return &sku, err
+}
+
+func (r *SpuRepository) FindSKUByID(ctx context.Context, id int64) (*SKU, error) {
+	var sku SKU
+	err := r.db.WithContext(ctx).Where("id = ?", id).First(&sku).Error
 	return &sku, err
 }
 
