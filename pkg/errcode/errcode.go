@@ -111,6 +111,14 @@ var (
 
 	// ==================== 域：订单（7001-7099） ====================
 	ErrInvalidOrderStatus = &BizError{Code: 7002, Message: "invalid order status transition"}
+
+	// ==================== 域：营销（8001-8099） ====================
+	ErrPromotionNotFound    = &BizError{Code: 8001, Message: "promotion not found"}
+	ErrPromotionRuleInvalid = &BizError{Code: 8002, Message: "invalid promotion rule"}
+	ErrPromotionProductConflict = &BizError{Code: 8003, Message: "promotion product already exists"}
+	ErrCouponExpired        = &BizError{Code: 8010, Message: "coupon expired"}
+	ErrCouponSoldOut        = &BizError{Code: 8011, Message: "coupon sold out"}
+	ErrCouponAlreadyClaimed = &BizError{Code: 8012, Message: "coupon already claimed"}
 	ErrOrderItemNotFound  = &BizError{Code: 7003, Message: "order item not found"}
 )
 
