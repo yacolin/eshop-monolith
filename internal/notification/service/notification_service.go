@@ -7,11 +7,11 @@ import (
 	"strconv"
 
 	"eshop-monolith/internal/infra/rabbitmq"
+	flashEvents "eshop-monolith/internal/flashsale/events"
 	"eshop-monolith/internal/inventory"
 	"eshop-monolith/internal/trade"
 	"eshop-monolith/internal/notification/domain/models"
 	"eshop-monolith/internal/notification/domain/repositories"
-	flashEvents "eshop-monolith/internal/flashsale/events"
 	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/query"
 )

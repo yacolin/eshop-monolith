@@ -21,6 +21,7 @@ type OrderDeliveredEvent struct {
 type OrderCancelledEvent struct {
 	CustomerID string
 	OrderID    int64
+	UserID     int64
 }
 
 // ── 支付事件 ─────────────────────────────────────

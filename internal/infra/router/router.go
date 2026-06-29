@@ -8,12 +8,10 @@ import (
 
 	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/trade"
-	orderSvcPkg "eshop-monolith/internal/order/service"
 	"eshop-monolith/internal/inventory"
 	"eshop-monolith/internal/promotion"
 	dashboardRoutes "eshop-monolith/internal/dashboard/api/routes"
 	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
-	flashSvcPkg "eshop-monolith/internal/flashsale/service"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	notifSvcPkg "eshop-monolith/internal/notification/service"
 	reviewRoutes "eshop-monolith/internal/review/api/routes"
@@ -41,7 +39,6 @@ import (
 
 // SetupRouter 设置路由
 func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB, mqClient *rabbitmq.Client) *gin.Engine {
-	orderSvc := &orderSvcPkg.OrderService{}
 	
 
 	router := gin.New()
@@ -76,7 +73,6 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	router.Use(middleware.ErrorHandler())
 
 	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册和启动预热）
-	var flashSvc *flashSvcPkg.FlashService
 	var dashboardSvc *dashboardSvcPkg.DashboardService
 	var notifSvc *notifSvcPkg.NotificationService
 	var warmupDone atomic.Bool
@@ -208,7 +204,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		}
 	}()
 	go func() {
-		if err := consumers.StartBusinessConsumer(context.Background(), mqClient, orderSvc, flashSvc, notifSvc); err != nil {
+		if err := consumers.StartBusinessConsumer(context.Background(), mqClient, notifSvc); err != nil {
 			logger.Error("启动业务消费者失败", "error", err)
 		}
 	}()

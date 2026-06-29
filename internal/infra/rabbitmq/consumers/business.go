@@ -7,12 +7,10 @@ import (
 	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/trade"
 
-	flashService "eshop-monolith/internal/flashsale/service"
 	notifService "eshop-monolith/internal/notification/service"
-	orderService "eshop-monolith/internal/order/service"
 )
 
-func StartBusinessConsumer(ctx context.Context, client *rabbitmq.Client, oSvc *orderService.OrderService, fSvc *flashService.FlashService, nSvc *notifService.NotificationService) error {
+func StartBusinessConsumer(ctx context.Context, client *rabbitmq.Client, nSvc *notifService.NotificationService) error {
 	consumer := rabbitmq.NewConsumer(client, rabbitmq.ConsumerConfig{
 		Queue: "eshop.business",
 		Bindings: []string{
@@ -32,14 +30,12 @@ func StartBusinessConsumer(ctx context.Context, client *rabbitmq.Client, oSvc *o
 				return err
 			}
 			if e.OrderType != "flash" {
-				return oSvc.HandlePaidSuccess(context.Background(), e.OrderID)
 			}
 		case "flash-order.paid":
 			var e trade.PaymentSuccessEvent
 			if err := json.Unmarshal(msg.Payload, &e); err != nil {
 				return err
 			}
-			return fSvc.HandlePaidSuccess(context.Background(), e.OrderID)
 		}
 		return nSvc.HandleMessage(msg)
 	})
