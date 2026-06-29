@@ -2,9 +2,11 @@ package review
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
+
+	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/errcode"
 )
@@ -46,54 +48,39 @@ func NewReviewService(repo IreviewRepository, findOrderByItem OrderByItemLookup,
 	}
 }
 
-type CreateReviewInput struct {
-	ProductID   int64
-	UserID      int64
-	OrderItemID int64
-	Rating      int
-	Content     string
-	Media       []ReviewMedia
-}
-
 func (s *ReviewService) CreateReview(ctx context.Context, in CreateReviewInput) (*Review, error) {
-	if in.Rating < 1 || in.Rating > 5 {
+	if in.OverallRating < 1 || in.OverallRating > 5 {
 		return nil, errcode.ErrReviewInvalidRating
-	}
-	if len(in.Media) > maxMediaCount {
-		return nil, errcode.ErrReviewMediaLimitExceed
-	}
-	exists, err := s.repo.ExistsByOrderItem(ctx, in.OrderItemID)
-	if err != nil {
-		return nil, fmt.Errorf("check duplicate failed: %w", err)
-	}
-	if exists {
-		return nil, errcode.ErrReviewDuplicate
 	}
 	if err := s.verifyPurchase(ctx, in); err != nil {
 		return nil, err
 	}
 
-	mediaJSON, _ := json.Marshal(in.Media)
 	rv := &Review{
-		ProductID:   in.ProductID,
-		UserID:      in.UserID,
-		OrderItemID: in.OrderItemID,
-		Rating:      in.Rating,
-		Content:     in.Content,
-		MediaJSON:   string(mediaJSON),
-		Status:      string(ReviewStatusPending),
+		UserID:          in.UserID,
+		OrderID:         in.OrderID,
+		OrderItemID:     in.OrderItemID,
+		SpuID:           in.SpuID,
+		SkuID:           in.SkuID,
+		OverallRating:   in.OverallRating,
+		QualityRating:   in.QualityRating,
+		LogisticsRating: in.LogisticsRating,
+		ServiceRating:   in.ServiceRating,
+		Content:         in.Content,
+		IsAnonymous:     in.IsAnonymous,
+		Status:          ReviewStatusPending,
 	}
-	if err := s.repo.Create(ctx, rv); err != nil {
+	if err := s.repo.CreateReview(ctx, rv); err != nil {
 		return nil, fmt.Errorf("create review failed: %w", err)
 	}
 	return rv, nil
 }
 
 func (s *ReviewService) verifyPurchase(ctx context.Context, in CreateReviewInput) error {
-	if s.findOrderByItem == nil {
+	if s.findOrderByItem == nil || in.OrderItemID == nil {
 		return nil
 	}
-	order, err := s.findOrderByItem(ctx, in.OrderItemID)
+	order, err := s.findOrderByItem(ctx, *in.OrderItemID)
 	if err != nil || order == nil {
 		return errcode.ErrReviewNotPurchased
 	}
@@ -102,11 +89,11 @@ func (s *ReviewService) verifyPurchase(ctx context.Context, in CreateReviewInput
 	}
 	matched := false
 	for _, item := range order.Items {
-		if item.ID != in.OrderItemID {
+		if item.ID != *in.OrderItemID {
 			continue
 		}
 		pid, perr := strconv.ParseInt(item.ProductID, 10, 64)
-		if perr == nil && pid == in.ProductID {
+		if perr == nil && pid == in.SpuID {
 			matched = true
 			break
 		}
@@ -117,9 +104,9 @@ func (s *ReviewService) verifyPurchase(ctx context.Context, in CreateReviewInput
 	return nil
 }
 
-func (s *ReviewService) ListProductReviews(ctx context.Context, productID int64, statuses []string, page, size int) ([]*Review, int64, error) {
+func (s *ReviewService) ListBySpu(ctx context.Context, spuID int64, statuses []int8, page, size int) ([]*Review, int64, error) {
 	page, size = normalizePaging(page, size)
-	list, total, err := s.repo.ListByProduct(ctx, productID, statuses, page, size)
+	list, total, err := s.repo.ListBySpu(ctx, spuID, statuses, page, size)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -127,11 +114,10 @@ func (s *ReviewService) ListProductReviews(ctx context.Context, productID int64,
 	for i := range list {
 		result[i] = &list[i]
 	}
-	s.enrichReviewers(ctx, result)
 	return result, total, nil
 }
 
-func (s *ReviewService) ListUserReviews(ctx context.Context, userID int64, page, size int) ([]*Review, int64, error) {
+func (s *ReviewService) ListByUser(ctx context.Context, userID int64, page, size int) ([]*Review, int64, error) {
 	page, size = normalizePaging(page, size)
 	list, total, err := s.repo.ListByUser(ctx, userID, page, size)
 	if err != nil {
@@ -141,13 +127,12 @@ func (s *ReviewService) ListUserReviews(ctx context.Context, userID int64, page,
 	for i := range list {
 		result[i] = &list[i]
 	}
-	s.enrichReviewers(ctx, result)
 	return result, total, nil
 }
 
-func (s *ReviewService) ListPendingReviews(ctx context.Context, page, size int) ([]*Review, int64, error) {
+func (s *ReviewService) ListPending(ctx context.Context, page, size int) ([]*Review, int64, error) {
 	page, size = normalizePaging(page, size)
-	list, total, err := s.repo.ListByStatus(ctx, string(ReviewStatusPending), page, size)
+	list, total, err := s.repo.ListByStatus(ctx, ReviewStatusPending, page, size)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -155,89 +140,107 @@ func (s *ReviewService) ListPendingReviews(ctx context.Context, page, size int) 
 	for i := range list {
 		result[i] = &list[i]
 	}
-	s.enrichReviewers(ctx, result)
 	return result, total, nil
 }
 
-func (s *ReviewService) ModerateReview(ctx context.Context, reviewID int64, status string) error {
+func (s *ReviewService) GetByID(ctx context.Context, reviewID int64) (*Review, error) {
 	rv, err := s.repo.FindByID(ctx, reviewID)
 	if err != nil {
-		return errcode.ErrReviewNotFound
-	}
-	if err := s.repo.UpdateStatus(ctx, reviewID, status); err != nil {
-		return err
-	}
-	s.recomputeRatingSummary(ctx, rv.ProductID)
-	return nil
-}
-
-func (s *ReviewService) ReplyReview(ctx context.Context, reviewID int64, reply string) error {
-	if _, err := s.repo.FindByID(ctx, reviewID); err != nil {
-		return errcode.ErrReviewNotFound
-	}
-	return s.repo.UpdateReply(ctx, reviewID, reply)
-}
-
-func (s *ReviewService) GetReview(ctx context.Context, reviewID int64) (*Review, error) {
-	rv, err := s.repo.FindByID(ctx, reviewID)
-	if err != nil {
-		return nil, errcode.ErrReviewNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errcode.ErrReviewNotFound
+		}
+		return nil, err
 	}
 	return rv, nil
 }
 
-func (s *ReviewService) DeleteReview(ctx context.Context, reviewID int64) error {
+func (s *ReviewService) ModerateReview(ctx context.Context, reviewID int64, auditorID int64, status int8, reason string) error {
 	rv, err := s.repo.FindByID(ctx, reviewID)
 	if err != nil {
-		return errcode.ErrReviewNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errcode.ErrReviewNotFound
+		}
+		return err
+	}
+	if err := s.repo.UpdateStatus(ctx, reviewID, status, reason); err != nil {
+		return err
+	}
+	_ = s.repo.CreateAuditLog(ctx, &ReviewAuditLog{
+		ReviewID:  reviewID,
+		AuditorID: auditorID,
+		Action:    auditActionFromStatus(status),
+		Reason:    reason,
+	})
+	s.recomputeRating(ctx, rv.SpuID)
+	return nil
+}
+
+func auditActionFromStatus(status int8) int8 {
+	switch status {
+	case ReviewStatusApproved:
+		return AuditActionApprove
+	case ReviewStatusRejected:
+		return AuditActionReject
+	default:
+		return AuditActionReview
+	}
+}
+
+func (s *ReviewService) ReplyReview(ctx context.Context, reviewID int64, replyBy int64, content string) (*ReviewReply, error) {
+	rv, err := s.repo.FindByID(ctx, reviewID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errcode.ErrReviewNotFound
+		}
+		return nil, err
+	}
+
+	reply := &ReviewReply{
+		ReviewID:    reviewID,
+		ReplyBy:     replyBy,
+		ReplyByType: ReplyByMerchant,
+		Content:     content,
+	}
+	reply, err = s.repo.CreateReply(ctx, reply)
+	if err != nil {
+		return nil, err
+	}
+
+	newCount := rv.ReplyCount + 1
+	if err := s.repo.UpdateLatestReply(ctx, reviewID, reply.ID, newCount); err != nil {
+		return nil, err
+	}
+	return reply, nil
+}
+
+func (s *ReviewService) DeleteReview(ctx context.Context, userID int64, reviewID int64, isAdmin bool) error {
+	rv, err := s.repo.FindByID(ctx, reviewID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errcode.ErrReviewNotFound
+		}
+		return err
+	}
+	if !isAdmin && rv.UserID != userID {
+		return errcode.ErrReviewNotOwner
 	}
 	if err := s.repo.Delete(ctx, reviewID); err != nil {
 		return err
 	}
-	s.recomputeRatingSummary(ctx, rv.ProductID)
+	s.recomputeRating(ctx, rv.SpuID)
 	return nil
 }
 
-func (s *ReviewService) GetProductRating(ctx context.Context, productID int64) (*ProductRatingSummary, error) {
-	return s.repo.GetRatingSummary(ctx, productID)
+func (s *ReviewService) GetRatingSummary(ctx context.Context, spuID int64) (*ReviewRating, error) {
+	return s.repo.GetRatingSummary(ctx, spuID)
 }
 
-func (s *ReviewService) recomputeRatingSummary(ctx context.Context, productID int64) {
-	stats, err := s.repo.CountRatingByProduct(ctx, productID)
+func (s *ReviewService) recomputeRating(ctx context.Context, spuID int64) {
+	counts, total, err := s.repo.CountRatingBySpu(ctx, spuID)
 	if err != nil {
 		return
 	}
-	_, _ = s.repo.UpsertRatingSummary(ctx, productID, stats)
-}
-
-func (s *ReviewService) enrichReviewers(ctx context.Context, reviews []*Review) {
-	if s.findUser == nil || len(reviews) == 0 {
-		return
-	}
-	cache := make(map[int64]*UserInfoSnapshot, len(reviews))
-	for _, rv := range reviews {
-		if rv == nil {
-			continue
-		}
-		if _, ok := cache[rv.UserID]; ok {
-			continue
-		}
-		info, err := s.findUser(ctx, rv.UserID)
-		if err != nil || info == nil {
-			cache[rv.UserID] = nil
-			continue
-		}
-		cache[rv.UserID] = info
-	}
-	for _, rv := range reviews {
-		if rv == nil {
-			continue
-		}
-		if info, ok := cache[rv.UserID]; ok && info != nil {
-			rv.UserName = info.Nickname
-			rv.UserAvatar = info.Avatar
-		}
-	}
+	_ = s.repo.UpsertRatingSummary(ctx, ComputeRatingSummary(spuID, counts, total))
 }
 
 func normalizePaging(page, size int) (int, int) {

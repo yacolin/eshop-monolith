@@ -12,8 +12,6 @@ import (
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
-
-	"eshop-monolith/pkg/errcode"
 )
 
 type ReviewHandler struct {
@@ -24,31 +22,39 @@ func NewReviewHandler(svc *ReviewService) *ReviewHandler {
 	return &ReviewHandler{svc: svc}
 }
 
-// CreateReview 创建评论
-// @Summary 创建评论
+func currentUserID(c *gin.Context) int64 {
+	v, _ := c.Get("user_id")
+	id, _ := v.(int64)
+	return id
+}
+
+// CreateReview 创建评价
+// @Summary 创建评价
 // @Tags reviews
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
-// @Param request body CreateReviewReq true "评论信息"
+// @Param request body CreateReviewReq true "评价信息"
 // @Success 200 {object} response.Response{data=ReviewResp}
 // @Router /api/v1/reviews [post]
 func (h *ReviewHandler) CreateReview(c *gin.Context) {
-	v, _ := c.Get("user_id")
-	userID, _ := v.(int64)
-
 	var req CreateReviewReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
 	}
 	rv, err := h.svc.CreateReview(c, CreateReviewInput{
-		ProductID:   req.ProductID,
-		UserID:      userID,
-		OrderItemID: req.OrderItemID,
-		Rating:      req.Rating,
-		Content:     req.Content,
-		Media:       req.Media,
+		UserID:          currentUserID(c),
+		OrderID:         req.OrderID,
+		OrderItemID:     req.OrderItemID,
+		SpuID:           req.SpuID,
+		SkuID:           req.SkuID,
+		OverallRating:   req.OverallRating,
+		QualityRating:   req.QualityRating,
+		LogisticsRating: req.LogisticsRating,
+		ServiceRating:   req.ServiceRating,
+		Content:         req.Content,
+		IsAnonymous:     req.IsAnonymous,
 	})
 	if err != nil {
 		c.Error(err)
@@ -57,35 +63,32 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 	response.Success(c, toReviewResp(rv))
 }
 
-// ListProductReviews 产品评论列表
-// @Summary 产品评论列表
+// ListProductReviews 商品评价列表
+// @Summary 商品评价列表
 // @Tags reviews
 // @Produce json
-// @Param id path int true "产品ID"
+// @Param id path int true "商品SPU ID"
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
 // @Success 200 {object} response.Response{data=ReviewListResult}
 // @Router /api/v1/products/{id}/reviews [get]
 func (h *ReviewHandler) ListProductReviews(c *gin.Context) {
-	productID, err := utils.ParseIntParam(c, "id")
+	spuID, err := utils.ParseIntParam(c, "id")
 	if err != nil {
 		c.Error(err)
 		return
 	}
 	page, size := parsePageSize(c)
-	list, total, err := h.svc.ListProductReviews(c, productID, []string{string(ReviewStatusApproved)}, page, size)
+	list, total, err := h.svc.ListBySpu(c, spuID, []int8{ReviewStatusApproved}, page, size)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	response.Success(c, &ReviewListResult{
-		Total: total,
-		List:  toReviewRespList(list),
-	})
+	response.Success(c, &ReviewListResult{Total: total, List: toReviewRespList(list)})
 }
 
-// ListMyReviews 我的评论
-// @Summary 我的评论
+// ListMyReviews 我的评价
+// @Summary 我的评价
 // @Tags reviews
 // @Security ApiKeyAuth
 // @Produce json
@@ -94,77 +97,59 @@ func (h *ReviewHandler) ListProductReviews(c *gin.Context) {
 // @Success 200 {object} response.Response{data=ReviewListResult}
 // @Router /api/v1/reviews/me [get]
 func (h *ReviewHandler) ListMyReviews(c *gin.Context) {
-	v, _ := c.Get("user_id")
-	userID, _ := v.(int64)
-
 	page, size := parsePageSize(c)
-	list, total, err := h.svc.ListUserReviews(c, userID, page, size)
+	list, total, err := h.svc.ListByUser(c, currentUserID(c), page, size)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	response.Success(c, &ReviewListResult{
-		Total: total,
-		List:  toReviewRespList(list),
-	})
+	response.Success(c, &ReviewListResult{Total: total, List: toReviewRespList(list)})
 }
 
-// GetProductRating 产品评分汇总
-// @Summary 产品评分汇总
+// GetProductRating 商品评分汇总
+// @Summary 商品评分汇总
 // @Tags reviews
 // @Produce json
-// @Param id path int true "产品ID"
-// @Success 200 {object} response.Response{data=ProductRatingResp}
+// @Param id path int true "商品SPU ID"
+// @Success 200 {object} response.Response{data=ReviewRatingResp}
 // @Router /api/v1/products/{id}/rating [get]
 func (h *ReviewHandler) GetProductRating(c *gin.Context) {
-	productID, err := utils.ParseIntParam(c, "id")
+	spuID, err := utils.ParseIntParam(c, "id")
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	summary, err := h.svc.GetProductRating(c, productID)
+	rating, err := h.svc.GetRatingSummary(c, spuID)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	response.Success(c, toProductRatingResp(summary))
+	response.Success(c, toRatingResp(rating))
 }
 
-// DeleteMyReview 删除我的评论
-// @Summary 删除我的评论
+// DeleteMyReview 删除我的评价
+// @Summary 删除我的评价
 // @Tags reviews
 // @Security ApiKeyAuth
 // @Produce json
-// @Param id path int true "评论ID"
+// @Param id path int true "评价ID"
 // @Success 200 {object} response.Response
 // @Router /api/v1/reviews/{id} [delete]
 func (h *ReviewHandler) DeleteMyReview(c *gin.Context) {
-	v, _ := c.Get("user_id")
-	userID, _ := v.(int64)
-
 	reviewID, err := utils.ParseIntParam(c, "id")
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	rv, err := h.svc.GetReview(c, reviewID)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-	if rv.UserID != userID {
-		c.Error(errcode.ErrReviewNotOwner)
-		return
-	}
-	if err := h.svc.DeleteReview(c, reviewID); err != nil {
+	if err := h.svc.DeleteReview(c, currentUserID(c), reviewID, false); err != nil {
 		c.Error(err)
 		return
 	}
 	response.Success(c, nil)
 }
 
-// ListPendingReviews 待审核评论列表
-// @Summary 待审核评论列表
+// ListPendingReviews 待审核评价列表
+// @Summary 待审核评价列表
 // @Tags reviews
 // @Security ApiKeyAuth
 // @Produce json
@@ -174,24 +159,21 @@ func (h *ReviewHandler) DeleteMyReview(c *gin.Context) {
 // @Router /api/v1/admin/reviews/pending [get]
 func (h *ReviewHandler) ListPendingReviews(c *gin.Context) {
 	page, size := parsePageSize(c)
-	list, total, err := h.svc.ListPendingReviews(c, page, size)
+	list, total, err := h.svc.ListPending(c, page, size)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	response.Success(c, &ReviewListResult{
-		Total: total,
-		List:  toReviewRespList(list),
-	})
+	response.Success(c, &ReviewListResult{Total: total, List: toReviewRespList(list)})
 }
 
-// ModerateReview 审核评论
-// @Summary 审核评论
+// ModerateReview 审核评价
+// @Summary 审核评价
 // @Tags reviews
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
-// @Param id path int true "评论ID"
+// @Param id path int true "评价ID"
 // @Param request body ModerateReviewReq true "审核信息"
 // @Success 200 {object} response.Response
 // @Router /api/v1/admin/reviews/{id}/moderate [patch]
@@ -206,7 +188,7 @@ func (h *ReviewHandler) ModerateReview(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	if err := h.svc.ModerateReview(c, reviewID, req.Status); err != nil {
+	if err := h.svc.ModerateReview(c, reviewID, currentUserID(c), req.Status, req.Reason); err != nil {
 		c.Error(err)
 		return
 	}
@@ -219,7 +201,7 @@ func (h *ReviewHandler) ModerateReview(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
-// @Param id path int true "评论ID"
+// @Param id path int true "评价ID"
 // @Param request body ReplyReviewReq true "回复内容"
 // @Success 200 {object} response.Response
 // @Router /api/v1/admin/reviews/{id}/reply [post]
@@ -234,19 +216,19 @@ func (h *ReviewHandler) ReplyReview(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	if err := h.svc.ReplyReview(c, reviewID, req.Reply); err != nil {
+	if _, err := h.svc.ReplyReview(c, reviewID, currentUserID(c), req.Content); err != nil {
 		c.Error(err)
 		return
 	}
 	response.Success(c, nil)
 }
 
-// AdminDeleteReview 管理员删除评论
-// @Summary 管理员删除评论
+// AdminDeleteReview 管理员删除评价
+// @Summary 管理员删除评价
 // @Tags reviews
 // @Security ApiKeyAuth
 // @Produce json
-// @Param id path int true "评论ID"
+// @Param id path int true "评价ID"
 // @Success 200 {object} response.Response
 // @Router /api/v1/admin/reviews/{id} [delete]
 func (h *ReviewHandler) AdminDeleteReview(c *gin.Context) {
@@ -255,7 +237,7 @@ func (h *ReviewHandler) AdminDeleteReview(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	if err := h.svc.DeleteReview(c, reviewID); err != nil {
+	if err := h.svc.DeleteReview(c, currentUserID(c), reviewID, true); err != nil {
 		c.Error(err)
 		return
 	}
@@ -275,48 +257,52 @@ func parsePageSize(c *gin.Context) (int, int) {
 	return page, size
 }
 
-func toReviewResp(r *Review) ReviewResp {
-	resp := ReviewResp{
-		ID:          r.ID,
-		ProductID:   r.ProductID,
-		UserID:      r.UserID,
-		UserName:    r.UserName,
-		UserAvatar:  r.UserAvatar,
-		OrderItemID: r.OrderItemID,
-		OrderNo:     r.OrderNo,
-		Rating:      r.Rating,
-		Content:     r.Content,
-		Media:       r.GetMedia(),
-		Status:      r.Status,
-		Reply:       r.Reply,
-		CreatedAt:   r.CreatedAt.UnixMilli(),
-		UpdatedAt:   r.UpdatedAt.UnixMilli(),
+func toReviewResp(r *Review) *ReviewResp {
+	return &ReviewResp{
+		ID:              r.ID,
+		UserID:          r.UserID,
+		OrderID:         r.OrderID,
+		OrderItemID:     r.OrderItemID,
+		SpuID:           r.SpuID,
+		SkuID:           r.SkuID,
+		OverallRating:   r.OverallRating,
+		QualityRating:   r.QualityRating,
+		LogisticsRating: r.LogisticsRating,
+		ServiceRating:   r.ServiceRating,
+		Content:         r.Content,
+		IsAnonymous:     r.IsAnonymous,
+		Status:          r.Status,
+		RejectReason:    r.RejectReason,
+		ReplyCount:      r.ReplyCount,
+		LikeCount:       r.LikeCount,
+		HelpfulCount:    r.HelpfulCount,
+		CreatedAt:       r.CreatedAt.UnixMilli(),
+		UpdatedAt:       r.UpdatedAt.UnixMilli(),
 	}
-	if r.ReplyAt != nil {
-		resp.ReplyAt = r.ReplyAt.UnixMilli()
-	}
-	return resp
 }
 
 func toReviewRespList(list []*Review) []*ReviewResp {
 	resp := make([]*ReviewResp, len(list))
 	for i, r := range list {
-		v := toReviewResp(r)
-		resp[i] = &v
+		resp[i] = toReviewResp(r)
 	}
 	return resp
 }
 
-func toProductRatingResp(s *ProductRatingSummary) ProductRatingResp {
-	return ProductRatingResp{
-		ProductID:     s.ProductID,
-		AverageRating: s.AverageRating,
-		ReviewCount:   s.ReviewCount,
-		Rating1Count:  s.Rating1Count,
-		Rating2Count:  s.Rating2Count,
-		Rating3Count:  s.Rating3Count,
-		Rating4Count:  s.Rating4Count,
-		Rating5Count:  s.Rating5Count,
+func toRatingResp(r *ReviewRating) ReviewRatingResp {
+	return ReviewRatingResp{
+		SpuID:              r.SpuID,
+		AvgOverallRating:   r.AvgOverallRating,
+		AvgQualityRating:   r.AvgQualityRating,
+		AvgLogisticsRating: r.AvgLogisticsRating,
+		AvgServiceRating:   r.AvgServiceRating,
+		Rating5Count:       r.Rating5Count,
+		Rating4Count:       r.Rating4Count,
+		Rating3Count:       r.Rating3Count,
+		Rating2Count:       r.Rating2Count,
+		Rating1Count:       r.Rating1Count,
+		TotalReviews:       r.TotalReviews,
+		WithMediaCount:     r.WithMediaCount,
 	}
 }
 
@@ -374,16 +360,10 @@ func buildOrderLookup(repos *repository.Repositories, db *gorm.DB) OrderByItemLo
 		}
 		items := make([]OrderItemSnapshot, 0, len(order.Items))
 		for _, it := range order.Items {
-			items = append(items, OrderItemSnapshot{
-				ID:        it.ID,
-				ProductID: it.ProductID,
-			})
+			items = append(items, OrderItemSnapshot{ID: it.ID, ProductID: it.ProductID})
 		}
 		return &OrderSnapshot{
-			ID:         order.ID,
-			CustomerID: order.CustomerID,
-			OrderNo:    order.OrderNo,
-			Items:      items,
+			ID: order.ID, CustomerID: order.CustomerID, OrderNo: order.OrderNo, Items: items,
 		}, nil
 	}
 }
@@ -394,9 +374,6 @@ func buildUserLookup(repos *repository.Repositories) UserInfoLookup {
 		if err != nil {
 			return &UserInfoSnapshot{}, nil
 		}
-		return &UserInfoSnapshot{
-			Nickname: user.Nickname,
-			Avatar:   user.Avatar,
-		}, nil
+		return &UserInfoSnapshot{Nickname: user.Nickname, Avatar: user.Avatar}, nil
 	}
 }

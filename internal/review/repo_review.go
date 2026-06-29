@@ -2,33 +2,36 @@ package review
 
 import (
 	"context"
-	"time"
 
 	"gorm.io/gorm"
 )
 
 type IreviewRepository interface {
-	Create(ctx context.Context, review *Review) error
+	CreateReview(ctx context.Context, review *Review) error
 	FindByID(ctx context.Context, id int64) (*Review, error)
 	ExistsByOrderItem(ctx context.Context, orderItemID int64) (bool, error)
-	ListByProduct(ctx context.Context, productID int64, statuses []string, page, size int) ([]Review, int64, error)
+	ListBySpu(ctx context.Context, spuID int64, statuses []int8, page, size int) ([]Review, int64, error)
 	ListByUser(ctx context.Context, userID int64, page, size int) ([]Review, int64, error)
-	ListByStatus(ctx context.Context, status string, page, size int) ([]Review, int64, error)
-	UpdateStatus(ctx context.Context, id int64, status string) error
-	UpdateReply(ctx context.Context, id int64, reply string) error
+	ListByStatus(ctx context.Context, status int8, page, size int) ([]Review, int64, error)
+	UpdateStatus(ctx context.Context, id int64, status int8, rejectReason string) error
 	Delete(ctx context.Context, id int64) error
-	CountRatingByProduct(ctx context.Context, productID int64) (*RatingStats, error)
-	UpsertRatingSummary(ctx context.Context, productID int64, stats *RatingStats) (*ProductRatingSummary, error)
-	GetRatingSummary(ctx context.Context, productID int64) (*ProductRatingSummary, error)
-}
 
-type RatingStats struct {
-	Rating1 int64
-	Rating2 int64
-	Rating3 int64
-	Rating4 int64
-	Rating5 int64
-	Total   int64
+	// media
+	CreateMedia(ctx context.Context, media *ReviewMedia) error
+	ListMediaByReviewID(ctx context.Context, reviewID int64) ([]ReviewMedia, error)
+
+	// replies
+	CreateReply(ctx context.Context, reply *ReviewReply) (*ReviewReply, error)
+	UpdateLatestReply(ctx context.Context, reviewID int64, replyID int64, replyCount int) error
+	ListRepliesByReviewID(ctx context.Context, reviewID int64) ([]ReviewReply, error)
+
+	// rating
+	UpsertRatingSummary(ctx context.Context, r *ReviewRating) error
+	GetRatingSummary(ctx context.Context, spuID int64) (*ReviewRating, error)
+	CountRatingBySpu(ctx context.Context, spuID int64) (map[int8]int64, int64, error)
+
+	// audit log
+	CreateAuditLog(ctx context.Context, log *ReviewAuditLog) error
 }
 
 type ReviewRepository struct {
@@ -39,7 +42,7 @@ func NewReviewRepository(db *gorm.DB) IreviewRepository {
 	return &ReviewRepository{db: db}
 }
 
-func (r *ReviewRepository) Create(ctx context.Context, review *Review) error {
+func (r *ReviewRepository) CreateReview(ctx context.Context, review *Review) error {
 	return r.db.WithContext(ctx).Create(review).Error
 }
 
@@ -52,12 +55,12 @@ func (r *ReviewRepository) FindByID(ctx context.Context, id int64) (*Review, err
 func (r *ReviewRepository) ExistsByOrderItem(ctx context.Context, orderItemID int64) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&Review{}).
-		Where("order_item_id = ?", orderItemID).Count(&count).Error
+		Where("order_item_id = ? AND status != ?", orderItemID, ReviewStatusDeleted).Count(&count).Error
 	return count > 0, err
 }
 
-func (r *ReviewRepository) ListByProduct(ctx context.Context, productID int64, statuses []string, page, size int) ([]Review, int64, error) {
-	q := r.db.WithContext(ctx).Model(&Review{}).Where("product_id = ?", productID)
+func (r *ReviewRepository) ListBySpu(ctx context.Context, spuID int64, statuses []int8, page, size int) ([]Review, int64, error) {
+	q := r.db.WithContext(ctx).Model(&Review{}).Where("spu_id = ?", spuID)
 	if len(statuses) > 0 {
 		q = q.Where("status IN ?", statuses)
 	}
@@ -81,7 +84,7 @@ func (r *ReviewRepository) ListByUser(ctx context.Context, userID int64, page, s
 	return list, total, err
 }
 
-func (r *ReviewRepository) ListByStatus(ctx context.Context, status string, page, size int) ([]Review, int64, error) {
+func (r *ReviewRepository) ListByStatus(ctx context.Context, status int8, page, size int) ([]Review, int64, error) {
 	q := r.db.WithContext(ctx).Model(&Review{}).Where("status = ?", status)
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
@@ -92,78 +95,104 @@ func (r *ReviewRepository) ListByStatus(ctx context.Context, status string, page
 	return list, total, err
 }
 
-func (r *ReviewRepository) UpdateStatus(ctx context.Context, id int64, status string) error {
-	return r.db.WithContext(ctx).Model(&Review{}).Where("id = ?", id).Update("status", status).Error
-}
-
-func (r *ReviewRepository) UpdateReply(ctx context.Context, id int64, reply string) error {
-	now := time.Now()
-	return r.db.WithContext(ctx).Model(&Review{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"reply":    reply,
-		"reply_at": now,
-	}).Error
+func (r *ReviewRepository) UpdateStatus(ctx context.Context, id int64, status int8, rejectReason string) error {
+	updates := map[string]interface{}{"status": status}
+	if rejectReason != "" {
+		updates["reject_reason"] = rejectReason
+	}
+	return r.db.WithContext(ctx).Model(&Review{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (r *ReviewRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&Review{}).Error
 }
 
-func (r *ReviewRepository) CountRatingByProduct(ctx context.Context, productID int64) (*RatingStats, error) {
+func (r *ReviewRepository) CreateMedia(ctx context.Context, media *ReviewMedia) error {
+	return r.db.WithContext(ctx).Create(media).Error
+}
+
+func (r *ReviewRepository) ListMediaByReviewID(ctx context.Context, reviewID int64) ([]ReviewMedia, error) {
+	var list []ReviewMedia
+	err := r.db.WithContext(ctx).Where("review_id = ?", reviewID).Order("sort_order ASC, id ASC").Find(&list).Error
+	return list, err
+}
+
+func (r *ReviewRepository) CreateReply(ctx context.Context, reply *ReviewReply) (*ReviewReply, error) {
+	if err := r.db.WithContext(ctx).Create(reply).Error; err != nil {
+		return nil, err
+	}
+	return reply, nil
+}
+
+func (r *ReviewRepository) UpdateLatestReply(ctx context.Context, reviewID int64, replyID int64, replyCount int) error {
+	return r.db.WithContext(ctx).Model(&Review{}).Where("id = ?", reviewID).
+		Updates(map[string]interface{}{
+			"latest_reply_id": replyID,
+			"reply_count":     replyCount,
+		}).Error
+}
+
+func (r *ReviewRepository) ListRepliesByReviewID(ctx context.Context, reviewID int64) ([]ReviewReply, error) {
+	var list []ReviewReply
+	err := r.db.WithContext(ctx).Where("review_id = ? AND status = ?", reviewID, ReplyStatusNormal).
+		Order("created_at ASC").Find(&list).Error
+	return list, err
+}
+
+func (r *ReviewRepository) UpsertRatingSummary(ctx context.Context, rating *ReviewRating) error {
+	return r.db.WithContext(ctx).Save(rating).Error
+}
+
+func (r *ReviewRepository) GetRatingSummary(ctx context.Context, spuID int64) (*ReviewRating, error) {
+	var rating ReviewRating
+	err := r.db.WithContext(ctx).First(&rating, "spu_id = ?", spuID).Error
+	return &rating, err
+}
+
+func (r *ReviewRepository) CountRatingBySpu(ctx context.Context, spuID int64) (map[int8]int64, int64, error) {
 	type row struct {
-		Rating int
+		Rating int8
 		Cnt    int64
 	}
 	var rows []row
 	err := r.db.WithContext(ctx).Model(&Review{}).
-		Select("rating, count(*) as cnt").
-		Where("product_id = ? AND status = ?", productID, ReviewStatusApproved).
-		Group("rating").Scan(&rows).Error
+		Select("overall_rating as rating, count(*) as cnt").
+		Where("spu_id = ? AND status = ?", spuID, ReviewStatusApproved).
+		Group("overall_rating").Scan(&rows).Error
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	stats := &RatingStats{}
+	counts := map[int8]int64{}
+	var total int64
 	for _, rw := range rows {
-		switch rw.Rating {
-		case 1:
-			stats.Rating1 = rw.Cnt
-		case 2:
-			stats.Rating2 = rw.Cnt
-		case 3:
-			stats.Rating3 = rw.Cnt
-		case 4:
-			stats.Rating4 = rw.Cnt
-		case 5:
-			stats.Rating5 = rw.Cnt
-		}
-		stats.Total += rw.Cnt
+		counts[rw.Rating] = rw.Cnt
+		total += rw.Cnt
 	}
-	return stats, nil
+	return counts, total, nil
 }
 
-func (r *ReviewRepository) UpsertRatingSummary(ctx context.Context, productID int64, stats *RatingStats) (*ProductRatingSummary, error) {
+func (r *ReviewRepository) CreateAuditLog(ctx context.Context, log *ReviewAuditLog) error {
+	return r.db.WithContext(ctx).Create(log).Error
+}
+
+// ComputeRatingSummary calculates rating summary from raw counts.
+func ComputeRatingSummary(spuID int64, counts map[int8]int64, total int64) *ReviewRating {
 	avg := 0.0
-	if stats.Total > 0 {
-		sum := float64(stats.Rating1)*1 + float64(stats.Rating2)*2 + float64(stats.Rating3)*3 + float64(stats.Rating4)*4 + float64(stats.Rating5)*5
-		avg = sum / float64(stats.Total)
+	if total > 0 {
+		var sum float64
+		for rating, cnt := range counts {
+			sum += float64(rating) * float64(cnt)
+		}
+		avg = sum / float64(total)
 	}
-	s := &ProductRatingSummary{
-		ProductID:     productID,
-		AverageRating: avg,
-		ReviewCount:   stats.Total,
-		Rating1Count:  stats.Rating1,
-		Rating2Count:  stats.Rating2,
-		Rating3Count:  stats.Rating3,
-		Rating4Count:  stats.Rating4,
-		Rating5Count:  stats.Rating5,
+	return &ReviewRating{
+		SpuID:            spuID,
+		AvgOverallRating: avg,
+		TotalReviews:     int(total),
+		Rating5Count:     int(counts[5]),
+		Rating4Count:     int(counts[4]),
+		Rating3Count:     int(counts[3]),
+		Rating2Count:     int(counts[2]),
+		Rating1Count:     int(counts[1]),
 	}
-	if err := r.db.WithContext(ctx).Save(s).Error; err != nil {
-		return nil, err
-	}
-	return s, nil
-}
-
-func (r *ReviewRepository) GetRatingSummary(ctx context.Context, productID int64) (*ProductRatingSummary, error) {
-	var s ProductRatingSummary
-	err := r.db.WithContext(ctx).First(&s, "product_id = ?", productID).Error
-	return &s, err
 }
