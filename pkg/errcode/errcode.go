@@ -92,7 +92,12 @@ var (
 	ErrCategoryHasChildren = &BizError{Code: 4012, Message: "category has children, cannot delete"}
 	ErrCategoryParentNotFound = &BizError{Code: 4013, Message: "parent category not found"}
 	ErrCategoryLevelExceed = &BizError{Code: 4014, Message: "category level exceeds maximum (3)"}
-	ErrAttributeNotFound   = &BizError{Code: 4020, Message: "attribute not found"}
+	ErrAttributeNotFound    = &BizError{Code: 4020, Message: "attribute not found"}
+	ErrSPUNotFound          = &BizError{Code: 4030, Message: "product not found"}
+	ErrSKUCodeExists        = &BizError{Code: 4031, Message: "sku code already exists"}
+	ErrSPUInvalidStatus     = &BizError{Code: 4032, Message: "invalid product status transition"}
+	ErrProductAttrDuplicate = &BizError{Code: 4033, Message: "duplicate product attribute"}
+	ErrSPUHasNoSKU          = &BizError{Code: 4034, Message: "product must have at least one sku"}
 )
 
 // ==================== 域：评论评分（3001-3999） ====================
