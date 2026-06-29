@@ -13,8 +13,6 @@ import (
 	dashboardSvcPkg "eshop-monolith/internal/dashboard/service"
 	flashRoutes "eshop-monolith/internal/flashsale/api/routes"
 	flashSvcPkg "eshop-monolith/internal/flashsale/service"
-	invRoutes "eshop-monolith/internal/inventory/api/routes"
-	invSvcPkg "eshop-monolith/internal/inventory/service"
 	notifRoutes "eshop-monolith/internal/notification/api/routes"
 	notifSvcPkg "eshop-monolith/internal/notification/service"
 	orderRoutes "eshop-monolith/internal/order/api/routes"
@@ -78,11 +76,10 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	// 声明 service 变量（在 v1 block 内赋值, 在 block 外用于事件处理器注册和启动预热）
 	var orderSvc *orderSvcPkg.OrderService
 	var flashSvc *flashSvcPkg.FlashService
-	var productSvc *invSvcPkg.ProductService
-	var categorySvc *invSvcPkg.CategoryService
 	var dashboardSvc *dashboardSvcPkg.DashboardService
 	var notifSvc *notifSvcPkg.NotificationService
 	var warmupDone atomic.Bool
+	warmupDone.Store(true)
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
@@ -117,12 +114,12 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		product.RegisterCategoryRoutes(v1, db)
 		product.RegisterAttributeRoutes(v1, db)
 		product.RegisterProductRoutes(v1, db)
-		categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
-		productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)
-		invRoutes.RegisterInventoryRoutes(v1, repos, mqClient)
-		invRoutes.RegisterSkuRoutes(v1, repos, db, mqClient)
-		invRoutes.RegisterProductAttributeRoutes(v1, repos, db)
-		invRoutes.RegisterAttributeRoutes(v1, repos, db)
+		// categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
+		// productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)
+		// invRoutes.RegisterInventoryRoutes(v1, repos, mqClient)
+		// invRoutes.RegisterSkuRoutes(v1, repos, db, mqClient)
+		// invRoutes.RegisterProductAttributeRoutes(v1, repos, db)
+		// invRoutes.RegisterAttributeRoutes(v1, repos, db)
 
 		// 优惠券系统（需先于订单初始化，用于结算时优惠校验）
 		couponSvc := couponRoutes.RegisterCouponRoutes(v1, repos, db, mqClient)
@@ -153,31 +150,31 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		}
 	}
 
-	// 启动时异步预热商品缓存（goroutine 不阻塞启动，预热完成前 health 返回 503）
-	if productSvc != nil {
-		go func() {
-			logger.Info("Starting product cache warmup...")
-			total, err := productSvc.WarmupProductCache(context.Background())
-			if err != nil {
-				logger.Error("Product cache warmup failed", "error", err)
-			} else {
-				logger.Info("Product cache warmup completed", "total", total)
-			}
-			warmupDone.Store(true)
-		}()
-	}
-	// 启动时异步预热分类缓存
-	if categorySvc != nil {
-		go func() {
-			logger.Info("Starting category cache warmup...")
-			total, err := categorySvc.WarmupCategoryCache(context.Background())
-			if err != nil {
-				logger.Error("Category cache warmup failed", "error", err)
-			} else {
-				logger.Info("Category cache warmup completed", "total", total)
-			}
-		}()
-	}
+	// [DEPRECATED] 旧缓存预热与新商品中心不兼容，暂时禁用
+	// if productSvc != nil {
+	// 	go func() {
+	// 		logger.Info("Starting product cache warmup...")
+	// 		total, err := productSvc.WarmupProductCache(context.Background())
+	// 		if err != nil {
+	// 			logger.Error("Product cache warmup failed", "error", err)
+	// 		} else {
+	// 			logger.Info("Product cache warmup completed", "total", total)
+	// 		}
+	// 		warmupDone.Store(true)
+	// 	}()
+	// }
+	// // 启动时异步预热分类缓存
+	// if categorySvc != nil {
+	// 	go func() {
+	// 		logger.Info("Starting category cache warmup...")
+	// 		total, err := categorySvc.WarmupCategoryCache(context.Background())
+	// 		if err != nil {
+	// 			logger.Error("Category cache warmup failed", "error", err)
+	// 		} else {
+	// 			logger.Info("Category cache warmup completed", "total", total)
+	// 		}
+	// 	}()
+	// }
 	// 仪表盘缓存预热 + 定时刷新（每4分钟刷新，略短于5分钟 TTL 防止过期）
 	if dashboardSvc != nil {
 		go func() {
