@@ -92,6 +92,7 @@ var (
 	ErrCategoryHasChildren = &BizError{Code: 4012, Message: "category has children, cannot delete"}
 	ErrCategoryParentNotFound = &BizError{Code: 4013, Message: "parent category not found"}
 	ErrCategoryLevelExceed = &BizError{Code: 4014, Message: "category level exceeds maximum (3)"}
+	ErrAttributeNotFound   = &BizError{Code: 4020, Message: "attribute not found"}
 )
 
 // ==================== 域：评论评分（3001-3999） ====================
