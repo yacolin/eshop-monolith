@@ -8,7 +8,7 @@ type Order struct {
 }
 
 type OrderItem struct {
-	ID      int64
-	OrderID int64
+	ID        int64
+	OrderID   int64
 	ProductID string
 }
