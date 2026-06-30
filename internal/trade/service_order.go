@@ -105,6 +105,18 @@ func (s *OrderService) GetByOrderNo(ctx context.Context, orderNo string) (*Order
 	return s.repo.FindByOrderNo(ctx, orderNo)
 }
 
+func (s *OrderService) GetOrderDetail(ctx context.Context, orderNo string) (*OrderDetailResponse, error) {
+	order, err := s.repo.FindByOrderNo(ctx, orderNo)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.repo.ListItems(ctx, order.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &OrderDetailResponse{Order: order, Items: items}, nil
+}
+
 func (s *OrderService) List(ctx context.Context, req *OrderListReq) (*OrderListResult, error) {
 	req.Normalize()
 	list, total, err := s.repo.List(ctx, req.UserID, req.Status, req.Page, req.Size)

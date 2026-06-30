@@ -649,9 +649,6 @@ def seed_marketing(conn):
         ("限时秒杀-耳机", 3, 0, 30, 2, 100),
         ("限时秒杀-运动鞋", 3, 0, 40, 1, 80),
         ("限时秒杀-化妆品", 3, 0, 25, 2, 120),
-        ("满300送赠品", 7, 30000, 0, 1, 200),
-        ("买2件9折", 8, 0, 10, 0, 0),
-        ("买3件8折", 8, 0, 20, 0, 0),
         ("双11预售", 2, 0, 0, 1, 1000),
         ("618大促", 2, 0, 0, 1, 1000),
         ("品牌日特惠", 2, 0, 0, 1, 500),
@@ -730,9 +727,9 @@ def seed_order(conn):
                 username = f"test_user_{i}"
                 nickname = f"{random.choice(['小明','小红','张三','李四','王五','赵六','测试','游客'])}{i}"
                 cur.execute(
-                    "INSERT IGNORE INTO usr_users (username, password_hash, nickname, phone, status, register_source) "
-                    "VALUES (%s, %s, %s, %s, 1, 'pc')",
-                    (username, f"hash_{i}", nickname, f"1{i:09d}"),
+                    "INSERT IGNORE INTO usr_users (username, password_hash, nickname, phone, email, status, register_source) "
+                    "VALUES (%s, %s, %s, %s, %s, 1, 'pc')",
+                    (username, f"hash_{i}", nickname, f"1{i:09d}", f"user{i}@test.com"),
                 )
                 if cur.lastrowid:
                     cur.execute("INSERT IGNORE INTO usr_infos (user_id) VALUES (%s)", (cur.lastrowid,))
@@ -740,6 +737,20 @@ def seed_order(conn):
             conn.commit()
             cur.execute("SELECT id FROM usr_users WHERE deleted_at IS NULL")
             users = cur.fetchall()
+
+        # 模拟用户领券
+        cur.execute("SELECT id, promo_type FROM mkt_promotions")
+        for promo_id, promo_type in cur.fetchall():
+            if promo_type == 3:
+                continue
+            recipients = random.sample(users, min(len(users), max(1, int(len(users) * random.uniform(0.3, 0.8)))))
+            for u in recipients:
+                expire = now + timedelta(days=random.randint(7, 60))
+                cur.execute(
+                    "INSERT IGNORE INTO mkt_user_promotions (user_id, promotion_id, expire_time, status) "
+                    "VALUES (%s, %s, %s, 1)",
+                    (u[0], promo_id, expire.strftime(FMT)),
+                )
 
         total_orders = 0
         total_items = 0
@@ -902,7 +913,7 @@ def main():
     with conn.cursor() as cur:
         for table in ["sp_brands", "sp_categories", "sp_attributes", "sp_products",
                       "sp_skus", "sp_product_descriptions", "sp_product_attributes",
-                      "sp_inventories", "mkt_promotions", "tx_orders", "tx_order_items", "tx_payments"]:
+                      "sp_inventories", "mkt_promotions", "mkt_user_promotions", "tx_orders", "tx_order_items", "tx_payments"]:
             cur.execute(f"SELECT COUNT(*) AS cnt FROM {table}")
             row = cur.fetchone()
             print(f"  {table}: {row[0]}")

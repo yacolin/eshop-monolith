@@ -47,10 +47,10 @@ func (h *OrderHandler) Create(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Produce json
 // @Param order_no path string true "订单号"
-// @Success 200 {object} response.Response{data=Order}
+// @Success 200 {object} response.Response{data=OrderDetailResponse}
 // @Router /api/v1/orders/{order_no} [get]
 func (h *OrderHandler) GetByOrderNo(c *gin.Context) {
-	result, err := h.svc.GetByOrderNo(c, c.Param("order_no"))
+	result, err := h.svc.GetOrderDetail(c, c.Param("order_no"))
 	if err != nil {
 		c.Error(err)
 		return

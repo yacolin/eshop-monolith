@@ -455,6 +455,9 @@ func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailRes
 		skus = []SKU{}
 	}
 
+	// 补充 SKU 库存信息
+	s.loadSKUInventory(ctx, skus)
+
 	// SKU 规格维度从 SKU spec 聚合（多值）
 	specAttrs := s.aggregateSpecAttrs(skus)
 	// 非 SKU 规格属性从 sp_product_attributes 取（单值）
@@ -476,6 +479,37 @@ func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailRes
 		Description: descResp,
 		SKUs:        skus,
 	}, nil
+}
+
+// loadSKUInventory 补充 SKU 库存信息
+func (s *SpuService) loadSKUInventory(ctx context.Context, skus []SKU) {
+	if len(skus) == 0 {
+		return
+	}
+	ids := make([]int64, len(skus))
+	for i, sku := range skus {
+		ids[i] = sku.ID
+	}
+	type inventoryRow struct {
+		SkuID    int64  `gorm:"column:sku_id"`
+		Quantity int64  `gorm:"column:quantity"`
+		Status   string `gorm:"column:status"`
+	}
+	var rows []inventoryRow
+	s.db.WithContext(ctx).Table("sp_inventories").
+		Select("sku_id, quantity, status").
+		Where("sku_id IN ?", ids).
+		Scan(&rows)
+	invMap := make(map[int64]inventoryRow, len(rows))
+	for _, r := range rows {
+		invMap[r.SkuID] = r
+	}
+	for i := range skus {
+		if inv, ok := invMap[skus[i].ID]; ok {
+			skus[i].AvailableQuantity = inv.Quantity
+			skus[i].InventoryStatus = inv.Status
+		}
+	}
 }
 
 // aggregateSpecAttrs 从 SKU spec JSON 聚合规格维度（去重）

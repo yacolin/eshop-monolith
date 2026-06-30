@@ -35,3 +35,9 @@ type UpdateOrderStatusReq struct {
 	Status string `json:"status" binding:"required,oneof=cancelled shipped delivered completed"`
 	Note   string `json:"note" binding:"max=500"`
 }
+
+// OrderDetailResponse 订单详情（含订单项）
+type OrderDetailResponse struct {
+	*Order
+	Items []OrderItem `json:"items"`
+}
