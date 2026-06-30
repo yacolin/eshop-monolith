@@ -1,14 +1,13 @@
 package product
 
 import (
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
-
 )
 
 type CategoryHandler struct {
@@ -150,6 +149,10 @@ func (h *CategoryHandler) ListByLevel(c *gin.Context) {
 	level, err := utils.ParseIntParam(c, "level")
 	if err != nil {
 		c.Error(err)
+		return
+	}
+	if level < 1 || level > 3 {
+		c.Error(errcode.ErrCategoryLevelInvalid)
 		return
 	}
 	result, err := h.svc.ListByLevel(c, int8(level))

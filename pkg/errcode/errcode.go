@@ -92,6 +92,7 @@ var (
 	ErrCategoryHasChildren = &BizError{Code: 4012, Message: "category has children, cannot delete"}
 	ErrCategoryParentNotFound = &BizError{Code: 4013, Message: "parent category not found"}
 	ErrCategoryLevelExceed = &BizError{Code: 4014, Message: "category level exceeds maximum (3)"}
+	ErrCategoryLevelInvalid = &BizError{Code: 4015, Message: "category level must be between 1 and 3"}
 	ErrAttributeNotFound    = &BizError{Code: 4020, Message: "attribute not found"}
 	ErrSPUNotFound          = &BizError{Code: 4030, Message: "product not found"}
 	ErrSKUCodeExists        = &BizError{Code: 4031, Message: "sku code already exists"}
