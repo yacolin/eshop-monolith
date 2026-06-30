@@ -1,16 +1,19 @@
 package product
 
 import (
-
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
+	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/errcode"
-
 )
 
 type SpuService struct {
@@ -19,6 +22,8 @@ type SpuService struct {
 	brandRepo    IbrandRepository
 	attrRepo     IattributeRepository
 	db           *gorm.DB
+	rdb          *redis.Client
+	sf           singleflight.Group
 }
 
 func NewSpuService(
@@ -27,6 +32,7 @@ func NewSpuService(
 	brandRepo IbrandRepository,
 	attrRepo IattributeRepository,
 	db *gorm.DB,
+	rdb *redis.Client,
 ) *SpuService {
 	return &SpuService{
 		repo:         repo,
@@ -34,12 +40,8 @@ func NewSpuService(
 		brandRepo:    brandRepo,
 		attrRepo:     attrRepo,
 		db:           db,
+		rdb:          rdb,
 	}
-}
-
-type SPUListResult struct {
-	Total int64  `json:"total"`
-	List  []*SPU `json:"list"`
 }
 
 // Create 创建商品（事务内写 SPU + SKU + Description + ProductAttribute）
@@ -191,11 +193,21 @@ func (s *SpuService) Create(ctx context.Context, req *CreateSPUReq) (*SPU, error
 	if err != nil {
 		return nil, err
 	}
+	if s.rdb != nil && spu != nil {
+		delSPUEntity(context.Background(), s.rdb, spu.ID)
+		delAllSPUListCache(context.Background(), s.rdb)
+		delayedDeleteSPU(context.Background(), s.rdb, spu.ID)
+	}
 	return spu, nil
 }
 
 // GetByID 获取商品详情（含 SKU）
 func (s *SpuService) GetByID(ctx context.Context, id int64) (*SPU, error) {
+	if s.rdb != nil {
+		if spu, err := getSPUEntity(ctx, s.rdb, id); err == nil {
+			return spu, nil
+		}
+	}
 	spu, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -203,21 +215,165 @@ func (s *SpuService) GetByID(ctx context.Context, id int64) (*SPU, error) {
 		}
 		return nil, err
 	}
+	if s.rdb != nil {
+		if err := setSPUEntity(ctx, s.rdb, spu); err != nil {
+			_ = err
+		}
+	}
 	return spu, nil
 }
 
-// List 商品列表
+type cursorInfo struct {
+	SortOrder int
+	ID        int64
+}
+
 func (s *SpuService) List(ctx context.Context, req *SPUListReq) (*SPUListResult, error) {
 	req.Normalize()
-	list, total, err := s.repo.List(ctx, req.Name, req.CategoryID, req.BrandID, req.Status, req.PriceMin, req.PriceMax, req.Page, req.Size)
+	var cursor cursorInfo
+	if req.Cursor != "" {
+		if b, err := base64.StdEncoding.DecodeString(req.Cursor); err == nil {
+			parts := strings.Split(string(b), ",")
+			if len(parts) == 2 {
+				cursor.SortOrder, _ = strconv.Atoi(parts[0])
+				cursor.ID, _ = strconv.ParseInt(parts[1], 10, 64)
+			}
+		}
+	}
+	useZSET := s.rdb != nil && req.Name == "" && req.PriceMin == 0 && req.PriceMax == 0
+	if useZSET {
+		result, err := s.listFromZSET(ctx, req, cursor)
+		if err == nil {
+			return result, nil
+		}
+	}
+	return s.listFromDB(ctx, req, cursor)
+}
+
+func (s *SpuService) listFromZSET(ctx context.Context, req *SPUListReq, cursor cursorInfo) (*SPUListResult, error) {
+	key := cacheKeySPUListIDs(req.CategoryID, req.BrandID, req.Status)
+	v, err, _ := s.sf.Do(key, func() (interface{}, error) {
+		exists, err := s.rdb.Exists(ctx, key).Result()
+		if err != nil || exists == 0 {
+			var all []SPU
+			db := s.db.WithContext(ctx).Model(&SPU{}).Select("id, sort_order")
+			if req.CategoryID != nil {
+				db = db.Where("category_id = ?", *req.CategoryID)
+			}
+			if req.BrandID != nil {
+				db = db.Where("brand_id = ?", *req.BrandID)
+			}
+			if req.Status != nil {
+				db = db.Where("status = ?", *req.Status)
+			}
+			if err := db.Order("sort_order DESC, id DESC").Find(&all).Error; err != nil {
+				return nil, err
+			}
+			if len(all) == 0 {
+				return &SPUListResult{List: []*SPU{}}, nil
+			}
+			if err := setSPUListIDs(ctx, s.rdb, req.CategoryID, req.BrandID, req.Status, all); err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*SPU, len(list))
-	for i := range list {
-		items[i] = &list[i]
+	if v != nil {
+		return v.(*SPUListResult), nil
 	}
-	return &SPUListResult{Total: total, List: items}, nil
+	var cursorRank int64 = -1
+	if req.Cursor != "" && cursor.ID > 0 {
+		rank, err := getSPUListRank(ctx, s.rdb, req.CategoryID, req.BrandID, req.Status, cursor.ID)
+		if err != nil || rank < 0 {
+			return nil, fmt.Errorf("cursor not in cache")
+		}
+		cursorRank = rank + 1
+	}
+	ids, err := getSPUListIDs(ctx, s.rdb, req.CategoryID, req.BrandID, req.Status, cursorRank, req.Size+1)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return &SPUListResult{List: []*SPU{}}, nil
+	}
+	return s.buildListResult(ctx, ids, req.Size)
+}
+
+func (s *SpuService) listFromDB(ctx context.Context, req *SPUListReq, cursor cursorInfo) (*SPUListResult, error) {
+	ids, err := s.repo.ListIDs(ctx, req.Name, req.CategoryID, req.BrandID, req.Status, req.PriceMin, req.PriceMax, req.Size+1, cursor.SortOrder, cursor.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return &SPUListResult{List: []*SPU{}}, nil
+	}
+	return s.buildListResult(ctx, ids, req.Size)
+}
+
+func (s *SpuService) buildListResult(ctx context.Context, ids []int64, size int) (*SPUListResult, error) {
+	hasMore := len(ids) > size
+	if hasMore {
+		ids = ids[:size]
+	}
+	var list []*SPU
+	if s.rdb != nil {
+		hit, miss, err := batchFetchSPUEntities(ctx, s.rdb, ids)
+		if err != nil {
+			return s.fetchFullFromDB(ctx, ids, hasMore)
+		}
+		if len(miss) > 0 {
+			var dbSPUs []SPU
+			if err := s.db.WithContext(ctx).Where("id IN ?", miss).Find(&dbSPUs).Error; err != nil {
+				return nil, err
+			}
+			for i := range dbSPUs {
+				hit[dbSPUs[i].ID] = &dbSPUs[i]
+				if err := setSPUEntity(ctx, s.rdb, &dbSPUs[i]); err != nil {
+					_ = err
+				}
+			}
+		}
+		list = make([]*SPU, 0, len(ids))
+		for _, id := range ids {
+			if spu, ok := hit[id]; ok {
+				list = append(list, spu)
+			}
+		}
+	} else {
+		return s.fetchFullFromDB(ctx, ids, hasMore)
+	}
+	cursor := ""
+	if len(list) > 0 {
+		last := list[len(list)-1]
+		cursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d,%d", last.SortOrder, last.ID)))
+	}
+	return &SPUListResult{List: list, Cursor: cursor, HasMore: hasMore}, nil
+}
+
+func (s *SpuService) fetchFullFromDB(ctx context.Context, ids []int64, hasMore bool) (*SPUListResult, error) {
+	var spus []SPU
+	if err := s.db.WithContext(ctx).Where("id IN ?", ids).Find(&spus).Error; err != nil {
+		return nil, err
+	}
+	spuMap := make(map[int64]*SPU, len(spus))
+	for i := range spus {
+		spuMap[spus[i].ID] = &spus[i]
+	}
+	list := make([]*SPU, 0, len(ids))
+	for _, id := range ids {
+		if spu, ok := spuMap[id]; ok {
+			list = append(list, spu)
+		}
+	}
+	cursor := ""
+	if len(list) > 0 {
+		last := list[len(list)-1]
+		cursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d,%d", last.SortOrder, last.ID)))
+	}
+	return &SPUListResult{List: list, Cursor: cursor, HasMore: hasMore}, nil
 }
 
 // Update 更新商品基本信息
@@ -257,8 +413,15 @@ func (s *SpuService) Update(ctx context.Context, id int64, req *UpdateSPUReq) (*
 	if req.UpdatedBy != nil {
 		spu.UpdatedBy = *req.UpdatedBy
 	}
+	if s.rdb != nil {
+		delSPUEntity(context.Background(), s.rdb, id)
+		delAllSPUListCache(context.Background(), s.rdb)
+	}
 	if err := s.repo.Update(ctx, spu); err != nil {
 		return nil, err
+	}
+	if s.rdb != nil {
+		delayedDeleteSPU(context.Background(), s.rdb, id)
 	}
 	return spu, nil
 }
@@ -272,5 +435,15 @@ func (s *SpuService) Delete(ctx context.Context, id int64) error {
 		}
 		return err
 	}
-	return s.repo.Delete(ctx, id)
+	if s.rdb != nil {
+		delSPUEntity(context.Background(), s.rdb, id)
+		delAllSPUListCache(context.Background(), s.rdb)
+	}
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	if s.rdb != nil {
+		delayedDeleteSPU(context.Background(), s.rdb, id)
+	}
+	return nil
 }

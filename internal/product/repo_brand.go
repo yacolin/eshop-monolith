@@ -10,6 +10,7 @@ type IbrandRepository interface {
 	Create(ctx context.Context, brand *Brand) error
 	FindByID(ctx context.Context, id int64) (*Brand, error)
 	FindByName(ctx context.Context, name string) (*Brand, error)
+	FindAll(ctx context.Context) ([]Brand, error)
 	List(ctx context.Context, name, firstLetter string, status *int8, page, size int) ([]Brand, int64, error)
 	Update(ctx context.Context, brand *Brand) error
 	Delete(ctx context.Context, id int64) error
@@ -60,6 +61,12 @@ func (r *BrandRepository) List(ctx context.Context, name, firstLetter string, st
 		return nil, 0, err
 	}
 	return list, total, nil
+}
+
+func (r *BrandRepository) FindAll(ctx context.Context) ([]Brand, error) {
+	var list []Brand
+	err := r.db.WithContext(ctx).Order("sort_order DESC, id ASC").Find(&list).Error
+	return list, err
 }
 
 func (r *BrandRepository) Update(ctx context.Context, brand *Brand) error {

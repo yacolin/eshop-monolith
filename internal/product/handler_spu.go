@@ -3,6 +3,7 @@ package product
 import (
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/middleware"
@@ -63,12 +64,12 @@ func (h *SpuHandler) GetByID(c *gin.Context) {
 }
 
 // List 商品列表
-// @Summary 商品列表
+// @Summary 商品列表（keyset 游标分页）
 // @Tags products
 // @Accept json
 // @Produce json
-// @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
+// @Param cursor query string false "游标（首次请求不传，后续使用上次返回的 cursor）"
 // @Param name query string false "商品名称模糊搜索"
 // @Param category_id query int false "类目ID"
 // @Param brand_id query int false "品牌ID"
@@ -141,12 +142,12 @@ func (h *SpuHandler) Delete(c *gin.Context) {
 
 // ── Routes ────────────────────────────────────────
 
-func RegisterProductRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
+func RegisterProductRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 	repo := NewSpuRepository(db)
 	catRepo := NewCategoryRepository(db)
 	brandRepo := NewBrandRepository(db)
 	attrRepo := NewAttributeRepository(db)
-	svc := NewSpuService(repo, catRepo, brandRepo, attrRepo, db)
+	svc := NewSpuService(repo, catRepo, brandRepo, attrRepo, db, rdb)
 	h := NewSpuHandler(svc)
 
 	products := v1.Group("/products")

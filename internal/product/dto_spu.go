@@ -1,7 +1,5 @@
 package product
 
-import "eshop-monolith/pkg/query"
-
 // ── Create ───────────────────────────────────────
 
 type CreateSKUItem struct {
@@ -57,14 +55,32 @@ type UpdateSPUReq struct {
 	UpdatedBy *string   `json:"updated_by" binding:"omitempty,max=50"`
 }
 
-// ── List ─────────────────────────────────────────
+// ── List Request ──────────────────────────────────
 
 type SPUListReq struct {
-	query.Pagination
-	Name       string `form:"name"`
-	CategoryID *int64 `form:"category_id"`
-	BrandID    *int64 `form:"brand_id"`
-	Status     *int8  `form:"status"`
-	PriceMin   int64  `form:"price_min"`
-	PriceMax   int64  `form:"price_max"`
+	Size       int     `form:"size,default=10" binding:"gte=1,lte=1000"`
+	Cursor     string  `form:"cursor"`
+	Name       string  `form:"name"`
+	CategoryID *int64  `form:"category_id"`
+	BrandID    *int64  `form:"brand_id"`
+	Status     *int8   `form:"status"`
+	PriceMin   int64   `form:"price_min"`
+	PriceMax   int64   `form:"price_max"`
+}
+
+func (r *SPUListReq) Normalize() {
+	if r.Size <= 0 {
+		r.Size = 10
+	}
+	if r.Size > 1000 {
+		r.Size = 1000
+	}
+}
+
+// ── List Response ─────────────────────────────────
+
+type SPUListResult struct {
+	List    []*SPU `json:"list"`
+	Cursor  string `json:"cursor"`
+	HasMore bool   `json:"has_more"`
 }

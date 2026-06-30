@@ -3,6 +3,7 @@ package product
 import (
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/middleware"
@@ -138,9 +139,9 @@ func (h *BrandHandler) Delete(c *gin.Context) {
 
 // ── Routes ────────────────────────────────────────
 
-func RegisterBrandRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
+func RegisterBrandRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 	repo := NewBrandRepository(db)
-	svc := NewBrandService(repo)
+	svc := NewBrandService(repo, rdb)
 	h := NewBrandHandler(svc)
 
 	brands := v1.Group("/brands")

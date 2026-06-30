@@ -22,6 +22,7 @@ type IspuRepository interface {
 	FindSKUByID(ctx context.Context, id int64) (*SKU, error)
 
 	List(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, page, size int) ([]SPU, int64, error)
+	ListIDs(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, limit int, cursorSortOrder int, cursorID int64) ([]int64, error)
 
 	Update(ctx context.Context, spu *SPU) error
 	UpdateSKU(ctx context.Context, sku *SKU) error
@@ -133,6 +134,43 @@ func (r *SpuRepository) List(ctx context.Context, name string, categoryID, brand
 		return nil, 0, err
 	}
 	return list, total, nil
+}
+
+func (r *SpuRepository) ListIDs(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, limit int, cursorSortOrder int, cursorID int64) ([]int64, error) {
+	db := r.db.WithContext(ctx).Model(&SPU{}).Select("id, sort_order")
+	if name != "" {
+		db = db.Where("name LIKE ?", "%"+name+"%")
+	}
+	if categoryID != nil {
+		db = db.Where("category_id = ?", *categoryID)
+	}
+	if brandID != nil {
+		db = db.Where("brand_id = ?", *brandID)
+	}
+	if status != nil {
+		db = db.Where("status = ?", *status)
+	}
+	if priceMin > 0 {
+		db = db.Where("min_price >= ?", priceMin)
+	}
+	if priceMax > 0 {
+		db = db.Where("max_price <= ?", priceMax)
+	}
+	if cursorID > 0 {
+		db = db.Where("(sort_order < ? OR (sort_order = ? AND id < ?))", cursorSortOrder, cursorSortOrder, cursorID)
+	}
+	var results []struct {
+		ID        int64
+		SortOrder int
+	}
+	if err := db.Order("sort_order DESC, id DESC").Limit(limit).Find(&results).Error; err != nil {
+		return nil, err
+	}
+	ids := make([]int64, len(results))
+	for i, r := range results {
+		ids[i] = r.ID
+	}
+	return ids, nil
 }
 
 func (r *SpuRepository) Update(ctx context.Context, spu *SPU) error {

@@ -95,10 +95,10 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 			})
 		})
 
-		product.RegisterBrandRoutes(v1, db)
+		product.RegisterBrandRoutes(v1, db, repos.Redis)
 		product.RegisterCategoryRoutes(v1, db)
 		product.RegisterAttributeRoutes(v1, db)
-		product.RegisterProductRoutes(v1, db)
+		product.RegisterProductRoutes(v1, db, repos.Redis)
 		product.RegisterCategoryBrandRoutes(v1, db)
 			product.RegisterSKURoutes(v1, db)
 		marketing.RegisterPromotionRoutes(v1, db)

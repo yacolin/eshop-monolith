@@ -208,6 +208,7 @@ resume.md
 
 
 docs/
+docs/superpowers/specs/
 
 scripts/*.sh
 scripts/demo.bash
