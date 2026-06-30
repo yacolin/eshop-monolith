@@ -589,10 +589,22 @@ def seed_inventory(conn):
         cur.execute("SELECT id FROM sp_skus WHERE deleted_at IS NULL")
         skus = cur.fetchall()
         for sku in skus:
-            qty = random.randint(50, 1000)
-            reserved = random.randint(0, int(qty * 0.3))
-            threshold = random.randint(5, 50)
-            status = "instock" if qty > threshold else "lowstock"
+            roll = random.random()
+            if roll < 0.10:
+                # 缺货
+                qty, reserved, threshold = 0, 0, random.randint(5, 30)
+                status = "outofstock"
+            elif roll < 0.25:
+                # 低库存
+                threshold = random.randint(10, 30)
+                qty = random.randint(1, threshold - 1)
+                reserved = random.randint(0, min(qty, 5))
+                status = "lowstock"
+            else:
+                qty = random.randint(50, 1000)
+                reserved = random.randint(0, int(qty * 0.3))
+                threshold = random.randint(5, 50)
+                status = "instock" if qty > threshold else "lowstock"
             cur.execute(
                 "INSERT INTO sp_inventories (sku_id, quantity, reserved, threshold, status) "
                 "VALUES (%s, %s, %s, %s, %s)",
@@ -684,10 +696,184 @@ def seed_marketing(conn):
     print("营销中心 ✅\n")
 
 
+# ── 订单中心 ──────────────────────────────────────
+
+ORDER_STATUSES = ["pending", "paid", "shipped", "delivered", "cancelled", "refunded"]
+ORDER_STATUS_WEIGHTS = [1, 2, 3, 4, 1, 1]  # 权重：大部分已送达
+
+def seed_order(conn):
+    now = datetime.now()
+    FMT = "%Y-%m-%d %H:%M:%S"
+
+    with conn.cursor() as cur:
+        # 获取 SKU 及商品信息
+        cur.execute("""
+            SELECT s.id, s.product_id, s.sku_code, s.price, s.spec, p.name, p.main_image
+            FROM sp_skus s JOIN sp_products p ON p.id = s.product_id
+            WHERE s.deleted_at IS NULL AND p.deleted_at IS NULL
+        """)
+        skus = cur.fetchall()
+        if not skus:
+            print("  ⚠ 无 SKU 数据，跳过订单生成")
+            return
+        # 销量权重：前 20% SKU 占大部分销量（模拟真实分布）
+        sku_weights = [max(1, 100 - i * 0.4) for i in range(len(skus))]
+
+        # 获取用户（不足 20 个则生成补充用户）
+        cur.execute("SELECT id FROM usr_users WHERE deleted_at IS NULL")
+        users = cur.fetchall()
+        if len(users) < 20:
+            existing_ids = {u[0] for u in users}
+            for i in range(1, 51):
+                if i in existing_ids:
+                    continue
+                username = f"test_user_{i}"
+                nickname = f"{random.choice(['小明','小红','张三','李四','王五','赵六','测试','游客'])}{i}"
+                cur.execute(
+                    "INSERT IGNORE INTO usr_users (username, password_hash, nickname, phone, status, register_source) "
+                    "VALUES (%s, %s, %s, %s, 1, 'pc')",
+                    (username, f"hash_{i}", nickname, f"1{i:09d}"),
+                )
+                if cur.lastrowid:
+                    cur.execute("INSERT IGNORE INTO usr_infos (user_id) VALUES (%s)", (cur.lastrowid,))
+                    existing_ids.add(cur.lastrowid)
+            conn.commit()
+            cur.execute("SELECT id FROM usr_users WHERE deleted_at IS NULL")
+            users = cur.fetchall()
+
+        total_orders = 0
+        total_items = 0
+        total_payments = 0
+
+        # 生成 2000 个订单，分散到过去 30 天
+        for _ in range(2000):
+            order_date = now - timedelta(
+                days=random.randint(0, 30),
+                hours=random.randint(0, 23),
+                minutes=random.randint(0, 59),
+            )
+            order_no = f"ORD{order_date.strftime('%Y%m%d%H%M%S')}{random.randint(1000,9999)}"
+            user_id = random.choice(users)[0]
+            status = random.choices(ORDER_STATUSES, weights=ORDER_STATUS_WEIGHTS)[0]
+
+            # 1-4 个商品（加权：前 20% SKU 占大部分销量）
+            item_count = random.randint(1, 4)
+            order_skus = random.choices(skus, weights=sku_weights, k=item_count)
+            total_amount = 0
+            order_items = []
+
+            for sku in order_skus:
+                sku_id, prod_id, sku_code, price, spec, prod_name, image = sku
+                qty = random.randint(1, 3)
+                subtotal = price * qty
+                total_amount += subtotal
+                order_items.append((sku_id, prod_id, sku_code, price, qty, subtotal, prod_name, image, spec))
+
+            shipping_fee = random.choice([0, 0, 0, 800, 1200])  # 分，大部分包邮
+            discount = random.randint(0, int(total_amount * 0.1))
+            pay_amount = total_amount + shipping_fee - discount
+            if pay_amount <= 0:
+                pay_amount = total_amount
+
+            consignee = f"用户{user_id}"
+            phone = f"138{random.randint(10000000, 99999999)}"
+
+            cur.execute(
+                """INSERT INTO tx_orders (order_no, user_id, total_amount, discount_amount, shipping_fee,
+                   pay_amount, status, payment_status, consignee, phone,
+                   province, city, district, detail_addr, source, created_at, updated_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (order_no, user_id, total_amount, discount, shipping_fee,
+                 pay_amount, status,
+                 "paid" if status in ("paid", "shipped", "delivered") else "unpaid" if status == "pending" else "refunded",
+                 consignee, phone,
+                 random.choice(["广东省", "浙江省", "北京市", "上海市", "四川省"]),
+                 random.choice(["广州市", "杭州市", "海淀区", "浦东新区", "成都市"]),
+                 random.choice(["天河区", "西湖区", "中关村", "陆家嘴", "高新区"]),
+                 f"{random.randint(100,999)}号{random.choice(['小区','大厦','路'])}{random.randint(1,99)}栋",
+                 random.choice(["pc", "mobile", "pc", "pc"]),
+                 order_date.strftime(FMT), order_date.strftime(FMT)),
+            )
+            order_id = cur.lastrowid
+
+            # 订单项
+            for item in order_items:
+                sku_id, prod_id, sku_code, price, qty, subtotal, prod_name, image, spec = item
+                cur.execute(
+                    """INSERT INTO tx_order_items (order_id, order_no, sku_id, product_id, sku_code,
+                       product_name, sku_spec, image, price, quantity, subtotal, created_at, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (order_id, order_no, sku_id, prod_id, sku_code,
+                     prod_name, spec if spec and spec != "{}" else None, image, price, qty, subtotal,
+                     order_date.strftime(FMT), order_date.strftime(FMT)),
+                )
+                total_items += 1
+
+                # 扣减库存
+                if status not in ("cancelled", "pending"):
+                    cur.execute(
+                        "SELECT quantity, reserved FROM sp_inventories WHERE sku_id = %s FOR UPDATE",
+                        (sku_id,),
+                    )
+                    inv = cur.fetchone()
+                    if inv:
+                        before_qty, before_reserved = int(inv[0]), int(inv[1])
+                        after_qty = max(0, before_qty - qty)
+                        after_reserved = max(0, before_reserved - qty)
+                        cur.execute(
+                            "UPDATE sp_inventories SET quantity = %s, reserved = %s, status = %s WHERE sku_id = %s",
+                            (after_qty, after_reserved,
+                             "outofstock" if after_qty <= 0 else "lowstock" if after_qty < 10 else "instock",
+                             sku_id),
+                        )
+                        cur.execute(
+                            """INSERT INTO sp_inventory_logs (sku_id, change_type, before_quantity, after_quantity,
+                               before_reserved, after_reserved, change_amount, reference_id, operator, note)
+                               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                            (sku_id, "order", before_qty, after_qty,
+                             before_reserved, after_reserved, -qty, order_no, "system", "订单扣减"),
+                        )
+
+            # 支付记录（已支付订单）
+            if status in ("paid", "shipped", "delivered", "refunded"):
+                paid_at = order_date + timedelta(minutes=random.randint(1, 60))
+                payment_no = f"PAY{paid_at.strftime('%Y%m%d%H%M%S')}{random.randint(1000,9999)}"
+                payment_method = random.choice(["alipay", "wechat", "alipay", "wechat", "wallet"])
+                cur.execute(
+                    """INSERT INTO tx_payments (payment_no, order_no, order_id, amount, payment_method,
+                       channel, status, paid_at, created_at, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (payment_no, order_no, order_id, pay_amount, payment_method,
+                     payment_method, "success" if status != "refunded" else "refunded",
+                     paid_at.strftime(FMT), order_date.strftime(FMT), paid_at.strftime(FMT)),
+                )
+                total_payments += 1
+
+                # 同步订单的支付方式和支付时间
+                cur.execute("UPDATE tx_orders SET payment_method = %s, paid_at = %s, updated_at = %s WHERE id = %s",
+                           (payment_method, paid_at.strftime(FMT), paid_at.strftime(FMT), order_id))
+
+            # 已发货/已送达 更新物流时间
+            if status in ("shipped", "delivered"):
+                shipped_at = order_date + timedelta(hours=random.randint(2, 48))
+                cur.execute("UPDATE tx_orders SET shipped_at = %s, updated_at = %s WHERE id = %s",
+                           (shipped_at.strftime(FMT), shipped_at.strftime(FMT), order_id))
+            if status == "delivered":
+                delivered_at = order_date + timedelta(hours=random.randint(48, 120))
+                cur.execute("UPDATE tx_orders SET delivered_at = %s, updated_at = %s WHERE id = %s",
+                           (delivered_at.strftime(FMT), delivered_at.strftime(FMT), order_id))
+
+            total_orders += 1
+
+    conn.commit()
+    print(f"  订单: {total_orders}, 订单项: {total_items}, 支付: {total_payments}")
+    print("订单中心 ✅\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="为新表生成测试数据")
     parser.add_argument("--clean", action="store_true", help="先清空再生成")
-    parser.add_argument("--module", choices=["product", "inventory", "marketing"],
+    parser.add_argument("--module", choices=["product", "inventory", "marketing", "order"],
                         help="只生成指定模块")
     args = parser.parse_args()
 
@@ -699,6 +885,7 @@ def main():
         "product": seed_product,
         "inventory": seed_inventory,
         "marketing": seed_marketing,
+        "order": seed_order,
     }
 
     if args.module:
@@ -715,7 +902,7 @@ def main():
     with conn.cursor() as cur:
         for table in ["sp_brands", "sp_categories", "sp_attributes", "sp_products",
                       "sp_skus", "sp_product_descriptions", "sp_product_attributes",
-                      "sp_inventories", "mkt_promotions"]:
+                      "sp_inventories", "mkt_promotions", "tx_orders", "tx_order_items", "tx_payments"]:
             cur.execute(f"SELECT COUNT(*) AS cnt FROM {table}")
             row = cur.fetchone()
             print(f"  {table}: {row[0]}")

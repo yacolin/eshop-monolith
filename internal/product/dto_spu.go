@@ -77,6 +77,24 @@ func (r *SPUListReq) Normalize() {
 	}
 }
 
+// ── Detail Response ────────────────────────────────
+
+// ProductAttrResponse 商品规格维度（从 SKU spec 聚合）
+type ProductAttrResponse struct {
+	AttributeID   int64    `json:"attribute_id"`
+	AttributeName string   `json:"attribute_name"`
+	Values        []string `json:"values"`
+	SortOrder     int      `json:"sort_order"`
+}
+
+// SPUDetailResponse 商品详情（含属性、图文描述、SKU列表）
+type SPUDetailResponse struct {
+	*SPU
+	Attributes  []ProductAttrResponse `json:"attributes"`
+	Description *Description          `json:"description,omitempty"`
+	SKUs        []SKU                 `json:"skus"`
+}
+
 // ── List Response ─────────────────────────────────
 
 type SPUListResult struct {

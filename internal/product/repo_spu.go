@@ -19,6 +19,7 @@ type IspuRepository interface {
 	FindSKUsByProductID(ctx context.Context, productID int64, skuCode string) ([]SKU, error)
 	FindDescriptionByProductID(ctx context.Context, productID int64) (*Description, error)
 	FindProductAttrsByProductID(ctx context.Context, productID int64) ([]ProductAttribute, error)
+	FindProductAttrsWithName(ctx context.Context, productID int64) ([]ProductAttrResponse, error)
 	FindSKUByCode(ctx context.Context, code string) (*SKU, error)
 	FindSKUByID(ctx context.Context, id int64) (*SKU, error)
 
@@ -102,6 +103,35 @@ func (r *SpuRepository) FindProductAttrsByProductID(ctx context.Context, product
 	var list []ProductAttribute
 	err := r.db.WithContext(ctx).Where("product_id = ?", productID).Order("sort_order ASC, id ASC").Find(&list).Error
 	return list, err
+}
+
+func (r *SpuRepository) FindProductAttrsWithName(ctx context.Context, productID int64) ([]ProductAttrResponse, error) {
+	type productAttrRow struct {
+		AttributeID   int64  `gorm:"column:attribute_id"`
+		AttributeName string `gorm:"column:attribute_name"`
+		Value         string `gorm:"column:value"`
+		SortOrder     int    `gorm:"column:sort_order"`
+	}
+	var rows []productAttrRow
+	err := r.db.WithContext(ctx).Table("sp_product_attributes pa").
+		Select("pa.attribute_id, a.name AS attribute_name, pa.value, pa.sort_order").
+		Joins("JOIN sp_attributes a ON a.id = pa.attribute_id").
+		Where("pa.product_id = ?", productID).
+		Order("pa.sort_order ASC, pa.id ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make([]ProductAttrResponse, len(rows))
+	for i, r := range rows {
+		result[i] = ProductAttrResponse{
+			AttributeID:   r.AttributeID,
+			AttributeName: r.AttributeName,
+			Values:        []string{r.Value},
+			SortOrder:     r.SortOrder,
+		}
+	}
+	return result, nil
 }
 
 func (r *SpuRepository) FindSKUByCode(ctx context.Context, code string) (*SKU, error) {

@@ -49,7 +49,7 @@ func (h *SpuHandler) Create(c *gin.Context) {
 // @Tags products
 // @Produce json
 // @Param id path int true "商品ID"
-// @Success 200 {object} response.Response{data=SPU}
+// @Success 200 {object} response.Response{data=SPUDetailResponse}
 // @Router /api/v1/products/{id} [get]
 func (h *SpuHandler) GetByID(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
@@ -57,7 +57,7 @@ func (h *SpuHandler) GetByID(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	result, err := h.svc.GetByID(c, id)
+	result, err := h.svc.GetDetailByID(c, id)
 	if err != nil {
 		c.Error(err)
 		return

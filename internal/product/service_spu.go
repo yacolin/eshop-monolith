@@ -441,6 +441,122 @@ func (s *SpuService) fetchFullFromDB(ctx context.Context, ids []int64, hasMore b
 	return &SPUListResult{List: list, Cursor: cursor, HasMore: hasMore}, nil
 }
 
+// GetDetailByID 获取商品详情（含 SKU 规格维度、属性、图文描述）
+func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailResponse, error) {
+	spu, err := s.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	skus, err := s.repo.FindSKUsByProductID(ctx, id, "")
+	if err != nil {
+		return nil, err
+	}
+	if skus == nil {
+		skus = []SKU{}
+	}
+
+	// SKU 规格维度从 SKU spec 聚合（多值）
+	specAttrs := s.aggregateSpecAttrs(skus)
+	// 非 SKU 规格属性从 sp_product_attributes 取（单值）
+	prodAttrs, _ := s.repo.FindProductAttrsWithName(ctx, id)
+
+	attrs := s.mergeAttrs(specAttrs, prodAttrs, spu.CategoryID, ctx)
+
+	desc, err := s.repo.FindDescriptionByProductID(ctx, id)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+	var descResp *Description
+	if desc != nil {
+		descResp = desc
+	}
+	return &SPUDetailResponse{
+		SPU:         spu,
+		Attributes:  attrs,
+		Description: descResp,
+		SKUs:        skus,
+	}, nil
+}
+
+// aggregateSpecAttrs 从 SKU spec JSON 聚合规格维度（去重）
+func (s *SpuService) aggregateSpecAttrs(skus []SKU) []ProductAttrResponse {
+	valueSet := map[string]map[string]bool{}
+	keyOrder := []string{}
+	for _, sku := range skus {
+		if sku.Spec == "" || sku.Spec == "{}" {
+			continue
+		}
+		var spec map[string]string
+		if err := json.Unmarshal([]byte(sku.Spec), &spec); err != nil {
+			continue
+		}
+		for k, v := range spec {
+			if _, ok := valueSet[k]; !ok {
+				valueSet[k] = map[string]bool{}
+				keyOrder = append(keyOrder, k)
+			}
+			valueSet[k][v] = true
+		}
+	}
+	if len(keyOrder) == 0 {
+		return nil
+	}
+	result := make([]ProductAttrResponse, len(keyOrder))
+	for i, name := range keyOrder {
+		vals := make([]string, 0, len(valueSet[name]))
+		for v := range valueSet[name] {
+			vals = append(vals, v)
+		}
+		result[i] = ProductAttrResponse{AttributeName: name, Values: vals}
+	}
+	return result
+}
+
+// mergeAttrs 合并 SKU 规格维度 + 产品属性，补充 attribute_id
+func (s *SpuService) mergeAttrs(specAttrs, prodAttrs []ProductAttrResponse, categoryID int64, ctx context.Context) []ProductAttrResponse {
+	// 查询该类目的 sp_attributes 用于匹配 attribute_id
+	attrNameMap := map[string]int64{}
+	attrOrder := map[string]int{}
+	if categoryID > 0 {
+		attrs, err := s.attrRepo.ListByCategory(ctx, categoryID)
+		if err == nil {
+			for i, a := range attrs {
+				attrNameMap[a.Name] = a.ID
+				attrOrder[a.Name] = i
+			}
+		}
+	}
+
+	specIdx := map[string]int{}
+	for i, a := range specAttrs {
+		specIdx[a.AttributeName] = i
+	}
+
+	// 先收集所有要展示的属性名（spec 优先原顺序，product attrs 补充）
+	seen := map[string]bool{}
+	merged := make([]ProductAttrResponse, 0, len(specAttrs)+len(prodAttrs))
+
+	for _, a := range specAttrs {
+		if seen[a.AttributeName] {
+			continue
+		}
+		seen[a.AttributeName] = true
+		a.AttributeID = attrNameMap[a.AttributeName]
+		a.SortOrder = attrOrder[a.AttributeName]
+		merged = append(merged, a)
+	}
+	for _, a := range prodAttrs {
+		if seen[a.AttributeName] {
+			continue
+		}
+		seen[a.AttributeName] = true
+		a.AttributeID = attrNameMap[a.AttributeName]
+		a.SortOrder = attrOrder[a.AttributeName]
+		merged = append(merged, a)
+	}
+	return merged
+}
+
 // Update 更新商品基本信息
 func (s *SpuService) Update(ctx context.Context, id int64, req *UpdateSPUReq) (*SPU, error) {
 	spu, err := s.repo.FindByID(ctx, id)

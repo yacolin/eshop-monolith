@@ -101,7 +101,7 @@ func (s *DashboardService) computeOrderTrend(ctx context.Context) []OrderTrendDT
 	s.db.WithContext(ctx).Table("tx_orders").
 		Select("DATE_FORMAT(created_at, '%m-%d') AS date, COUNT(*) AS count, COALESCE(SUM(total_amount), 0) AS amount").
 		Where("created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)").
-		Group("DATE(created_at)").Order("date ASC").Scan(&rows)
+		Group("DATE_FORMAT(created_at, '%m-%d')").Order("date ASC").Scan(&rows)
 
 	trend := make([]OrderTrendDTO, 0, 7)
 	dateMap := make(map[string]OrderTrendDTO, len(rows))
@@ -140,7 +140,7 @@ func (s *DashboardService) computePaymentMethodDist(ctx context.Context) []Metho
 	type row struct{ Method string `gorm:"column:payment_method"`; Value int64 }
 	var rows []row
 	s.db.WithContext(ctx).Table("tx_payments").Select("payment_method, COUNT(*) AS value").Where("status IN ?", []string{"success", "paid"}).Group("payment_method").Scan(&rows)
-	labelMap := map[string]string{"alipay": "支付宝", "wechat": "微信支付", "bank": "银行卡", "cash": "现金"}
+	labelMap := map[string]string{"alipay": "支付宝", "wechat": "微信支付", "wallet": "余额", "bank": "银行卡", "cash": "现金"}
 	result := make([]MethodDistDTO, 0, len(rows))
 	for _, r := range rows {
 		label := labelMap[r.Method]
