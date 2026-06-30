@@ -23,7 +23,7 @@ type IspuRepository interface {
 	FindSKUByID(ctx context.Context, id int64) (*SKU, error)
 
 	List(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, page, size int) ([]SPU, int64, error)
-	ListIDs(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, limit int, cursorSortOrder int, cursorID int64) ([]int64, error)
+	ListIDs(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, limit int, cursorID int64) ([]int64, error)
 
 	Update(ctx context.Context, spu *SPU) error
 	UpdateSKU(ctx context.Context, sku *SKU) error
@@ -150,8 +150,8 @@ func (r *SpuRepository) List(ctx context.Context, name string, categoryID, brand
 	return list, total, nil
 }
 
-func (r *SpuRepository) ListIDs(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, limit int, cursorSortOrder int, cursorID int64) ([]int64, error) {
-	db := r.db.WithContext(ctx).Model(&SPU{}).Select("id, sort_order")
+func (r *SpuRepository) ListIDs(ctx context.Context, name string, categoryID, brandID *int64, status *int8, priceMin, priceMax int64, limit int, cursorID int64) ([]int64, error) {
+	db := r.db.WithContext(ctx).Model(&SPU{}).Select("id")
 	if name != "" {
 		db = db.Where("name LIKE ?", "%"+name+"%")
 	}
@@ -171,18 +171,11 @@ func (r *SpuRepository) ListIDs(ctx context.Context, name string, categoryID, br
 		db = db.Where("max_price <= ?", priceMax)
 	}
 	if cursorID > 0 {
-		db = db.Where("(sort_order < ? OR (sort_order = ? AND id < ?))", cursorSortOrder, cursorSortOrder, cursorID)
+		db = db.Where("id < ?", cursorID)
 	}
-	var results []struct {
-		ID        int64
-		SortOrder int
-	}
-	if err := db.Order("sort_order DESC, id DESC").Limit(limit).Find(&results).Error; err != nil {
+	var ids []int64
+	if err := db.Order("id DESC").Limit(limit).Pluck("id", &ids).Error; err != nil {
 		return nil, err
-	}
-	ids := make([]int64, len(results))
-	for i, r := range results {
-		ids[i] = r.ID
 	}
 	return ids, nil
 }

@@ -140,13 +140,13 @@ func getSPUListIDs(ctx context.Context, rdb redis.UniversalClient, categoryID, b
 	return ids, nil
 }
 
-// setSPUListIDs 将 SPU 列表 ID 写入 ZSET
+// setSPUListIDs 将 SPU 列表 ID 写入 ZSET，按 id DESC 排序
 func setSPUListIDs(ctx context.Context, rdb redis.UniversalClient, categoryID, brandID *int64, status *int8, spus []SPU) error {
 	key := cacheKeySPUListIDs(categoryID, brandID, status)
 	pairs := make([]redis.Z, 0, len(spus))
 	for i := range spus {
 		pairs = append(pairs, redis.Z{
-			Score:  float64(spus[i].SortOrder),
+			Score:  float64(spus[i].ID),
 			Member: spuZSETMember(spus[i].ID),
 		})
 	}

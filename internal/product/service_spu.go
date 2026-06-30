@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
@@ -257,8 +256,7 @@ func (s *SpuService) GetByID(ctx context.Context, id int64) (*SPU, error) {
 }
 
 type cursorInfo struct {
-	SortOrder int
-	ID        int64
+	ID int64
 }
 
 func (s *SpuService) List(ctx context.Context, req *SPUListReq) (*SPUListResult, error) {
@@ -266,11 +264,7 @@ func (s *SpuService) List(ctx context.Context, req *SPUListReq) (*SPUListResult,
 	var cursor cursorInfo
 	if req.Cursor != "" {
 		if b, err := base64.StdEncoding.DecodeString(req.Cursor); err == nil {
-			parts := strings.Split(string(b), ",")
-			if len(parts) == 2 {
-				cursor.SortOrder, _ = strconv.Atoi(parts[0])
-				cursor.ID, _ = strconv.ParseInt(parts[1], 10, 64)
-			}
+			cursor.ID, _ = strconv.ParseInt(string(b), 10, 64)
 		}
 	}
 	useZSET := s.rdb != nil && req.Name == "" && req.PriceMin == 0 && req.PriceMax == 0
@@ -289,7 +283,7 @@ func (s *SpuService) listFromZSET(ctx context.Context, req *SPUListReq, cursor c
 		exists, err := s.rdb.Exists(ctx, key).Result()
 		if err != nil || exists == 0 {
 			var all []SPU
-			db := s.db.WithContext(ctx).Model(&SPU{}).Select("id, sort_order")
+			db := s.db.WithContext(ctx).Model(&SPU{}).Select("id")
 			if req.CategoryID != nil {
 				db = db.Where("category_id = ?", *req.CategoryID)
 			}
@@ -299,7 +293,7 @@ func (s *SpuService) listFromZSET(ctx context.Context, req *SPUListReq, cursor c
 			if req.Status != nil {
 				db = db.Where("status = ?", *req.Status)
 			}
-			if err := db.Order("sort_order DESC, id DESC").Find(&all).Error; err != nil {
+			if err := db.Order("id DESC").Find(&all).Error; err != nil {
 				return nil, err
 			}
 			if len(all) == 0 {
@@ -336,7 +330,7 @@ func (s *SpuService) listFromZSET(ctx context.Context, req *SPUListReq, cursor c
 }
 
 func (s *SpuService) listFromDB(ctx context.Context, req *SPUListReq, cursor cursorInfo) (*SPUListResult, error) {
-	ids, err := s.repo.ListIDs(ctx, req.Name, req.CategoryID, req.BrandID, req.Status, req.PriceMin, req.PriceMax, req.Size+1, cursor.SortOrder, cursor.ID)
+	ids, err := s.repo.ListIDs(ctx, req.Name, req.CategoryID, req.BrandID, req.Status, req.PriceMin, req.PriceMax, req.Size+1, cursor.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +377,7 @@ func (s *SpuService) buildListResult(ctx context.Context, ids []int64, size int)
 	cursor := ""
 	if len(list) > 0 {
 		last := list[len(list)-1]
-		cursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d,%d", last.SortOrder, last.ID)))
+		cursor = base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(last.ID, 10)))
 	}
 	return &SPUListResult{List: list, Cursor: cursor, HasMore: hasMore}, nil
 }
@@ -442,7 +436,7 @@ func (s *SpuService) fetchFullFromDB(ctx context.Context, ids []int64, hasMore b
 	cursor := ""
 	if len(list) > 0 {
 		last := list[len(list)-1]
-		cursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d,%d", last.SortOrder, last.ID)))
+		cursor = base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(last.ID, 10)))
 	}
 	return &SPUListResult{List: list, Cursor: cursor, HasMore: hasMore}, nil
 }

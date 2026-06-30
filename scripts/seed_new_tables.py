@@ -125,112 +125,176 @@ ATTRS = [
     (70, "质地", 2, '["哑光","水润","雾面","奶油肌"]', 0, 0),
 ]
 
-# SPU 数据：每个元组 (名称, 副标题, 类目索引, 品牌索引, 最低价, 最高价, 单位, 主图占位)
-PRODUCTS = [
-    # 手机（智能手机）
-    ("iPhone 16 Pro Max", "钛金属旗舰，A18芯片", 35, 1, 899900, 999900, "台"),
-    ("iPhone 16 Pro", "钛金属专业级", 35, 1, 799900, 899900, "台"),
-    ("iPhone 16", "A18芯片，超强续航", 35, 1, 599900, 699900, "台"),
-    ("Galaxy S25 Ultra", "AI智能旗舰，2亿像素", 35, 2, 899900, 999900, "台"),
-    ("Galaxy S25+", "大屏AI旗舰", 35, 2, 749900, 849900, "台"),
-    ("Galaxy S25", "AI智能旗舰", 35, 2, 699900, 799900, "台"),
-    ("小米15 Pro", "徕卡影像，骁龙8至尊", 35, 3, 499900, 599900, "台"),
-    ("小米15", "徕卡影像旗舰", 35, 3, 399900, 499900, "台"),
-    ("Redmi K80 Pro", "性能旗舰", 35, 3, 299900, 369900, "台"),
-    ("华为Mate 70 Pro", "鸿蒙旗舰，麒麟芯片", 35, 4, 699900, 799900, "台"),
-    ("华为Mate 70", "鸿蒙系统旗舰", 35, 4, 549900, 649900, "台"),
-    ("华为Pura 70 Pro", "超聚光影像", 35, 4, 649900, 749900, "台"),
-    ("OPPO Find X8 Pro", "双潜望影像旗舰", 35, 5, 529900, 629900, "台"),
-    ("OPPO Find X8", "轻薄影像旗舰", 35, 5, 399900, 499900, "台"),
-    ("vivo X200 Pro", "蔡司影像，天玑9400", 35, 6, 499900, 599900, "台"),
-    ("vivo X200", "蔡司影像旗舰", 35, 6, 399900, 479900, "台"),
-    ("一加13", "性能旗舰，哈苏影像", 35, 5, 429900, 529900, "台"),
-    ("魅族21 Pro", "AI终端旗舰", 35, 3, 399900, 499900, "台"),
-    ("荣耀Magic7 Pro", "AI智慧旗舰", 35, 4, 569900, 669900, "台"),
-    ("真我GT7 Pro", "电竞性能旗舰", 35, 5, 299900, 369900, "台"),
-    ("Nothing Phone (2a)", "Glyph灯光设计", 35, 2, 249900, 299900, "台"),
-    # 笔记本
-    ("MacBook Pro 14", "M4芯片，专业级", 38, 1, 1299900, 1499900, "台"),
-    ("MacBook Pro 16", "M4 Max，极致性能", 38, 1, 1699900, 1999900, "台"),
-    ("MacBook Air 13", "M3芯片，超轻薄", 38, 1, 899900, 999900, "台"),
-    ("MacBook Air 15", "M3芯片，大屏轻薄", 38, 1, 999900, 1099900, "台"),
-    ("ThinkPad X1 Carbon", "商务旗舰，超轻薄", 38, 7, 999900, 1199900, "台"),
-    ("ThinkPad T14", "专业商务本", 38, 7, 799900, 999900, "台"),
-    ("Dell XPS 14", "全面屏超轻薄", 38, 9, 999900, 1199900, "台"),
-    ("Dell XPS 16", "大屏创作本", 38, 9, 1199900, 1399900, "台"),
-    ("HP Spectre x360", "翻转触控旗舰", 38, 10, 899900, 1099900, "台"),
-    ("HP Envy 16", "创意设计本", 38, 10, 799900, 999900, "台"),
-    ("ASUS ROG 幻16 Air", "轻薄性能本", 38, 11, 999900, 1199900, "台"),
-    ("ASUS Zenbook 14", "超轻薄商务本", 38, 11, 699900, 899900, "台"),
-    ("联想小新Pro 14", "高性能轻薄本", 38, 8, 499900, 699900, "台"),
-    ("联想ThinkBook 14", "商务全能本", 38, 8, 399900, 599900, "台"),
-    # 平板（平板电脑）
-    ("iPad Pro 11", "M4芯片，轻薄专业", 39, 1, 799900, 999900, "台"),
-    ("iPad Pro 13", "M4芯片，大屏专业", 39, 1, 999900, 1299900, "台"),
-    ("iPad Air 11", "M2芯片，轻薄全能", 39, 1, 599900, 699900, "台"),
-    ("iPad Air 13", "M2芯片，大屏全能", 39, 1, 699900, 799900, "台"),
-    ("iPad mini", "A17 Pro，便携旗舰", 39, 1, 399900, 499900, "台"),
-    ("华为MatePad Pro 13.2", "鸿蒙专业平板", 39, 4, 699900, 799900, "台"),
-    ("华为MatePad Air", "轻薄办公平板", 39, 4, 399900, 499900, "台"),
-    ("小米平板7 Pro", "高性能创作平板", 39, 3, 299900, 399900, "台"),
-    ("小米平板7", "高性价比平板", 39, 3, 199900, 299900, "台"),
-    ("三星Galaxy Tab S10+", "AI旗舰平板", 39, 2, 799900, 899900, "台"),
-    # 耳机
-    ("AirPods Pro 2", "主动降噪，H2芯片", 46, 1, 189900, 199900, "副"),
-    ("AirPods 4", "半入耳，降噪版", 46, 1, 129900, 139900, "副"),
-    ("AirPods Max", "头戴式旗舰耳机", 46, 1, 399900, 439900, "副"),
-    ("Galaxy Buds3 Pro", "智能降噪耳机", 46, 2, 159900, 179900, "副"),
-    ("Galaxy Buds3", "开放式耳机", 46, 2, 99900, 119900, "副"),
-    ("小米Buds 4 Pro", "旗舰降噪耳机", 46, 3, 99900, 129900, "副"),
-    ("小米Buds 4", "轻降噪耳机", 46, 3, 59900, 79900, "副"),
-    ("华为FreeBuds Pro 3", "超感知降噪", 46, 4, 129900, 149900, "副"),
-    ("华为FreeBuds 5", "全开放舒适佩戴", 46, 4, 89900, 109900, "副"),
-    ("Sony WF-1000XM5", "旗舰降噪耳机", 46, 7, 199900, 219900, "副"),
-    ("Sony WH-1000XM5", "头戴式旗舰降噪", 46, 7, 279900, 299900, "副"),
-    ("OPPO Enco X3", "丹拿调音旗舰", 46, 5, 99900, 119900, "副"),
-    ("vivo TWS 4", "Hi-Fi音质旗舰", 46, 6, 79900, 99900, "副"),
-    # T恤
-    ("Uniqlo 基础款T恤", "舒适百搭", 48, 14, 7900, 9900, "件"),
-    ("Uniqlo AIRism T恤", "凉感速干", 48, 14, 9900, 12900, "件"),
-    ("Uniqlo U系列T恤", "设计师合作款", 48, 14, 14900, 19900, "件"),
-    ("Nike Dri-FIT T恤", "运动速干", 48, 12, 24900, 29900, "件"),
-    ("Nike 经典Logo T恤", "运动休闲", 48, 12, 19900, 25900, "件"),
-    ("Adidas 三叶草T恤", "经典复古", 48, 13, 22900, 27900, "件"),
-    ("Adidas 运动T恤", "吸湿排汗", 48, 13, 19900, 24900, "件"),
-    # 连衣裙
-    ("Zara 法式碎花连衣裙", "浪漫清新", 53, 15, 29900, 39900, "件"),
-    ("Zara 简约通勤连衣裙", "干练优雅", 53, 15, 34900, 44900, "件"),
-    ("H&M 针织连衣裙", "舒适修身", 53, 16, 19900, 29900, "件"),
-    ("H&M 吊带连衣裙", "夏日必备", 53, 16, 14900, 24900, "件"),
-    ("Uniqlo 连衣裙", "简约百搭", 53, 14, 19900, 29900, "件"),
-    # 运动鞋（跑步鞋）
-    ("Nike Air Force 1", "经典复古篮球鞋", 58, 12, 74900, 89900, "双"),
-    ("Nike Air Max 90", "气垫经典跑鞋", 58, 12, 89900, 99900, "双"),
-    ("Nike Dunk Low", "复古滑板鞋", 58, 12, 79900, 89900, "双"),
-    ("Nike Vomero 17", "顶级缓震跑鞋", 58, 12, 129900, 139900, "双"),
-    ("Adidas Ultraboost Light", "超轻缓震跑鞋", 58, 13, 139900, 149900, "双"),
-    ("Adidas Samba", "经典复古板鞋", 58, 13, 89900, 99900, "双"),
-    ("Adidas Superstar", "贝壳头经典", 58, 13, 79900, 89900, "双"),
-    ("Adidas NMD R1", "经典潮流跑鞋", 58, 13, 99900, 109900, "双"),
-    ("New Balance 327", "复古运动鞋", 58, 18, 89900, 99900, "双"),
-    ("New Balance 990v6", "美产经典", 58, 18, 179900, 189900, "双"),
-    ("New Balance 2002R", "复古机能", 58, 18, 119900, 129900, "双"),
-    ("Converse Chuck 70", "经典帆布鞋", 58, 19, 59900, 69900, "双"),
-    ("Converse Run Star Hike", "厚底增高帆布鞋", 58, 19, 79900, 89900, "双"),
-    ("Vans Old Skool", "经典滑板鞋", 58, 20, 59900, 69900, "双"),
-    ("Vans Authentic", "经典帆布鞋", 58, 20, 49900, 59900, "双"),
-    # 口红
-    ("Dior 烈艳蓝金唇膏", "经典缎面口红", 70, 27, 38000, 42000, "支"),
-    ("Dior 魅惑唇膏", "水润光泽", 70, 27, 35000, 39000, "支"),
-    ("Chanel 炫亮魅力唇膏", "丝绒哑光", 70, 28, 45000, 49000, "支"),
-    ("Chanel 可可小姐唇膏", "水润清透", 70, 28, 42000, 46000, "支"),
-    ("YSL 小金条口红", "哑光丝绒", 70, 27, 38000, 42000, "支"),
-    ("YSL 黑管唇釉", "镜面水光", 70, 27, 36000, 40000, "支"),
-    ("MAC 子弹头口红", "经典哑光", 70, 26, 23000, 27000, "支"),
-    ("MAC 水漾润泽口红", "滋润保湿", 70, 26, 23000, 27000, "支"),
-    ("完美日记 小红钻", "国货之光", 70, 24, 9990, 12990, "支"),
-    ("花西子 雕花口红", "东方美学", 70, 24, 19900, 24900, "支"),
-]
+# ── 自动生成 SPU 配置 ──────────────────────────────
+# 每片叶子类目生成 PRODUCTS_PER_CATEGORY 个 SPU
+PRODUCTS_PER_CATEGORY = 25
+
+# 叶子类目生成配置: (类目索引, 品牌池, 价格区间(分), 单位, 名称模板, 副标题模板)
+CATEGORY_PROD_CFG = {
+    # 手机通讯
+    35: (range(1, 7), (199900, 999900), "台",
+         ["{b}旗舰手机", "{b}智能手机", "{b}Pro 机型", "{b}轻旗舰", "{b}性能版",
+          "{b}Ultra 版", "{b}Plus 版", "{b}e 青春版"],
+         ["5G旗舰", "AI智能", "高性能", "超清影像", "长续航", "轻薄设计"]),
+    36: (range(1, 7), (9900, 29900), "台",
+         ["{b}老年机", "{b}功能手机", "{b}按键手机"],
+         ["大字体", "长续航", "超长待机", "简易操作"]),
+    37: (range(7, 12), (19900, 89900), "台",
+         ["{b}对讲机", "{b}专业对讲机", "{b}远距离对讲机"],
+         ["远距离", "防水防尘", "长续航", "清晰通话"]),
+    # 电脑办公
+    38: (range(1, 12), (399900, 1999900), "台",
+         ["{b}笔记本", "{b}轻薄本", "{b}商务本", "{b}性能本", "{b}创作本",
+          "{b}电竞本", "{b}Ultrabook"],
+         ["高性能", "轻薄便携", "商务办公", "游戏电竞", "创意设计"]),
+    39: (range(1, 6), (199900, 999900), "台",
+         ["{b}平板电脑", "{b}旗舰平板", "{b}轻薄平板", "{b}学习平板"],
+         ["影音娱乐", "移动办公", "学习教育", "创作绘画"]),
+    40: (range(7, 12), (299900, 999900), "台",
+         ["{b}台式机", "{b}一体机", "{b}家用台式机", "{b}办公台式机"],
+         ["高性价比", "商务办公", "家用娱乐", "设计制图"]),
+    41: (range(7, 12), (99900, 499900), "台",
+         ["{b}显示器", "{b}显示器 2K", "{b}显示器 4K", "{b}曲面显示器", "{b}电竞显示器"],
+         ["高清显示", "护眼", "高刷", "专业色准"]),
+    42: (range(9, 12), (29900, 199900), "台",
+         ["{b}打印机", "{b}彩色打印机", "{b}激光打印机", "{b}多功能一体机"],
+         ["家用打印", "办公高效", "无线打印", "彩色打印"]),
+    # 数码配件
+    43: (range(1, 6), (1900, 12900), "个",
+         ["{b}手机壳", "{b}保护壳", "{b}透明手机壳", "{b}硅胶手机壳"],
+         ["防摔保护", "轻薄", "高颜值", "简约设计"]),
+    44: (range(1, 6), (2900, 19900), "个",
+         ["{b}充电器", "{b}快充头", "{b}氮化镓充电器", "{b}无线充电器"],
+         ["快充", "氮化镓", "多口输出", "安全充电"]),
+    45: (range(1, 6), (900, 5900), "条",
+         ["{b}数据线", "{b}Type-C数据线", "{b}快充数据线", "{b}编织数据线"],
+         ["快充传输", "耐用编织", "加长版", "磁吸收纳"]),
+    46: (range(1, 8), (59900, 439900), "副",
+         ["{b}无线耳机", "{b}降噪耳机", "{b}头戴式耳机", "{b}运动耳机",
+          "{b}TWS耳机", "{b}入耳式耳机"],
+         ["主动降噪", "Hi-Fi音质", "长续航", "舒适佩戴"]),
+    47: (range(1, 8), (49900, 199900), "个",
+         ["{b}移动电源", "{b}充电宝", "{b}快充移动电源", "{b}大容量充电宝"],
+         ["大容量", "快充", "轻薄便携", "安全电芯"]),
+    # 男装
+    48: (range(12, 18), (5900, 39900), "件",
+         ["{b}T恤", "{b}短袖T恤", "{b}基础款T恤", "{b}印花T恤",
+          "{b}纯棉T恤", "{b}运动T恤"],
+         ["舒适纯棉", "透气速干", "基础百搭", "休闲运动"]),
+    49: (range(12, 18), (9900, 59900), "件",
+         ["{b}衬衫", "{b}长袖衬衫", "{b}短袖衬衫", "{b}商务衬衫", "{b}休闲衬衫"],
+         ["免烫", "修身版型", "商务休闲", "舒适面料"]),
+    50: (range(12, 18), (19900, 99900), "件",
+         ["{b}外套", "{b}夹克", "{b}风衣", "{b}休闲外套", "{b}棉服"],
+         ["春秋款", "防风保暖", "休闲百搭", "轻薄便携"]),
+    51: (range(12, 18), (14900, 79900), "条",
+         ["{b}牛仔裤", "{b}直筒牛仔裤", "{b}修身牛仔裤", "{b}宽松牛仔裤"],
+         ["经典款", "弹力舒适", "复古水洗", "百搭"]),
+    52: (range(7, 12), (29900, 199900), "套",
+         ["{b}西服", "{b}西装", "{b}正装西服", "{b}商务西服"],
+         ["修身版型", "商务正装", "羊毛混纺", "婚礼西服"]),
+    # 女装
+    53: (range(14, 18), (14900, 69900), "件",
+         ["{b}连衣裙", "{b}碎花连衣裙", "{b}通勤连衣裙", "{b}针织连衣裙",
+          "{b}吊带连衣裙", "{b}衬衫裙"],
+         ["浪漫清新", "优雅通勤", "舒适修身", "夏日清爽"]),
+    54: (range(14, 18), (9900, 49900), "件",
+         ["{b}上衣", "{b}针织衫", "{b}雪纺衫", "{b}卫衣", "{b}打底衫"],
+         ["百搭款", "舒适面料", "时尚设计", "春秋穿搭"]),
+    55: (range(14, 18), (14900, 39900), "条",
+         ["{b}半身裙", "{b}A字裙", "{b}百褶裙", "{b}包臀裙", "{b}牛仔裙"],
+         ["显瘦版型", "高腰设计", "优雅气质", "休闲百搭"]),
+    56: (range(14, 18), (19900, 89900), "件",
+         ["{b}女装外套", "{b}风衣", "{b}毛呢外套", "{b}牛仔外套", "{b}小香风外套"],
+         ["春秋外套", "百搭款", "气质通勤", "保暖时尚"]),
+    57: (range(14, 18), (14900, 59900), "件",
+         ["{b}毛衣", "{b}针织毛衣", "{b}羊毛衫", "{b}开衫毛衣", "{b}高领毛衣"],
+         ["柔软保暖", "舒适羊毛", "百搭基础", "时尚宽松"]),
+    # 运动鞋
+    58: (range(12, 21), (49900, 189900), "双",
+         ["{b}跑鞋", "{b}运动鞋", "{b}缓震跑鞋", "{b}训练鞋",
+          "{b}复古跑鞋", "{b}越野跑鞋"],
+         ["缓震", "轻量", "稳定支撑", "透气"]),
+    59: (range(12, 21), (59900, 159900), "双",
+         ["{b}篮球鞋", "{b}实战篮球鞋", "{b}篮球文化鞋"],
+         ["缓震回弹", "包裹支撑", "耐磨防滑", "实战利器"]),
+    60: (range(12, 21), (29900, 99900), "双",
+         ["{b}休闲鞋", "{b}板鞋", "{b}帆布鞋", "{b}滑板鞋", "{b}德训鞋"],
+         ["经典百搭", "复古风格", "舒适脚感", "日常穿着"]),
+    # 食品
+    61: (range(22, 24), (990, 2990), "袋",
+         ["{b}薯片", "{b}膨化食品", "{b}虾条", "{b}米饼", "{b}爆米花"],
+         ["香脆可口", "多味装", "休闲零食", "分享装"]),
+    62: (range(22, 24), (990, 3990), "盒",
+         ["{b}巧克力", "{b}糖果", "{b}棒棒糖", "{b}软糖", "{b}夹心巧克力"],
+         ["丝滑口感", "纯可可脂", "精美包装", "礼盒装"]),
+    63: (range(22, 24), (990, 2990), "袋",
+         ["{b}饼干", "{b}曲奇", "{b}蛋卷", "{b}威化饼干", "{b}夹心饼干"],
+         ["酥脆", "独立包装", "早餐搭档", "休闲时光"]),
+    # 美妆护肤
+    64: (range(24, 30), (1900, 19900), "支",
+         ["{b}洁面乳", "{b}洗面奶", "{b}洁面泡沫", "{b}卸妆洁面"],
+         ["温和清洁", "深层洁净", "保湿", "控油祛痘"]),
+    65: (range(24, 30), (2900, 29900), "瓶",
+         ["{b}爽肤水", "{b}柔肤水", "{b}化妆水", "{b}收敛水"],
+         ["补水保湿", "舒缓", "收缩毛孔", "清爽"]),
+    66: (range(24, 30), (4900, 59900), "瓶",
+         ["{b}精华液", "{b}精华露", "{b}美白精华", "{b}抗皱精华", "{b}保湿精华"],
+         ["抗衰老", "美白淡斑", "深层保湿", "修复肌肤"]),
+    67: (range(24, 30), (2900, 49900), "瓶",
+         ["{b}面霜", "{b}保湿面霜", "{b}抗皱面霜", "{b}修复面霜", "{b}日霜"],
+         ["深层滋润", "抗皱紧致", "修护屏障", "清爽不腻"]),
+    68: (range(24, 30), (2900, 39900), "支",
+         ["{b}防晒霜", "{b}防晒乳", "{b}防晒喷雾", "{b}隔离防晒"],
+         ["SPF50+", "PA+++", "清爽不油腻", "防水持久"]),
+    # 彩妆
+    69: (range(24, 30), (3900, 39900), "盒",
+         ["{b}粉底液", "{b}气垫", "{b}粉饼", "{b}BB霜", "{b}CC霜"],
+         ["自然遮瑕", "水润服帖", "持妆长久", "轻薄透气"]),
+    70: (range(24, 30), (9900, 49900), "支",
+         ["{b}口红", "{b}唇膏", "{b}唇釉", "{b}唇泥", "{b}唇彩"],
+         ["哑光", "水润", "丝绒", "雾面", "奶油肌"]),
+    71: (range(24, 30), (2900, 29900), "盒",
+         ["{b}眼影盘", "{b}单色眼影", "{b}眼影笔", "{b}液体眼影"],
+         ["大地色系", "粉棕系", "哑光", "珠光闪粉"]),
+    72: (range(24, 30), (1900, 19900), "盒",
+         ["{b}腮红", "{b}腮红盘", "{b}液体腮红", "{b}腮红膏"],
+         ["自然显色", "粉嫩", "修容", "元气妆"]),
+    73: (range(24, 30), (1900, 19900), "支",
+         ["{b}睫毛膏", "{b}睫毛打底", "{b}纤长睫毛膏", "{b}浓密睫毛膏"],
+         ["卷翘纤长", "浓密", "防水不晕", "自然裸感"]),
+}
+
+
+def generate_products():
+    """根据 CATEGORY_PROD_CFG 自动生成 SPU 数据"""
+    products = []
+    used_names = set()
+    suffix_idx = 0
+    for cat_idx, cfg in CATEGORY_PROD_CFG.items():
+        brand_range, price_range, unit, name_tpls, sub_tpls = cfg
+        brands = list(brand_range)
+        for i in range(PRODUCTS_PER_CATEGORY):
+            brand = random.choice(brands)
+            name_tpl = random.choice(name_tpls)
+            sub_tpl = random.choice(sub_tpls)
+            brand_name = BRANDS[brand - 1][1]  # 中文品牌名
+            name = name_tpl.format(b=brand_name)
+            # 避免重名
+            while name in used_names:
+                suffix_idx += 1
+                name = f"{name_tpl.format(b=brand_name)} {suffix_idx}"
+            used_names.add(name)
+            price_min = price_range[0]
+            price_max = price_range[1]
+            price = random.randint(price_min, price_max)
+            market_price = int(price * random.uniform(1.1, 1.3))
+            products.append((name, sub_tpl, cat_idx, brand, price, market_price, unit))
+    return products
+
+
+# 生成 SPU 数据（惰性加载，仅在 seed_product 中调用一次）
+_GENERATED_PRODUCTS = None
 
 # SKU 规格组合模板
 COLORS = ["黑色", "白色", "银色", "金色", "红色", "蓝色", "紫色", "绿色", "粉色", "灰色", "卡其", "荧光黄"]
@@ -272,11 +336,32 @@ def generate_spec(category_id):
         color = random.choice(COLORS[:10])
         size = random.choice(CLOTHES_SIZES)
         return f'{{"颜色":"{color}","尺码":"{size}"}}', {"color": color, "size": size}
-    # 运动鞋类（跑步鞋）
-    elif category_id == 58:
+    # 运动鞋/休闲鞋/篮球鞋
+    elif category_id in [58, 59, 60]:
         color = random.choice(COLORS[:8])
         size = random.choice(SHOE_SIZES)
         return f'{{"颜色":"{color}","尺码":"{size}"}}', {"color": color, "size": size}
+    # 男装外套/衬衫/牛仔裤/西服 + 女装外套/毛衣
+    elif category_id in [49, 50, 51, 52, 56, 57]:
+        color = random.choice(COLORS[:8])
+        size = random.choice(CLOTHES_SIZES)
+        return f'{{"颜色":"{color}","尺码":"{size}"}}', {"color": color, "size": size}
+    # 食品（口味）
+    elif category_id in [61, 62, 63]:
+        flavor = random.choice(["原味", "番茄味", "麻辣味", "烧烤味", "海苔味"])
+        return f'{{"口味":"{flavor}"}}', {"flavor": flavor}
+    # 美妆护肤（洁面/爽肤水/精华/面霜/防晒）
+    elif category_id in [64, 68]:
+        spec_type = random.choice(["清爽型", "滋润型", "敏感肌用"])
+        return f'{{"类型":"{spec_type}","容量":"{random.choice(["100ml","150ml","200ml"])}"}}', {"type": spec_type}
+    elif category_id in [65, 66, 67]:
+        spec_type = random.choice(["清爽型", "滋润型", "修护型"])
+        capacity = random.choice(["30ml", "50ml", "100ml", "120ml"])
+        return f'{{"类型":"{spec_type}","容量":"{capacity}"}}', {"type": spec_type, "capacity": capacity}
+    # 彩妆（粉底/眼影/腮红/睫毛膏）
+    elif category_id in [69, 71, 72, 73]:
+        shade = random.choice(["自然色", "象牙白", "小麦色", "粉调"])
+        return f'{{"色号":"{shade}"}}', {"shade": shade}
     # 口红
     elif category_id == 70:
         shade = random.choice(LIPSTICK_SHADES[:6])
@@ -320,15 +405,20 @@ def clean(conn):
 # ── 商品中心 ──────────────────────────────────────
 
 def seed_product(conn):
-    now = datetime.now().strftime(FMT)
+    global _GENERATED_PRODUCTS
+    if _GENERATED_PRODUCTS is None:
+        _GENERATED_PRODUCTS = generate_products()
+        print(f"  自动生成 SPU: {len(_GENERATED_PRODUCTS)} 个")
+    products = _GENERATED_PRODUCTS
+
     with conn.cursor() as cur:
         # 品牌
         brand_id_map = {}
         for name, cname, letter in BRANDS:
             cur.execute(
-                "INSERT INTO sp_brands (name, english_name, first_letter, sort_order, status, created_at) "
-                "VALUES (%s, %s, %s, %s, 1, %s)",
-                (cname, name, letter, random.randint(1, 100), now),
+                "INSERT INTO sp_brands (name, english_name, first_letter, sort_order, status) "
+                "VALUES (%s, %s, %s, %s, 1)",
+                (cname, name, letter, random.randint(1, 100)),
             )
             brand_id_map[(cname, name)] = cur.lastrowid
         print(f"  品牌: {len(BRANDS)}")
@@ -347,10 +437,10 @@ def seed_product(conn):
                     if row:
                         path = row[0] + str(parent_id_actual) + "/"
             cur.execute(
-                "INSERT INTO sp_categories (name, parent_id, level, path, sort_order, status, created_at) "
-                "VALUES (%s, %s, %s, %s, %s, 1, %s)",
+                "INSERT INTO sp_categories (name, parent_id, level, path, sort_order, status) "
+                "VALUES (%s, %s, %s, %s, %s, 1)",
                 (name, parent_id if parent_id == 0 else cat_ids.get(parent_id, 0),
-                 level, path, i * 10, now),
+                 level, path, i * 10),
             )
             cat_ids[i] = cur.lastrowid
         print(f"  类目: {len(CATEGORIES)}")
@@ -359,9 +449,9 @@ def seed_product(conn):
         attr_map = {}
         for cat_idx, name, input_type, values, is_sku, searchable in ATTRS:
             cur.execute(
-                "INSERT INTO sp_attributes (name, category_id, input_type, `values`, is_sku_spec, searchable, status, created_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s, 1, %s)",
-                (name, cat_ids[cat_idx], input_type, values, is_sku, searchable, now),
+                "INSERT INTO sp_attributes (name, category_id, input_type, `values`, is_sku_spec, searchable, status) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 1)",
+                (name, cat_ids[cat_idx], input_type, values, is_sku, searchable),
             )
             attr_map[(cat_idx, name)] = cur.lastrowid
         print(f"  属性: {len(ATTRS)}")
@@ -369,15 +459,15 @@ def seed_product(conn):
         # SPU & SKU
         total_skus = 0
         product_count = 0
-        for name, subtitle, cat_idx, brand_idx, price, market, unit in PRODUCTS:
+        for name, subtitle, cat_idx, brand_idx, price, market, unit in products:
             # 获取品牌ID
             brand_id = brand_idx  # 直接用索引
             cur.execute(
                 "INSERT INTO sp_products (name, subtitle, category_id, brand_id, unit, main_image, "
-                "min_price, max_price, status, sort_order, created_at, updated_at) "
-                "VALUES (%s, %s, %s, %s, %s, '', %s, %s, 2, %s, %s, %s)",
+                "min_price, max_price, status, sort_order) "
+                "VALUES (%s, %s, %s, %s, %s, '', %s, %s, 2, %s)",
                 (name, subtitle, cat_ids[cat_idx], brand_id, unit, price, market,
-                 random.randint(1, 100), now, now),
+                 random.randint(1, 100)),
             )
             spu_id = cur.lastrowid
             product_count += 1
@@ -403,15 +493,42 @@ def seed_product(conn):
                 sku_code = f"SKU{spu_id}-{j+1:03d}"
                 barcode = f"{random.randint(1000000000000, 9999999999999)}"
                 cur.execute(
-                    "INSERT INTO sp_skus (product_id, sku_code, barcode, spec, price, market_price, cost_price, status, created_at) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, 1, %s)",
+                    "INSERT INTO sp_skus (product_id, sku_code, barcode, spec, price, market_price, cost_price, status) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, 1)",
                     (spu_id, sku_code, barcode, spec_json, sku_price,
                      sku_price + random.randint(int(sku_price * 0.1), int(sku_price * 0.3)),
-                     int(sku_price * 0.6), now),
+                     int(sku_price * 0.6)),
                 )
                 total_skus += 1
 
         print(f"  SPU: {product_count}, SKU: {total_skus}")
+
+        # 类目-品牌关联（按业务合理性匹配）
+        # key=CATEGORIES 中二级类目的索引(parent_id in CATEGORIES tuple), value=品牌1-based索引
+        cat_brand_groups = {
+            11: range(1, 7),        # 手机通讯 → Apple/三星/小米/华为/OPPO/vivo
+            12: range(1, 12),       # 电脑办公 → 电子品牌+联想/戴尔/惠普/华硕/索尼
+            13: range(1, 8),        # 数码配件 → 主要电子品牌+索尼
+            16: [12, 13, 14, 15, 16, 21, 30, 32],  # 男装 → Nike/Adidas/Uniqlo/Zara/H&M/Supreme/Gucci/LV
+            17: [14, 15, 16, 17, 30, 31, 32],       # 女装 → Uniqlo/Zara/H&M/Lululemon/Gucci/Prada/LV
+            19: [12, 13, 17, 18, 19, 20],            # 运动鞋 → Nike/Adidas/Lululemon/NB/Converse/Vans
+            23: range(22, 26),      # 食品饮料 → Starbucks/可口可乐/百事/雀巢
+            28: range(26, 30),      # 面部护肤 → L'Oreal/雅诗兰黛/Dior/Chanel
+            29: range(26, 30),      # 彩妆 → L'Oreal/雅诗兰黛/Dior/Chanel
+        }
+        cb_count = 0
+        for i, (cat_parent_id, _, cat_level) in enumerate(CATEGORIES, 1):
+            # 二级类目索引对应 brand group key
+            key = i if cat_level == 2 else cat_parent_id
+            group = cat_brand_groups.get(key, range(1, 33))
+            brand_ids = random.sample(list(group), min(len(list(group)), random.randint(3, 8)))
+            for bid in brand_ids:
+                cur.execute(
+                    "INSERT IGNORE INTO sp_category_brands (category_id, brand_id) VALUES (%s, %s)",
+                    (cat_ids[i], bid),
+                )
+                cb_count += 1
+        print(f"  类目-品牌: {cb_count}")
 
     conn.commit()
     print("商品中心 ✅\n")
@@ -420,7 +537,6 @@ def seed_product(conn):
 # ── 库存中心 ──────────────────────────────────────
 
 def seed_inventory(conn):
-    now = datetime.now().strftime(FMT)
     with conn.cursor() as cur:
         cur.execute("SELECT id FROM sp_skus WHERE deleted_at IS NULL")
         skus = cur.fetchall()
@@ -430,9 +546,9 @@ def seed_inventory(conn):
             threshold = random.randint(5, 50)
             status = "instock" if qty > threshold else "lowstock"
             cur.execute(
-                "INSERT INTO sp_inventories (sku_id, quantity, reserved, threshold, status, created_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
-                (sku[0], qty, reserved, threshold, status, now),
+                "INSERT INTO sp_inventories (sku_id, quantity, reserved, threshold, status) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (sku[0], qty, reserved, threshold, status),
             )
 
             # 部分库存记录日志
@@ -441,11 +557,11 @@ def seed_inventory(conn):
                 cur.execute(
                     "INSERT INTO sp_inventory_logs (sku_id, warehouse_id, before_quantity, after_quantity, "
                     "before_reserved, after_reserved, change_amount, "
-                    "change_type, reference_id, operator, note, created_at) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "change_type, reference_id, operator, note) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (sku[0], 0, qty - delta, qty,
                      0, reserved, delta,
-                     "purchase", "", "admin", "初始入库", now),
+                     "purchase", "", "admin", "初始入库"),
                 )
     conn.commit()
     print(f"  库存: {len(skus)} 条")
