@@ -285,7 +285,7 @@ func (s *SpuService) listFromZSET(ctx context.Context, req *SPUListReq, cursor c
 			var all []SPU
 			db := s.db.WithContext(ctx).Model(&SPU{}).Select("id")
 			if req.CategoryID != nil {
-				db = db.Where("category_id = ?", *req.CategoryID)
+				db = db.Where("category_id IN (SELECT id FROM sp_categories WHERE id = ? OR path LIKE CONCAT((SELECT IFNULL(path,'') FROM sp_categories WHERE id = ?), ?, '/%'))", *req.CategoryID, *req.CategoryID, *req.CategoryID)
 			}
 			if req.BrandID != nil {
 				db = db.Where("brand_id = ?", *req.BrandID)

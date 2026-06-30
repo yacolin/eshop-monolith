@@ -122,7 +122,7 @@ func (r *SpuRepository) List(ctx context.Context, name string, categoryID, brand
 		db = db.Where("name LIKE ?", "%"+name+"%")
 	}
 	if categoryID != nil {
-		db = db.Where("category_id = ?", *categoryID)
+		db = db.Where("category_id IN (SELECT id FROM sp_categories WHERE id = ? OR path LIKE CONCAT((SELECT IFNULL(path,'') FROM sp_categories WHERE id = ?), ?, '/%'))", *categoryID, *categoryID, *categoryID)
 	}
 	if brandID != nil {
 		db = db.Where("brand_id = ?", *brandID)
@@ -156,7 +156,7 @@ func (r *SpuRepository) ListIDs(ctx context.Context, name string, categoryID, br
 		db = db.Where("name LIKE ?", "%"+name+"%")
 	}
 	if categoryID != nil {
-		db = db.Where("category_id = ?", *categoryID)
+		db = db.Where("category_id IN (SELECT id FROM sp_categories WHERE id = ? OR path LIKE CONCAT((SELECT IFNULL(path,'') FROM sp_categories WHERE id = ?), ?, '/%'))", *categoryID, *categoryID, *categoryID)
 	}
 	if brandID != nil {
 		db = db.Where("brand_id = ?", *brandID)
