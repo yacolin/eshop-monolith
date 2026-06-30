@@ -122,6 +122,6 @@ func (s *SKUService) Delete(ctx context.Context, id int64) error {
 	return s.repo.DeleteSKU(ctx, id)
 }
 
-func (s *SKUService) ListByProduct(ctx context.Context, productID int64) ([]SKU, error) {
-	return s.repo.FindSKUsByProductID(ctx, productID)
+func (s *SKUService) ListByProduct(ctx context.Context, productID int64, skuCode string) ([]SKU, error) {
+	return s.repo.FindSKUsByProductID(ctx, productID, skuCode)
 }

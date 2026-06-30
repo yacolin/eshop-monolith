@@ -15,7 +15,7 @@ type IspuRepository interface {
 	UpdateSPUPriceWithTx(tx *gorm.DB, productID int64) error
 
 	FindByID(ctx context.Context, id int64) (*SPU, error)
-	FindSKUsByProductID(ctx context.Context, productID int64) ([]SKU, error)
+	FindSKUsByProductID(ctx context.Context, productID int64, skuCode string) ([]SKU, error)
 	FindDescriptionByProductID(ctx context.Context, productID int64) (*Description, error)
 	FindProductAttrsByProductID(ctx context.Context, productID int64) ([]ProductAttribute, error)
 	FindSKUByCode(ctx context.Context, code string) (*SKU, error)
@@ -72,9 +72,16 @@ func (r *SpuRepository) FindByID(ctx context.Context, id int64) (*SPU, error) {
 	return &spu, err
 }
 
-func (r *SpuRepository) FindSKUsByProductID(ctx context.Context, productID int64) ([]SKU, error) {
+func (r *SpuRepository) FindSKUsByProductID(ctx context.Context, productID int64, skuCode string) ([]SKU, error) {
 	var list []SKU
-	err := r.db.WithContext(ctx).Where("product_id = ?", productID).Order("id ASC").Find(&list).Error
+	db := r.db.WithContext(ctx)
+	if productID > 0 {
+		db = db.Where("product_id = ?", productID)
+	}
+	if skuCode != "" {
+		db = db.Where("sku_code = ?", skuCode)
+	}
+	err := db.Order("id ASC").Find(&list).Error
 	return list, err
 }
 

@@ -1,8 +1,6 @@
 package product
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
@@ -135,20 +133,25 @@ func (h *SKUHandler) Delete(c *gin.Context) {
 	response.Success(c, nil)
 }
 
-// ListByProduct 获取产品的 SKU 列表
-// @Summary 获取产品的 SKU 列表
+// ListByProduct 获取 SKU 列表
+// @Summary 获取 SKU 列表
 // @Tags skus
 // @Produce json
-// @Param product_id query int true "产品 ID"
+// @Param product_id query int false "产品 ID"
+// @Param sku_code query string false "SKU 编码"
 // @Success 200 {object} response.Response{data=[]SKU}
 // @Router /api/v1/skus [get]
 func (h *SKUHandler) ListByProduct(c *gin.Context) {
-	productID, err := strconv.ParseInt(c.Query("product_id"), 10, 64)
-	if err != nil || productID <= 0 {
+	var req SKUListReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.Error(err)
+		return
+	}
+	if req.ProductID <= 0 && req.SkuCode == "" {
 		c.Error(errcode.ErrInvalidParams)
 		return
 	}
-	list, err := h.svc.ListByProduct(c, productID)
+	list, err := h.svc.ListByProduct(c, req.ProductID, req.SkuCode)
 	if err != nil {
 		c.Error(err)
 		return
