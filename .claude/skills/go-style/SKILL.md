@@ -1,13 +1,13 @@
 ---
-name: "new-cs"
-description: "检查重构后项目代码是否符合新的扁平化代码规范（Flat Go Structure）。基于商品中心 product 模块的 brand 参考实现提炼。适用于 code review、新模块开发、规范统一。"
+name: "go-style"
+description: "Go 代码规范（Flat Go Structure）。基于商品中心 product 模块的 brand 参考实现提炼。适用于 code review、新模块开发、规范统一。"
 ---
 
-# 新代码规范（Flat Go Structure）
+# Go 代码规范（Flat Go Structure）
 
 ## 适用范围
 
-本规范适用于商品中心（`internal/product/`）、库存中心（`internal/inventory/`）等**重构后的新模块**。旧模块仍遵循旧规范。
+本规范适用于本项目所有 Go 模块，包括商品中心（`internal/product/`）、库存中心（`internal/inventory/`）等。
 
 ## 核心原则
 
@@ -330,13 +330,143 @@ import (
 
 新模块的表已通过 SQL 手动创建，不在 `AutoMigrate` 中注册。后续 schema 变更通过 DDL 管理，不依赖 GORM AutoMigrate。
 
-## 12. API 规范
+## 12. Swagger 注解规范
 
-- 路由结构化 RESTful，URL 含版本号 `/api/v1/`
-- 响应格式统一 `response.Success(c, data)`
-- Swagger @Tags 使用英文小写复数（`brands`、`categories`、`products`）
-- 时间戳在 JSON 中序列化为毫秒级（在 DTO 响应时手动转换 `CreatedAt.UnixMilli()`）
-- Path 参数使用 `utils.ParseIntParam(c, "id")`
+### 规范
+
+- `@Tags` 使用**英文小写复数**，与路由分组名一致（`brands`、`categories`、`products`）
+- `@Summary` 使用中文，简短描述接口功能
+- `@Accept json` 仅 POST/PUT 需要
+- `@Produce json` 所有接口都需要
+- Path 参数使用 `@Param xxx path`，绑定标签标记 `int`/`string`、`true`(必填)/`false`(选填)
+- Query 参数使用 `@Param xxx query`，可加 `default(xx)` 指定默认值
+- `@Success` 统一格式：`response.Response{data=<类型>}`
+  - 单条数据直接写 model 名：`data=Brand`
+  - 多条数据写 `data=[]Brand`
+  - 分页结果写 `data=dto.BrandListResult`
+- `@Router` 以 `/api/v1/` 开头
+- POST 请求使用 `body` 参数类型，绑定 DTO
+
+### 各操作注解示例
+
+#### Create — POST
+
+```go
+// Create 创建品牌
+// @Summary 创建品牌
+// @Tags brands
+// @Accept json
+// @Produce json
+// @Param brand body CreateBrandReq true "品牌信息"
+// @Success 200 {object} response.Response{data=Brand}
+// @Router /api/v1/brands [post]
+```
+
+#### Update — PUT
+
+```go
+// Update 更新品牌
+// @Summary 更新品牌
+// @Tags brands
+// @Accept json
+// @Produce json
+// @Param id path int true "品牌 ID"
+// @Param brand body UpdateBrandReq true "品牌信息"
+// @Success 200 {object} response.Response{data=Brand}
+// @Router /api/v1/brands/{id} [put]
+```
+
+#### GetByID — GET path param
+
+```go
+// GetByID 获取品牌详情
+// @Summary 获取品牌详情
+// @Tags brands
+// @Produce json
+// @Param id path int true "品牌 ID"
+// @Success 200 {object} response.Response{data=Brand}
+// @Router /api/v1/brands/{id} [get]
+```
+
+#### List — GET query params
+
+```go
+// List 品牌列表
+// @Summary 品牌列表
+// @Tags brands
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页条数" default(20)
+// @Param name query string false "品牌名称（模糊搜索）"
+// @Param first_letter query string false "首字母"
+// @Success 200 {object} response.Response{data=BrandListResult}
+// @Router /api/v1/brands [get]
+```
+
+#### Delete — DELETE
+
+```go
+// Delete 删除品牌
+// @Summary 删除品牌
+// @Tags brands
+// @Produce json
+// @Param id path int true "品牌 ID"
+// @Success 200 {object} response.Response
+// @Router /api/v1/brands/{id} [delete]
+```
+
+## 13. 代码风格
+
+### 缩进
+
+- 使用 Tab 缩进（Go 标准）
+
+### 换行
+
+- 每行不超过 120 字符
+- 参数过多时换行对齐
+
+### 注释
+
+- model struct 字段上的 GORM `comment` 标签写中文说明
+- Handler 的 `// MethodName` 行注释用中文描述
+- 关键业务逻辑需注释说明原因（Why），不注释过程（What）
+
+### 导入顺序
+
+标准库 → 第三方库 → 内部包，三组间空行分隔：
+
+```go
+import (
+    "context"
+    "errors"
+
+    "gorm.io/gorm"
+
+    "eshop-monolith/pkg/errcode"
+)
+```
+
+## 14. 安全规范
+
+### 密码存储
+
+- 使用 bcrypt 加密（`utils.CryptPassword`）
+
+### JWT 鉴权
+
+- 需登录认证的接口使用 `middleware.JWTAuth()` 中间件
+- 用户 ID 从 JWT 上下文 `c.Get("user_id")` 获取
+- 非公开接口与公开接口分 Group 注册（见路由注册示例）
+
+### 输入校验
+
+- 使用 `binding` 标签对所有输入做校验（`required`、`max`、`min`、`oneof` 等）
+- `binding` 校验失败时由 `ErrorHandler` 中间件统一返回 422 + 字段级错误
+
+### SQL 注入防护
+
+- 使用 GORM 参数化查询，不使用字符串拼接 SQL
 
 ## 检查清单
 
@@ -372,3 +502,16 @@ import (
 ### 路由
 - [ ] 路由注册函数是否直接创建 repo→service→handler
 - [ ] URL 是否包含 `/api/v1/` 版本号
+
+### Swagger 注解
+- [ ] @Tags 是否英文小写复数
+- [ ] @Summary 是否中文描述
+- [ ] @Success 是否使用 `response.Response{data=...}` 格式
+- [ ] POST/PUT 是否有 `@Accept json`
+- [ ] Path 参数是否标注 `true`（必填）
+- [ ] 分页接口是否有 page/page_size 参数注解
+
+### 安全
+- [ ] 密码字段是否使用 bcrypt
+- [ ] 敏感接口是否加 `JWTAuth()` 中间件
+- [ ] DTO binding 标签是否完整校验
