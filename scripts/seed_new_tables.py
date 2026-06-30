@@ -539,15 +539,33 @@ def seed_product(conn):
             11: range(1, 7),        # 手机通讯 → Apple/三星/小米/华为/OPPO/vivo
             12: range(1, 12),       # 电脑办公 → 电子品牌+联想/戴尔/惠普/华硕/索尼
             13: range(1, 8),        # 数码配件 → 主要电子品牌+索尼
+            14: range(1, 8),        # 智能设备 → 主要电子品牌+索尼
+            15: range(1, 8),        # 影音娱乐 → 主要电子品牌+索尼
             16: [12, 13, 14, 15, 16, 21, 30, 32],  # 男装 → Nike/Adidas/Uniqlo/Zara/H&M/Supreme/Gucci/LV
             17: [14, 15, 16, 17, 30, 31, 32],       # 女装 → Uniqlo/Zara/H&M/Lululemon/Gucci/Prada/LV
+            18: [12, 13, 14, 15, 16],                # 童装 → Nike/Adidas/Uniqlo/Zara/H&M
             19: [12, 13, 17, 18, 19, 20],            # 运动鞋 → Nike/Adidas/Lululemon/NB/Converse/Vans
-            23: range(22, 26),      # 食品饮料 → Starbucks/可口可乐/百事/雀巢
+            20: [12, 13, 14, 15, 16, 17, 18, 19, 20], # 休闲鞋 → 运动+服装品牌
+            21: [12, 13, 14, 15, 16, 30, 31, 32],    # 箱包皮具 → Nike/Supreme/Gucci/Prada/LV
+            22: range(22, 26),      # 休闲零食 → Starbucks/可口可乐/百事/雀巢
+            23: range(22, 26),      # 粮油调味 → Starbucks/可口可乐/百事/雀巢
+            24: range(22, 26),      # 饮料冲调 → Starbucks/可口可乐/百事/雀巢
+            25: range(22, 26),      # 进口食品 → Starbucks/可口可乐/百事/雀巢
+            26: range(22, 26),      # 生鲜果蔬 → Starbucks/可口可乐/百事/雀巢
             28: range(26, 30),      # 面部护肤 → L'Oreal/雅诗兰黛/Dior/Chanel
             29: range(26, 30),      # 彩妆 → L'Oreal/雅诗兰黛/Dior/Chanel
+            30: [26, 27, 28, 29],   # 香水 → 美妆品牌
+            31: [26, 27, 28, 29],   # 美发造型 → 美妆品牌
+            32: [26, 27, 28, 29],   # 身体护理 → 美妆品牌
+            33: [12, 13, 17, 18, 19, 20],  # 运动器材 → 运动品牌
+            34: [12, 13, 17, 18, 19, 20],  # 户外装备 → 运动品牌
+            35: [12, 13, 17, 18, 19, 20],  # 骑行用品 → 运动品牌
         }
         cb_count = 0
         for i, (cat_parent_id, _, cat_level) in enumerate(CATEGORIES, 1):
+            # 只给二/三级类目绑定品牌，一级类目不绑（商品挂载在叶子类目）
+            if cat_level == 1:
+                continue
             # 二级类目索引对应 brand group key
             key = i if cat_level == 2 else cat_parent_id
             group = cat_brand_groups.get(key, range(1, 33))

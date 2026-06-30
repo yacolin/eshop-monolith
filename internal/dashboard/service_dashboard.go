@@ -155,9 +155,12 @@ func (s *DashboardService) computePaymentMethodDist(ctx context.Context) []Metho
 func (s *DashboardService) computeCategoryDist(ctx context.Context) []CategoryDistDTO {
 	type row struct{ Category string; Value int64 }
 	var rows []row
-	s.db.WithContext(ctx).Table("sp_category_brands scb").
-		Select("scb.category_id AS category, COUNT(scb.product_id) AS value").
-		Group("scb.category_id").Order("value DESC").Limit(8).Scan(&rows)
+	s.db.WithContext(ctx).Table("sp_products p").
+		Select("COALESCE(r.name, '未分类') AS category, COUNT(p.id) AS value").
+		Joins("LEFT JOIN sp_categories c ON c.id = p.category_id").
+		Joins("LEFT JOIN sp_categories r ON r.level = 1 AND r.id = COALESCE(NULLIF(SUBSTRING_INDEX(c.path, '/', 1), ''), c.id)").
+		Where("p.deleted_at IS NULL").
+		Group("r.id").Order("value DESC").Limit(8).Scan(&rows)
 	result := make([]CategoryDistDTO, len(rows))
 	for i, r := range rows {
 		result[i] = CategoryDistDTO{Category: r.Category, Value: r.Value}

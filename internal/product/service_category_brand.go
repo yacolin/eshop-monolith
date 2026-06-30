@@ -64,6 +64,17 @@ func (s *CategoryBrandService) SetCategoryBrands(ctx context.Context, categoryID
 	})
 }
 
+// ListCategoryBrandDetails 查类目下的品牌详情列表（含品牌名、logo等）
+func (s *CategoryBrandService) ListCategoryBrandDetails(ctx context.Context, categoryID int64) ([]CategoryBrandDetail, error) {
+	if _, err := s.categoryRepo.FindByID(ctx, categoryID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errcode.ErrCategoryNotFound
+		}
+		return nil, err
+	}
+	return s.repo.FindBrandDetailsByCategory(ctx, categoryID)
+}
+
 // ListCategoryBrands 查类目下的品牌列表
 func (s *CategoryBrandService) ListCategoryBrands(ctx context.Context, categoryID int64) ([]CategoryBrand, error) {
 	if _, err := s.categoryRepo.FindByID(ctx, categoryID); err != nil {

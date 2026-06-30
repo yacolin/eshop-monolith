@@ -46,12 +46,12 @@ func (h *CategoryBrandHandler) SetBrands(c *gin.Context) {
 	response.Success(c, nil)
 }
 
-// ListBrands 查类目下的品牌
-// @Summary 查类目下的品牌
+// ListBrands 查类目下的品牌列表（含品牌详情）
+// @Summary 查类目下的品牌列表
 // @Tags categories
 // @Produce json
 // @Param id path int true "类目ID"
-// @Success 200 {object} response.Response{data=[]CategoryBrand}
+// @Success 200 {object} response.Response{data=[]CategoryBrandDetail}
 // @Router /api/v1/categories/{id}/brands [get]
 func (h *CategoryBrandHandler) ListBrands(c *gin.Context) {
 	id, err := utils.ParseIntParam(c, "id")
@@ -59,7 +59,7 @@ func (h *CategoryBrandHandler) ListBrands(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	result, err := h.svc.ListCategoryBrands(c, id)
+	result, err := h.svc.ListCategoryBrandDetails(c, id)
 	if err != nil {
 		c.Error(err)
 		return
