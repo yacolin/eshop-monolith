@@ -1,9 +1,9 @@
 package product
 
 import (
-	"time"
-
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Brand struct {
@@ -15,8 +15,8 @@ type Brand struct {
 	SortOrder   int            `gorm:"not null;default:0" json:"sort_order"`
 	Status      int8           `gorm:"not null;default:1;index:idx_status" json:"status"`
 	Description string         `gorm:"type:text" json:"description"`
-	CreatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt   utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt   utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 

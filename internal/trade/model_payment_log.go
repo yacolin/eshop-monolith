@@ -1,6 +1,6 @@
 package trade
 
-import "time"
+import "eshop-monolith/pkg/utils"
 
 type PaymentLog struct {
 	ID            int64     `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -12,7 +12,7 @@ type PaymentLog struct {
 	RequestBody   string    `gorm:"type:text" json:"request_body"`
 	ResponseBody  string    `gorm:"type:text" json:"response_body"`
 	Status        string    `gorm:"type:varchar(20);default:''" json:"status"`
-	CreatedAt     time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;index:idx_created_at" json:"created_at"`
+	CreatedAt utils.Timestamp `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;index:idx_created_at" json:"created_at"`
 }
 
 func (PaymentLog) TableName() string { return "tx_payment_logs" }

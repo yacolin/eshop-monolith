@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Inventory struct {
@@ -18,8 +20,8 @@ type Inventory struct {
 	Status       string         `gorm:"type:varchar(20);not null;default:'instock'" json:"status"`
 	LastCountedAt *time.Time    `gorm:"type:datetime" json:"last_counted_at"`
 	LastCountedBy string        `gorm:"type:varchar(50);default:''" json:"last_counted_by"`
-	CreatedAt    time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt    time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 

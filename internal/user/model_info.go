@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type UserInfo struct {
@@ -18,8 +20,8 @@ type UserInfo struct {
 	ZipCode   string         `gorm:"type:varchar(10);not null;default:''" json:"zip_code"`
 	Language  string         `gorm:"type:varchar(10);not null;default:'zh-CN'" json:"language"`
 	Timezone  string         `gorm:"type:varchar(32);not null;default:'Asia/Shanghai'" json:"timezone"`
-	CreatedAt time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"type:datetime(3);index:idx_deleted_at" json:"-"`
 }
 

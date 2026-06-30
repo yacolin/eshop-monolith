@@ -1,9 +1,9 @@
 package user
 
 import (
-	"time"
-
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Role struct {
@@ -14,8 +14,8 @@ type Role struct {
 	Status      int8           `gorm:"type:tinyint;not null;default:1;index:idx_status" json:"status"`
 	SortOrder   int            `gorm:"not null;default:0" json:"sort_order"`
 	IsSystem    bool           `gorm:"not null;default:false" json:"is_system"`
-	CreatedAt   time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"type:datetime(3);index:idx_deleted_at" json:"-"`
 }
 
@@ -25,7 +25,7 @@ type UserRole struct {
 	ID        int64          `gorm:"primaryKey;autoIncrement" json:"id"`
 	UserID    int64          `gorm:"not null;uniqueIndex:uk_user_role" json:"user_id"`
 	RoleID    int64          `gorm:"not null;uniqueIndex:uk_user_role" json:"role_id"`
-	CreatedAt time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
 	DeletedAt gorm.DeletedAt `gorm:"type:datetime(3);index:idx_deleted_at" json:"-"`
 }
 

@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Order struct {
@@ -34,8 +36,8 @@ type Order struct {
 	DeliveredAt   *time.Time     `gorm:"type:datetime" json:"delivered_at"`
 	CompletedAt   *time.Time     `gorm:"type:datetime" json:"completed_at"`
 	ClosedAt      *time.Time     `gorm:"type:datetime" json:"closed_at"`
-	CreatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 

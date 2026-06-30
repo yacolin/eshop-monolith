@@ -1,6 +1,6 @@
 package trade
 
-import "time"
+import "eshop-monolith/pkg/utils"
 
 type OrderLog struct {
 	ID           int64     `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -11,7 +11,7 @@ type OrderLog struct {
 	Operator     string    `gorm:"type:varchar(50);default:'system'" json:"operator"`
 	OperatorType string    `gorm:"type:varchar(20);default:'system'" json:"operator_type"`
 	Note         string    `gorm:"type:varchar(500);default:''" json:"note"`
-	CreatedAt    time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	CreatedAt utils.Timestamp `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 }
 
 func (OrderLog) TableName() string { return "tx_order_logs" }

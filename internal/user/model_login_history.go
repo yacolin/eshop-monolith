@@ -1,9 +1,9 @@
 package user
 
 import (
-	"time"
-
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type LoginHistory struct {
@@ -16,7 +16,7 @@ type LoginHistory struct {
 	Event      string         `gorm:"type:varchar(20);not null" json:"event"`
 	Status     string         `gorm:"type:varchar(20);not null" json:"status"`
 	FailReason string         `gorm:"type:varchar(255);not null;default:''" json:"fail_reason"`
-	CreatedAt  time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);index:idx_created_at" json:"created_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);index:idx_created_at" json:"created_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"type:datetime(3);index:idx_deleted_at" json:"-"`
 }
 

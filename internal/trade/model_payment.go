@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Payment struct {
@@ -20,8 +22,8 @@ type Payment struct {
 	Status        string         `gorm:"type:varchar(20);not null;default:'pending'" json:"status"`
 	FailureReason string         `gorm:"type:varchar(500);default:''" json:"failure_reason"`
 	PaidAt        *time.Time     `gorm:"type:datetime" json:"paid_at"`
-	CreatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 
@@ -42,8 +44,8 @@ type Refund struct {
 	FailureReason       string         `gorm:"type:varchar(500);default:''" json:"failure_reason"`
 	AppliedAt           *time.Time     `gorm:"type:datetime" json:"applied_at"`
 	SuccessAt           *time.Time     `gorm:"type:datetime" json:"success_at"`
-	CreatedAt           time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt           time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt           gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 

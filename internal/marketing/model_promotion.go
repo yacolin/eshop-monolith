@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Promotion struct {
@@ -20,8 +22,8 @@ type Promotion struct {
 	Status        int8           `gorm:"not null;default:1;index:idx_status" json:"status"`
 	CreatedBy     *int64         `json:"created_by"`
 	UpdatedBy     *int64         `json:"updated_by"`
-	CreatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
@@ -41,8 +43,8 @@ type PromotionRule struct {
 	StackPriority int            `gorm:"not null;default:0;index:idx_stack" json:"stack_priority"`
 	CreatedBy     *int64         `json:"created_by"`
 	UpdatedBy     *int64         `json:"updated_by"`
-	CreatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
@@ -57,7 +59,7 @@ type PromotionProduct struct {
 	ProductID     *int64         `gorm:"uniqueIndex:uk_promo_product" json:"product_id"`
 	CategoryID    *int64         `gorm:"uniqueIndex:uk_promo_product" json:"category_id"`
 	CreatedBy     *int64         `json:"created_by"`
-	CreatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }
 

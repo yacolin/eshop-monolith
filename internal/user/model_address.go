@@ -1,9 +1,9 @@
 package user
 
 import (
-	"time"
-
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Address struct {
@@ -19,8 +19,8 @@ type Address struct {
 	ZipCode   string         `gorm:"type:varchar(10);not null;default:''" json:"zip_code"`
 	Tag       string         `gorm:"type:varchar(16);not null;default:''" json:"tag"`
 	IsDefault bool           `gorm:"not null;default:false" json:"is_default"`
-	CreatedAt time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"type:datetime(3);index:idx_deleted_at" json:"-"`
 }
 

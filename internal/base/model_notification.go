@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Notification struct {
@@ -27,8 +29,8 @@ type Notification struct {
 	IsDeletedByUser bool           `gorm:"not null;default:false" json:"is_deleted_by_user"`
 	Priority        int8           `gorm:"type:tinyint;not null;default:1" json:"priority"`
 	CreatedBy       int64          `gorm:"not null;default:0" json:"created_by"`
-	CreatedAt       time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);index:idx_created" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);index:idx_created" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"type:datetime(3)" json:"-"`
 }
 
@@ -43,8 +45,8 @@ type NotificationTemplate struct {
 	Category        int8           `gorm:"type:tinyint" json:"category"`
 	Priority        int8           `gorm:"type:tinyint;not null;default:1" json:"priority"`
 	Status          int8           `gorm:"type:tinyint;not null;default:1" json:"status"`
-	CreatedAt       time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"type:datetime(3)" json:"-"`
 }
 

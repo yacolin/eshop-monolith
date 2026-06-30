@@ -64,6 +64,11 @@ func (t Timestamp) ToTime() time.Time {
 	return time.Time(t)
 }
 
+// UnixMilli 返回毫秒级时间戳
+func (t Timestamp) UnixMilli() int64 {
+	return time.Time(t).UnixMilli()
+}
+
 // GenerateID 生成唯一ID
 func GenerateID() string {
 	return fmt.Sprintf("%d%d", time.Now().UnixNano(), time.Now().Nanosecond())

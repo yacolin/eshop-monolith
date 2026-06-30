@@ -1,9 +1,9 @@
 package trade
 
 import (
-	"time"
-
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type OrderItem struct {
@@ -21,8 +21,8 @@ type OrderItem struct {
 	Subtotal     int64          `gorm:"not null;default:0" json:"subtotal"`
 	RefundStatus string         `gorm:"type:varchar(20);not null;default:'none'" json:"refund_status"`
 	RefundAmount int64          `gorm:"not null;default:0" json:"refund_amount"`
-	CreatedAt    time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt    time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 

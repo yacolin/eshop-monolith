@@ -1,6 +1,6 @@
 package inventory
 
-import "time"
+import "eshop-monolith/pkg/utils"
 
 type InventoryLog struct {
 	ID             int64     `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -15,7 +15,7 @@ type InventoryLog struct {
 	ReferenceID    string    `gorm:"type:varchar(64);default:'';index:idx_reference_id" json:"reference_id"`
 	Operator       string    `gorm:"type:varchar(50);default:''" json:"operator"`
 	Note           string    `gorm:"type:varchar(500);default:''" json:"note"`
-	CreatedAt      time.Time `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;index:idx_created_at" json:"created_at"`
+	CreatedAt utils.Timestamp `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;index:idx_created_at" json:"created_at"`
 }
 
 func (InventoryLog) TableName() string { return "sp_inventory_logs" }

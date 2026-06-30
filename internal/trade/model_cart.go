@@ -1,6 +1,10 @@
 package trade
 
-import "time"
+import (
+	"time"
+
+	"eshop-monolith/pkg/utils"
+)
 
 type Cart struct {
 	ID          int64          `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -9,8 +13,8 @@ type Cart struct {
 	ItemCount   int            `gorm:"not null;default:0" json:"item_count"`
 	TotalAmount int64          `gorm:"not null;default:0" json:"total_amount"`
 	ExpiredAt   *time.Time     `gorm:"type:datetime;index:idx_expired_at" json:"expired_at"`
-	CreatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 func (Cart) TableName() string { return "tx_carts" }
@@ -27,8 +31,8 @@ type CartItem struct {
 	Image       string     `gorm:"type:varchar(512);default:''" json:"image"`
 	Price       int64      `gorm:"not null" json:"price"`
 	Quantity    int        `gorm:"not null;default:1" json:"quantity"`
-	CreatedAt   time.Time  `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt   time.Time  `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt utils.Timestamp  `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt utils.Timestamp  `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 func (CartItem) TableName() string { return "tx_cart_items" }

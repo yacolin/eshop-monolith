@@ -1,9 +1,9 @@
 package review
 
 import (
-	"time"
-
 	"gorm.io/gorm"
+
+	"eshop-monolith/pkg/utils"
 )
 
 type Review struct {
@@ -25,8 +25,8 @@ type Review struct {
 	ReplyCount      int            `gorm:"not null;default:0" json:"reply_count"`
 	LikeCount       int            `gorm:"not null;default:0" json:"like_count"`
 	HelpfulCount    int            `gorm:"not null;default:0" json:"helpful_count"`
-	CreatedAt       time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"type:datetime(3);index" json:"-"`
 }
 
@@ -39,7 +39,7 @@ type ReviewMedia struct {
 	MediaURL    string         `gorm:"type:varchar(500);not null" json:"media_url"`
 	SortOrder   int            `gorm:"not null;default:0" json:"sort_order"`
 	AuditStatus int8           `gorm:"type:tinyint;not null;default:0;index:idx_audit" json:"audit_status"`
-	CreatedAt   time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"type:datetime(3);index" json:"-"`
 }
 
@@ -52,8 +52,8 @@ type ReviewReply struct {
 	ReplyByType int8           `gorm:"type:tinyint;not null;default:1" json:"reply_by_type"`
 	Content     string         `gorm:"type:text;not null" json:"content"`
 	Status      int8           `gorm:"type:tinyint;not null;default:1" json:"status"`
-	CreatedAt   time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
+	CreatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+	UpdatedAt utils.Timestamp      `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"type:datetime(3);index" json:"-"`
 }
 
@@ -73,7 +73,7 @@ type ReviewRating struct {
 	Rating1Count      int       `gorm:"not null;default:0" json:"rating_1_count"`
 	TotalReviews      int       `gorm:"not null;default:0" json:"total_reviews"`
 	WithMediaCount    int       `gorm:"not null;default:0" json:"with_media_count"`
-	UpdatedAt         time.Time `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
+	UpdatedAt utils.Timestamp `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 }
 
 func (ReviewRating) TableName() string { return "rev_review_ratings" }
@@ -85,7 +85,7 @@ type ReviewAuditLog struct {
 	Action         int8       `gorm:"type:tinyint;not null" json:"action"`
 	Reason         string     `gorm:"type:varchar(200)" json:"reason,omitempty"`
 	SensitiveWords string     `gorm:"type:json" json:"sensitive_words,omitempty"`
-	CreatedAt      time.Time  `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);index:idx_created" json:"created_at"`
+	CreatedAt utils.Timestamp  `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);index:idx_created" json:"created_at"`
 }
 
 func (ReviewAuditLog) TableName() string { return "rev_review_audit_logs" }

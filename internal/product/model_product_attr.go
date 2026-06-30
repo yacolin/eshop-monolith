@@ -1,7 +1,7 @@
 package product
 
 import (
-	"time"
+	"eshop-monolith/pkg/utils"
 
 	"gorm.io/gorm"
 )
@@ -12,8 +12,8 @@ type ProductAttribute struct {
 	AttributeID int64          `gorm:"not null;uniqueIndex:uk_product_attribute" json:"attribute_id"`
 	Value       string         `gorm:"type:varchar(500);not null" json:"value"`
 	SortOrder   int            `gorm:"not null;default:0" json:"sort_order"`
-	CreatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt   utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt   utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 

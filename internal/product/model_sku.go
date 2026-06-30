@@ -1,7 +1,7 @@
 package product
 
 import (
-	"time"
+	"eshop-monolith/pkg/utils"
 
 	"gorm.io/gorm"
 )
@@ -24,8 +24,8 @@ type SKU struct {
 	MaxPurchaseQty int           `gorm:"not null;default:0" json:"max_purchase_qty"`
 	Image         string         `gorm:"type:varchar(512);default:''" json:"image"`
 	Status        int8           `gorm:"not null;default:1" json:"status"`
-	CreatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt     utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt     utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 

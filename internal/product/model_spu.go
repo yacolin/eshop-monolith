@@ -1,7 +1,7 @@
 package product
 
 import (
-	"time"
+	"eshop-monolith/pkg/utils"
 
 	"gorm.io/gorm"
 )
@@ -27,8 +27,8 @@ type SPU struct {
 	HasDescription int8          `gorm:"not null;default:0" json:"has_description"`
 	CreatedBy     string         `gorm:"type:varchar(50);default:''" json:"created_by"`
 	UpdatedBy     string         `gorm:"type:varchar(50);default:''" json:"updated_by"`
-	CreatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
+	CreatedAt     utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt     utils.Timestamp      `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index:idx_deleted_at" json:"-"`
 }
 
