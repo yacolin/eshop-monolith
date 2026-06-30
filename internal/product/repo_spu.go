@@ -171,10 +171,10 @@ func (r *SpuRepository) ListIDs(ctx context.Context, name string, categoryID, br
 		db = db.Where("max_price <= ?", priceMax)
 	}
 	if cursorID > 0 {
-		db = db.Where("id < ?", cursorID)
+		db = db.Where("id > ?", cursorID)
 	}
 	var ids []int64
-	if err := db.Order("id DESC").Limit(limit).Pluck("id", &ids).Error; err != nil {
+	if err := db.Order("id ASC").Limit(limit).Pluck("id", &ids).Error; err != nil {
 		return nil, err
 	}
 	return ids, nil

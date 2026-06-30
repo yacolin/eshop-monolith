@@ -293,7 +293,7 @@ func (s *SpuService) listFromZSET(ctx context.Context, req *SPUListReq, cursor c
 			if req.Status != nil {
 				db = db.Where("status = ?", *req.Status)
 			}
-			if err := db.Order("id DESC").Find(&all).Error; err != nil {
+			if err := db.Order("id ASC").Find(&all).Error; err != nil {
 				return nil, err
 			}
 			if len(all) == 0 {

@@ -464,10 +464,9 @@ def seed_product(conn):
             brand_id = brand_idx  # 直接用索引
             cur.execute(
                 "INSERT INTO sp_products (name, subtitle, category_id, brand_id, unit, main_image, "
-                "min_price, max_price, status, sort_order) "
-                "VALUES (%s, %s, %s, %s, %s, '', %s, %s, 2, %s)",
-                (name, subtitle, cat_ids[cat_idx], brand_id, unit, price, market,
-                 random.randint(1, 100)),
+                "min_price, max_price, status) "
+                "VALUES (%s, %s, %s, %s, %s, '', %s, %s, 2)",
+                (name, subtitle, cat_ids[cat_idx], brand_id, unit, price, market),
             )
             spu_id = cur.lastrowid
             product_count += 1
@@ -500,6 +499,37 @@ def seed_product(conn):
                      int(sku_price * 0.6)),
                 )
                 total_skus += 1
+
+            # 生成图文描述（部分 SPU 有）
+            has_desc = 0
+            if random.random() < 0.7:
+                desc_text = f"{name}是一款优质的{subtitle}产品，给您带来极致体验。采用高品质材料，精心打造每一个细节。"
+                mobile_text = f"<h1>{name}</h1><p>{subtitle}，{desc_text}</p>"
+                cur.execute(
+                    "INSERT INTO sp_product_descriptions (product_id, description, mobile_description) "
+                    "VALUES (%s, %s, %s)",
+                    (spu_id, desc_text, mobile_text),
+                )
+                has_desc = 1
+
+            # 同步 has_description
+            if has_desc == 1:
+                cur.execute("UPDATE sp_products SET has_description = 1 WHERE id = %s", (spu_id,))
+
+            # 生成属性值（为该类目关联的属性随机赋值）
+            for (a_cat_idx, attr_name), attr_id in attr_map.items():
+                if a_cat_idx == cat_idx:
+                    # 给属性一个随机值
+                    val = random.choice(["标准", "优质", "普通", "高级", "入门"])
+                    if attr_name in ["颜色", "色号"]:
+                        val = random.choice(["黑色", "白色", "红色", "蓝色"])
+                    elif attr_name in ["面料", "材质", "处理器型号", "显卡型号"]:
+                        val = random.choice(["优质材料", "标准款", "高性能版"])
+                    cur.execute(
+                        "INSERT IGNORE INTO sp_product_attributes (product_id, attribute_id, value, sort_order) "
+                        "VALUES (%s, %s, %s, 0)",
+                        (spu_id, attr_id, val),
+                    )
 
         print(f"  SPU: {product_count}, SKU: {total_skus}")
 
@@ -666,7 +696,8 @@ def main():
     # 统计
     with conn.cursor() as cur:
         for table in ["sp_brands", "sp_categories", "sp_attributes", "sp_products",
-                      "sp_skus", "sp_inventories", "mkt_promotions"]:
+                      "sp_skus", "sp_product_descriptions", "sp_product_attributes",
+                      "sp_inventories", "mkt_promotions"]:
             cur.execute(f"SELECT COUNT(*) AS cnt FROM {table}")
             row = cur.fetchone()
             print(f"  {table}: {row[0]}")
