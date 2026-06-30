@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
@@ -24,6 +25,10 @@ type SpuService struct {
 	db           *gorm.DB
 	rdb          *redis.Client
 	sf           singleflight.Group
+
+	localCache  *spuLocalCache
+	bloomFilter *spuBloomFilter
+	hotCounter  *spuHotKeyCounter
 }
 
 func NewSpuService(
@@ -41,6 +46,10 @@ func NewSpuService(
 		attrRepo:     attrRepo,
 		db:           db,
 		rdb:          rdb,
+
+		localCache:  newSPULocalCache(),
+		bloomFilter: newSPUBloomFilter(),
+		hotCounter:  newSPUHotKeyCounter(),
 	}
 }
 
@@ -193,21 +202,41 @@ func (s *SpuService) Create(ctx context.Context, req *CreateSPUReq) (*SPU, error
 	if err != nil {
 		return nil, err
 	}
-	if s.rdb != nil && spu != nil {
-		delSPUEntity(context.Background(), s.rdb, spu.ID)
-		delAllSPUListCache(context.Background(), s.rdb)
-		delayedDeleteSPU(context.Background(), s.rdb, spu.ID)
+	if spu != nil {
+		s.bloomFilter.add(spu.ID)
+		s.localCache.setSingle(spu.ID, spu)
+		if s.rdb != nil {
+			delSPUEntity(context.Background(), s.rdb, spu.ID)
+			delAllSPUListCache(context.Background(), s.rdb)
+			delayedDeleteSPU(context.Background(), s.rdb, spu.ID)
+		}
 	}
 	return spu, nil
 }
 
-// GetByID 获取商品详情（含 SKU）
+// GetByID 获取商品详情，多级缓存: L1 → Bloom Filter → L2 Redis → DB
 func (s *SpuService) GetByID(ctx context.Context, id int64) (*SPU, error) {
+	// L1 本地缓存
+	if spu, ok := s.localCache.getSingle(id); ok {
+		s.hotCounter.increment(id)
+		return spu, nil
+	}
+
+	// Bloom Filter 快速拦截（无假阴性，返回 false 则 ID 一定不存在）
+	if !s.bloomFilter.mayExist(id) {
+		return nil, errcode.ErrSPUNotFound
+	}
+
+	// L2 Redis
 	if s.rdb != nil {
 		if spu, err := getSPUEntity(ctx, s.rdb, id); err == nil {
+			s.localCache.setSingle(id, spu)
+			s.hotCounter.increment(id)
 			return spu, nil
 		}
 	}
+
+	// DB 兜底
 	spu, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -215,6 +244,10 @@ func (s *SpuService) GetByID(ctx context.Context, id int64) (*SPU, error) {
 		}
 		return nil, err
 	}
+
+	// 回填 L2 + L1
+	s.bloomFilter.add(id)
+	s.localCache.setSingle(id, spu)
 	if s.rdb != nil {
 		if err := setSPUEntity(ctx, s.rdb, spu); err != nil {
 			_ = err
@@ -331,6 +364,8 @@ func (s *SpuService) buildListResult(ctx context.Context, ids []int64, size int)
 			}
 			for i := range dbSPUs {
 				hit[dbSPUs[i].ID] = &dbSPUs[i]
+				s.bloomFilter.add(dbSPUs[i].ID)
+				s.localCache.setSingle(dbSPUs[i].ID, &dbSPUs[i])
 				if err := setSPUEntity(ctx, s.rdb, &dbSPUs[i]); err != nil {
 					_ = err
 				}
@@ -351,6 +386,42 @@ func (s *SpuService) buildListResult(ctx context.Context, ids []int64, size int)
 		cursor = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d,%d", last.SortOrder, last.ID)))
 	}
 	return &SPUListResult{List: list, Cursor: cursor, HasMore: hasMore}, nil
+}
+
+// WarmupCache 全量预热 SPU 到 Bloom Filter + L2 + L1
+func (s *SpuService) WarmupCache(ctx context.Context) (int, error) {
+	all, err := s.repo.FindAll(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if len(all) == 0 {
+		return 0, nil
+	}
+
+	ids := make([]int64, len(all))
+	for i := range all {
+		ids[i] = all[i].ID
+	}
+	s.bloomFilter.addAll(ids)
+
+	if s.rdb != nil {
+		pipe := s.rdb.Pipeline()
+		for i := range all {
+			data, err := sonic.Marshal(&all[i])
+			if err != nil {
+				continue
+			}
+			pipe.Set(ctx, cacheKeySPU(all[i].ID), data, spuEntityTTL)
+		}
+		if _, err := pipe.Exec(ctx); err != nil {
+			_ = err
+		}
+	}
+
+	for i := range all {
+		s.localCache.warmupSingle(all[i].ID, &all[i])
+	}
+	return len(all), nil
 }
 
 func (s *SpuService) fetchFullFromDB(ctx context.Context, ids []int64, hasMore bool) (*SPUListResult, error) {
@@ -413,6 +484,7 @@ func (s *SpuService) Update(ctx context.Context, id int64, req *UpdateSPUReq) (*
 	if req.UpdatedBy != nil {
 		spu.UpdatedBy = *req.UpdatedBy
 	}
+	s.localCache.removeSingle(id)
 	if s.rdb != nil {
 		delSPUEntity(context.Background(), s.rdb, id)
 		delAllSPUListCache(context.Background(), s.rdb)
@@ -435,6 +507,7 @@ func (s *SpuService) Delete(ctx context.Context, id int64) error {
 		}
 		return err
 	}
+	s.localCache.removeSingle(id)
 	if s.rdb != nil {
 		delSPUEntity(context.Background(), s.rdb, id)
 		delAllSPUListCache(context.Background(), s.rdb)

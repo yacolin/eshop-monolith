@@ -3,11 +3,15 @@ package product
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/bytedance/sonic"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -16,6 +20,22 @@ const (
 	spuListTTL         = 10 * time.Minute
 	brandAllTTL        = 10 * time.Minute
 	delayedDeleteDelay = 500 * time.Millisecond
+
+	// L1 local cache
+	spuLocalCacheSize = 8192
+	spuLocalCacheTTL  = 60 * time.Second
+	spuLocalJitter    = 0.2
+
+	// Bloom Filter
+	bloomN = 100000
+	bloomP = 0.01
+
+	// Hot key
+	hotKeyThreshold = 1000
+	hotKeyWindow    = 10 * time.Second
+
+	emptyPlaceholder = "__EMPTY__"
+	emptyCacheTTL    = 30 * time.Second
 )
 
 // ── Key Builders ──
@@ -176,6 +196,166 @@ func setBrandAllCache(ctx context.Context, rdb redis.UniversalClient, brands []B
 
 func delBrandAllCache(ctx context.Context, rdb redis.UniversalClient) {
 	rdb.Del(ctx, cacheKeyBrandAll())
+}
+
+// ── TTL Jitter ──
+
+func jitteredTTL(base time.Duration, jitter float64) time.Duration {
+	delta := time.Duration(float64(base) * jitter)
+	return base + time.Duration(rand.Int63n(int64(delta*2+1))) - delta
+}
+
+// ── L1 SPU Local Cache ──
+
+type cacheEntry[T any] struct {
+	item      T
+	expiresAt time.Time
+}
+
+type spuLocalCache struct {
+	mu       sync.RWMutex
+	single   *lru.Cache[int64, *cacheEntry[*SPU]]
+	singleTTL time.Duration
+}
+
+func newSPULocalCache() *spuLocalCache {
+	single, _ := lru.New[int64, *cacheEntry[*SPU]](spuLocalCacheSize)
+	return &spuLocalCache{
+		single:    single,
+		singleTTL: spuLocalCacheTTL,
+	}
+}
+
+func (c *spuLocalCache) getSingle(id int64) (*SPU, bool) {
+	c.mu.RLock()
+	entry, ok := c.single.Get(id)
+	c.mu.RUnlock()
+	if !ok || entry.expiresAt.Before(time.Now()) {
+		if ok {
+			c.mu.Lock()
+			c.single.Remove(id)
+			c.mu.Unlock()
+		}
+		return nil, false
+	}
+	return entry.item, true
+}
+
+func (c *spuLocalCache) setSingle(id int64, spu *SPU) {
+	c.mu.Lock()
+	c.single.Add(id, &cacheEntry[*SPU]{
+		item:      spu,
+		expiresAt: time.Now().Add(jitteredTTL(c.singleTTL, spuLocalJitter)),
+	})
+	c.mu.Unlock()
+}
+
+func (c *spuLocalCache) removeSingle(id int64) {
+	c.mu.Lock()
+	c.single.Remove(id)
+	c.mu.Unlock()
+}
+
+// warmupSingle 预热单条 SPU 到 L1（不设过期，由 TTL jitter 统一控制）
+func (c *spuLocalCache) warmupSingle(id int64, spu *SPU) {
+	c.mu.Lock()
+	c.single.Add(id, &cacheEntry[*SPU]{
+		item:      spu,
+		expiresAt: time.Now().Add(jitteredTTL(c.singleTTL, spuLocalJitter)),
+	})
+	c.mu.Unlock()
+}
+
+func (c *spuLocalCache) clear() {
+	c.mu.Lock()
+	c.single.Purge()
+	c.mu.Unlock()
+}
+
+// ── SPU Bloom Filter ──
+
+type spuBloomFilter struct {
+	mu     sync.RWMutex
+	filter *bloom.BloomFilter
+	count  int64 // 已添加的 ID 数量，为 0 时跳过检查
+}
+
+func newSPUBloomFilter() *spuBloomFilter {
+	return &spuBloomFilter{
+		filter: bloom.NewWithEstimates(bloomN, bloomP),
+	}
+}
+
+func (b *spuBloomFilter) add(id int64) {
+	b.mu.Lock()
+	b.filter.AddString(strconv.FormatInt(id, 10))
+	b.count++
+	b.mu.Unlock()
+}
+
+func (b *spuBloomFilter) addAll(ids []int64) {
+	b.mu.Lock()
+	for _, id := range ids {
+		b.filter.AddString(strconv.FormatInt(id, 10))
+	}
+	b.count += int64(len(ids))
+	b.mu.Unlock()
+}
+
+// mayExist 返回 id 是否可能存在。count==0（未预热）时始终返回 true，不拦截。
+func (b *spuBloomFilter) mayExist(id int64) bool {
+	b.mu.RLock()
+	c := b.count
+	if c == 0 {
+		b.mu.RUnlock()
+		return true // 未预热，放行
+	}
+	ok := b.filter.TestString(strconv.FormatInt(id, 10))
+	b.mu.RUnlock()
+	return ok
+}
+
+func (b *spuBloomFilter) clear() {
+	b.mu.Lock()
+	b.filter = bloom.NewWithEstimates(bloomN, bloomP)
+	b.count = 0
+	b.mu.Unlock()
+}
+
+// ── Hot Key Counter ──
+
+type hotKeyEntry struct {
+	count int64
+	start time.Time
+}
+
+type spuHotKeyCounter struct {
+	mu       sync.Mutex
+	counters map[int64]*hotKeyEntry
+}
+
+func newSPUHotKeyCounter() *spuHotKeyCounter {
+	return &spuHotKeyCounter{counters: make(map[int64]*hotKeyEntry)}
+}
+
+func (h *spuHotKeyCounter) increment(id int64) bool {
+	h.mu.Lock()
+	entry, ok := h.counters[id]
+	now := time.Now()
+	if !ok || now.Sub(entry.start) > hotKeyWindow {
+		entry = &hotKeyEntry{start: now, count: 0}
+		h.counters[id] = entry
+	}
+	entry.count++
+	hot := entry.count >= hotKeyThreshold
+	h.mu.Unlock()
+	return hot
+}
+
+func (h *spuHotKeyCounter) reset(id int64) {
+	h.mu.Lock()
+	delete(h.counters, id)
+	h.mu.Unlock()
 }
 
 // ── Delayed Double Delete ──

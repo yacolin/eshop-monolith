@@ -1,15 +1,17 @@
 package product
 
 import (
+	"context"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
+	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
-
 )
 
 type SpuHandler struct {
@@ -149,6 +151,21 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) 
 	attrRepo := NewAttributeRepository(db)
 	svc := NewSpuService(repo, catRepo, brandRepo, attrRepo, db, rdb)
 	h := NewSpuHandler(svc)
+
+	// 异步预热 SPU 缓存（L1 + Bloom Filter + L2）
+		if rdb != nil {
+			go func() {
+				n, err := svc.WarmupCache(context.Background())
+				if err != nil {
+					logger.Warn("SPU cache warmup failed", "error", err)
+					log.Printf("[warmup] SPU cache warmup failed: %v", err)
+				} else {
+					logger.Info("SPU cache warmup done", "items", n)
+					log.Printf("[warmup] SPU cache warmup done: %d items", n)
+				}
+			}()
+		}
+
 
 	products := v1.Group("/products")
 	{
