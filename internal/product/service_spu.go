@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
@@ -504,38 +505,63 @@ func (s *SpuService) loadSKUInventory(ctx context.Context, skus []SKU) {
 	}
 }
 
-// aggregateSpecAttrs 从 SKU spec JSON 聚合规格维度（去重）
+// aggregateSpecAttrs 从 SKU spec JSON 聚合规格维度（去重），保持 JSON key/value 原始顺序
 func (s *SpuService) aggregateSpecAttrs(skus []SKU) []ProductAttrResponse {
-	valueSet := map[string]map[string]bool{}
+	type attrValues struct {
+		set   map[string]struct{}
+		order []string
+	}
+	attrs := map[string]*attrValues{}
 	keyOrder := []string{}
 	for _, sku := range skus {
 		if sku.Spec == "" || sku.Spec == "{}" {
 			continue
 		}
-		var spec map[string]string
-		if err := json.Unmarshal([]byte(sku.Spec), &spec); err != nil {
-			continue
-		}
-		for k, v := range spec {
-			if _, ok := valueSet[k]; !ok {
-				valueSet[k] = map[string]bool{}
+		orderedIterate(sku.Spec, func(k, v string) {
+			av, ok := attrs[k]
+			if !ok {
+				av = &attrValues{set: map[string]struct{}{}}
+				attrs[k] = av
 				keyOrder = append(keyOrder, k)
 			}
-			valueSet[k][v] = true
-		}
+			if _, seen := av.set[v]; !seen {
+				av.set[v] = struct{}{}
+				av.order = append(av.order, v)
+			}
+		})
 	}
 	if len(keyOrder) == 0 {
 		return nil
 	}
 	result := make([]ProductAttrResponse, len(keyOrder))
 	for i, name := range keyOrder {
-		vals := make([]string, 0, len(valueSet[name]))
-		for v := range valueSet[name] {
-			vals = append(vals, v)
-		}
-		result[i] = ProductAttrResponse{AttributeName: name, Values: vals}
+		result[i] = ProductAttrResponse{AttributeName: name, Values: attrs[name].order}
 	}
 	return result
+}
+
+// orderedIterate 按 JSON 原始 key 顺序遍历对象，避免 map 遍历随机化
+func orderedIterate(jsonStr string, fn func(k, v string)) {
+	dec := json.NewDecoder(strings.NewReader(jsonStr))
+	t, err := dec.Token()
+	if err != nil || t != json.Delim('{') {
+		return
+	}
+	for dec.More() {
+		key, err := dec.Token()
+		if err != nil {
+			return
+		}
+		val, err := dec.Token()
+		if err != nil {
+			return
+		}
+		k, _ := key.(string)
+		v, _ := val.(string)
+		if k != "" {
+			fn(k, v)
+		}
+	}
 }
 
 // mergeAttrs 合并 SKU 规格维度 + 产品属性，补充 attribute_id

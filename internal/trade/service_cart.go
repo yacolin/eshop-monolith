@@ -153,10 +153,8 @@ func (s *CartService) RemoveItem(ctx context.Context, userID int64, sessionID st
 func (s *CartService) ClearCart(ctx context.Context, userID int64, sessionID string) error {
 	if s.rdb != nil && userID > 0 {
 		delCartFromRedis(ctx, s.rdb, userID)
-		s.debounceSync(userID)
-		return nil
 	}
-	// 无 Redis 时兜底 DB
+	// 同步清 DB
 	cart, err := s.repo.FindOrCreate(ctx, userID, sessionID)
 	if err != nil {
 		return err
