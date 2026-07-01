@@ -143,6 +143,7 @@ func (h *RoleHandler) List(c *gin.Context) {
 
 func RegisterRoleRoutes(v1 *gin.RouterGroup, db *gorm.DB, roleRepo IroleRepository) {
 	roleSvc := NewRoleService(roleRepo)
+	roleCfg := NewRequireRoleConfig(roleRepo)
 	h := NewRoleHandler(roleSvc)
 
 	roles := v1.Group("/roles")
@@ -152,7 +153,7 @@ func RegisterRoleRoutes(v1 *gin.RouterGroup, db *gorm.DB, roleRepo IroleReposito
 		roles.GET("/:id", h.GetByID)
 	}
 	admin := v1.Group("/roles")
-	admin.Use(middleware.JWTAuth())
+	admin.Use(middleware.JWTAuth(), RequireAdmin(roleCfg))
 	{
 		admin.POST("", h.Create)
 		admin.PUT("/:id", h.Update)

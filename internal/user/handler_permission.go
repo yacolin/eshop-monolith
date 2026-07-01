@@ -134,6 +134,28 @@ func (h *PermissionHandler) List(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// GetByRoleID 获取角色的权限列表
+// @Summary 获取角色的权限列表
+// @Tags permissions
+// @Security ApiKeyAuth
+// @Produce json
+// @Param role_id path int true "角色ID"
+// @Success 200 {object} response.Response{data=[]Permission}
+// @Router /api/v1/permissions/roles/{role_id} [get]
+func (h *PermissionHandler) GetByRoleID(c *gin.Context) {
+	roleID, err := utils.ParseIntParam(c, "role_id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	result, err := h.permSvc.GetByRoleID(c, roleID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
 // Check 检查权限
 // @Summary 检查权限
 // @Tags permissions
@@ -157,11 +179,68 @@ func (h *PermissionHandler) Check(c *gin.Context) {
 	response.Success(c, CheckPermissionsResult{Permissions: result})
 }
 
+// AssignToRole 给角色分配权限
+// @Summary 给角色分配权限
+// @Tags permissions
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param role_id path int true "角色ID"
+// @Param request body AssignPermissionsReq true "权限ID列表"
+// @Success 200 {object} response.Response
+// @Router /api/v1/permissions/roles/{role_id} [post]
+func (h *PermissionHandler) AssignToRole(c *gin.Context) {
+	roleID, err := utils.ParseIntParam(c, "role_id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	var req AssignPermissionsReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		return
+	}
+	if err := h.permSvc.AssignToRole(c, roleID, req.PermissionIDs); err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, nil)
+}
+
+// RemoveFromRole 移除角色的权限
+// @Summary 移除角色的权限
+// @Tags permissions
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param role_id path int true "角色ID"
+// @Param request body AssignPermissionsReq true "权限ID列表"
+// @Success 200 {object} response.Response
+// @Router /api/v1/permissions/roles/{role_id} [delete]
+func (h *PermissionHandler) RemoveFromRole(c *gin.Context) {
+	roleID, err := utils.ParseIntParam(c, "role_id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	var req AssignPermissionsReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		return
+	}
+	if err := h.permSvc.RemoveFromRole(c, roleID, req.PermissionIDs); err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, nil)
+}
+
 // ── Routes ────────────────────────────────────────
 
 func RegisterPermissionRoutes(v1 *gin.RouterGroup, db *gorm.DB, permRepo IpermissionRepository, roleRepo IroleRepository) {
 	permSvc := NewPermissionService(permRepo, roleRepo)
 	h := NewPermissionHandler(permSvc)
+	roleCfg := NewRequireRoleConfig(roleRepo)
 
 	perms := v1.Group("/permissions")
 	perms.Use(middleware.JWTAuth())
@@ -170,8 +249,16 @@ func RegisterPermissionRoutes(v1 *gin.RouterGroup, db *gorm.DB, permRepo Ipermis
 		perms.GET("/:id", h.GetByID)
 		perms.POST("/check", h.Check)
 	}
+	rolePerm := v1.Group("/permissions/roles")
+	rolePerm.Use(middleware.JWTAuth(), RequireAdmin(roleCfg))
+	{
+		rolePerm.GET("/:role_id", h.GetByRoleID)
+		rolePerm.POST("/:role_id", h.AssignToRole)
+		rolePerm.DELETE("/:role_id", h.RemoveFromRole)
+	}
+
 	admin := v1.Group("/permissions")
-	admin.Use(middleware.JWTAuth())
+	admin.Use(middleware.JWTAuth(), RequireAdmin(roleCfg))
 	{
 		admin.POST("", h.Create)
 		admin.PUT("/:id", h.Update)
