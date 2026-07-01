@@ -47,6 +47,7 @@ func (h *CategoryBrandHandler) SetBrands(c *gin.Context) {
 // ListBrands 查类目下的品牌列表（含品牌详情）
 // @Summary 查类目下的品牌列表
 // @Tags categories
+// @Tags frontend
 // @Produce json
 // @Param id path int true "类目ID"
 // @Success 200 {object} response.Response{data=[]CategoryBrandDetail}

@@ -21,6 +21,7 @@ func NewOrderHandler(svc *OrderService) *OrderHandler {
 // Create 创建订单
 // @Summary 创建订单
 // @Tags orders
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json

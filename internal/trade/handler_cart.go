@@ -76,6 +76,7 @@ func NewCartHandler(svc *CartService) *CartHandler {
 // GetCart 获取购物车
 // @Summary 获取购物车
 // @Tags carts
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Produce json
 // @Success 200 {object} response.Response{data=Cart}
@@ -92,6 +93,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 // AddItem 添加商品到购物车
 // @Summary 添加商品到购物车
 // @Tags carts
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
@@ -115,6 +117,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 // UpdateItem 更新购物车商品
 // @Summary 更新购物车商品
 // @Tags carts
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
@@ -138,6 +141,7 @@ func (h *CartHandler) UpdateItem(c *gin.Context) {
 // RemoveItem 删除购物车商品
 // @Summary 删除购物车商品
 // @Tags carts
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Produce json
 // @Param sku_id query int true "SKU ID"
@@ -162,6 +166,7 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 // ClearCart 清空购物车
 // @Summary 清空购物车
 // @Tags carts
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Produce json
 // @Param session_id query string false "会话ID"

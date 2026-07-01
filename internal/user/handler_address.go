@@ -36,6 +36,7 @@ func currentUserID(c *gin.Context) int64 {
 // Create 创建地址
 // @Summary 创建地址
 // @Tags addresses
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
@@ -59,6 +60,7 @@ func (h *AddressHandler) Create(c *gin.Context) {
 // List 地址列表
 // @Summary 地址列表
 // @Tags addresses
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Produce json
 // @Success 200 {object} response.Response{data=AddressListResult}
@@ -75,6 +77,7 @@ func (h *AddressHandler) List(c *gin.Context) {
 // GetByID 获取地址详情
 // @Summary 获取地址详情
 // @Tags addresses
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Produce json
 // @Param id path int true "地址ID"
@@ -97,6 +100,7 @@ func (h *AddressHandler) GetByID(c *gin.Context) {
 // Update 更新地址
 // @Summary 更新地址
 // @Tags addresses
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
@@ -126,6 +130,7 @@ func (h *AddressHandler) Update(c *gin.Context) {
 // Delete 删除地址
 // @Summary 删除地址
 // @Tags addresses
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Produce json
 // @Param id path int true "地址ID"
@@ -147,6 +152,7 @@ func (h *AddressHandler) Delete(c *gin.Context) {
 // GetDefault 获取默认地址
 // @Summary 获取默认地址
 // @Tags addresses
+// @Tags frontend
 // @Security ApiKeyAuth
 // @Produce json
 // @Success 200 {object} response.Response{data=Address}

@@ -67,6 +67,7 @@ func (h *BrandHandler) GetByID(c *gin.Context) {
 // List 品牌列表
 // @Summary 品牌列表
 // @Tags brands
+// @Tags frontend
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)

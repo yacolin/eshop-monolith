@@ -48,6 +48,7 @@ func (h *PromotionHandler) Create(c *gin.Context) {
 // GetByID 获取促销
 // @Summary 获取促销
 // @Tags promotions
+// @Tags frontend
 // @Produce json
 // @Param id path int true "促销ID"
 // @Success 200 {object} response.Response{data=Promotion}
@@ -69,6 +70,7 @@ func (h *PromotionHandler) GetByID(c *gin.Context) {
 // GetDetail 获取促销详情（含规则、商品范围）
 // @Summary 获取促销详情（含规则、商品范围）
 // @Tags promotions
+// @Tags frontend
 // @Produce json
 // @Param id path int true "促销ID"
 // @Success 200 {object} response.Response{data=PromotionDetailResponse}
@@ -90,6 +92,7 @@ func (h *PromotionHandler) GetDetail(c *gin.Context) {
 // List 促销列表
 // @Summary 促销列表
 // @Tags promotions
+// @Tags frontend
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)

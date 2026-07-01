@@ -19,6 +19,7 @@ func NewAuthHandler(authSvc *AuthService, tokenSvc *TokenService) *AuthHandler {
 // LoginByPassword 密码登录
 // @Summary 密码登录
 // @Tags auth
+// @Tags frontend
 // @Accept json
 // @Produce json
 // @Param request body PasswordLoginReq true "登录信息"

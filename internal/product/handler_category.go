@@ -47,6 +47,7 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 // GetByID 获取类目详情
 // @Summary 获取类目详情
 // @Tags categories
+// @Tags frontend
 // @Produce json
 // @Param id path int true "类目ID"
 // @Success 200 {object} response.Response{data=Category}
@@ -94,6 +95,7 @@ func (h *CategoryHandler) List(c *gin.Context) {
 // ListRoot 根类目列表
 // @Summary 根类目列表
 // @Tags categories
+// @Tags frontend
 // @Produce json
 // @Success 200 {object} response.Response{data=[]Category}
 // @Router /api/v1/categories/root [get]
@@ -109,6 +111,7 @@ func (h *CategoryHandler) ListRoot(c *gin.Context) {
 // ListChildren 子类目列表
 // @Summary 子类目列表
 // @Tags categories
+// @Tags frontend
 // @Produce json
 // @Param id path int true "父类目ID"
 // @Success 200 {object} response.Response{data=[]Category}
@@ -130,6 +133,7 @@ func (h *CategoryHandler) ListChildren(c *gin.Context) {
 // ListAll 全部分类列表
 // @Summary 全部分类
 // @Tags categories
+// @Tags frontend
 // @Produce json
 // @Success 200 {object} response.Response{data=[]Category}
 // @Router /api/v1/categories/all [get]

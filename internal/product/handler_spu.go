@@ -47,6 +47,7 @@ func (h *SpuHandler) Create(c *gin.Context) {
 // GetByID 获取商品详情
 // @Summary 获取商品详情
 // @Tags products
+// @Tags frontend
 // @Produce json
 // @Param id path int true "商品ID"
 // @Success 200 {object} response.Response{data=SPUDetailResponse}
@@ -69,6 +70,7 @@ func (h *SpuHandler) GetByID(c *gin.Context) {
 // List 商品列表
 // @Summary 商品列表（keyset 游标分页）
 // @Tags products
+// @Tags frontend
 // @Accept json
 // @Produce json
 // @Param size query int false "每页条数" default(10)
