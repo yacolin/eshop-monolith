@@ -1,6 +1,8 @@
 package product
 
 import (
+	"context"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -9,7 +11,6 @@ import (
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
-
 )
 
 type BrandHandler struct {
@@ -155,5 +156,17 @@ func RegisterBrandRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 		auth.POST("", h.Create)
 		auth.PUT("/:id", h.Update)
 		auth.DELETE("/:id", h.Delete)
+	}
+
+	// 异步预热品牌缓存
+	if rdb != nil {
+		go func() {
+			n, err := svc.WarmupCache(context.Background())
+			if err != nil {
+				log.Printf("[warmup] brand cache warmup failed: %v", err)
+			} else {
+				log.Printf("[warmup] brand cache warmup done: %d items", n)
+			}
+		}()
 	}
 }

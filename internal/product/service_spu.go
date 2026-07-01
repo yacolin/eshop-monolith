@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/errcode"
+	"eshop-monolith/pkg/logger"
 )
 
 type SpuService struct {
@@ -235,6 +236,7 @@ func (s *SpuService) GetByID(ctx context.Context, id int64) (*SPU, error) {
 		}
 	}
 
+	logger.Info("spu cache miss, fallback to DB", "id", id)
 	// DB 兜底
 	spu, err := s.repo.FindByID(ctx, id)
 	if err != nil {

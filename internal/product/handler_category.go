@@ -1,7 +1,11 @@
 package product
 
 import (
+	"context"
+	"log"
+
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/errcode"
@@ -213,9 +217,9 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 
 // ── Routes ────────────────────────────────────────
 
-func RegisterCategoryRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
+func RegisterCategoryRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 	repo := NewCategoryRepository(db)
-	svc := NewCategoryService(repo)
+	svc := NewCategoryService(repo, rdb)
 	h := NewCategoryHandler(svc)
 
 	cats := v1.Group("/categories")
@@ -233,5 +237,17 @@ func RegisterCategoryRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 		auth.POST("", h.Create)
 		auth.PUT("/:id", h.Update)
 		auth.DELETE("/:id", h.Delete)
+	}
+
+	// 异步预热类目缓存
+	if rdb != nil {
+		go func() {
+			n, err := svc.WarmupCache(context.Background())
+			if err != nil {
+				log.Printf("[warmup] category cache warmup failed: %v", err)
+			} else {
+				log.Printf("[warmup] category cache warmup done: %d items", n)
+			}
+		}()
 	}
 }

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"eshop-monolith/pkg/logger"
+
 	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/bytedance/sonic"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -19,12 +21,19 @@ const (
 	spuEntityTTL       = 10 * time.Minute
 	spuListTTL         = 10 * time.Minute
 	brandAllTTL        = 10 * time.Minute
+	brandEntityTTL     = 10 * time.Minute
+	categoryAllTTL     = 10 * time.Minute
+	categoryEntityTTL  = 10 * time.Minute
 	delayedDeleteDelay = 500 * time.Millisecond
 
 	// L1 local cache
-	spuLocalCacheSize = 8192
-	spuLocalCacheTTL  = 60 * time.Second
-	spuLocalJitter    = 0.2
+	spuLocalCacheSize     = 8192
+	spuLocalCacheTTL      = 60 * time.Second
+	spuLocalJitter        = 0.2
+	brandLocalCacheSize   = 512
+	categoryLocalCacheSize = 1024
+	localCacheTTL         = 60 * time.Second
+	localJitter           = 0.2
 
 	// Bloom Filter
 	bloomN = 100000
@@ -198,6 +207,108 @@ func delBrandAllCache(ctx context.Context, rdb redis.UniversalClient) {
 	rdb.Del(ctx, cacheKeyBrandAll())
 }
 
+// ── Brand Entity Cache ──
+
+func cacheKeyBrand(id int64) string { return fmt.Sprintf("brand:%d", id) }
+
+func getBrandEntity(ctx context.Context, rdb redis.UniversalClient, id int64) (*Brand, error) {
+	data, err := rdb.Get(ctx, cacheKeyBrand(id)).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	var b Brand
+	if err := sonic.Unmarshal(data, &b); err != nil {
+		return nil, err
+	}
+	return &b, nil
+}
+
+func setBrandEntity(ctx context.Context, rdb redis.UniversalClient, b *Brand) error {
+	data, err := sonic.Marshal(b)
+	if err != nil {
+		return err
+	}
+	return rdb.Set(ctx, cacheKeyBrand(b.ID), data, brandEntityTTL).Err()
+}
+
+func delBrandEntity(ctx context.Context, rdb redis.UniversalClient, id int64) {
+	rdb.Del(ctx, cacheKeyBrand(id))
+}
+
+func delayedDeleteBrandEntity(ctx context.Context, rdb redis.UniversalClient, id int64) {
+	go func() {
+		time.Sleep(delayedDeleteDelay)
+		delBrandEntity(context.Background(), rdb, id)
+	}()
+}
+
+// ── Category Cache ──
+
+func cacheKeyCategory(id int64) string { return fmt.Sprintf("category:%d", id) }
+func cacheKeyCategoryAll() string      { return "category:all" }
+
+func getCategoryAllCache(ctx context.Context, rdb redis.UniversalClient) ([]Category, error) {
+	data, err := rdb.Get(ctx, cacheKeyCategoryAll()).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	var cats []Category
+	if err := sonic.Unmarshal(data, &cats); err != nil {
+		return nil, err
+	}
+	return cats, nil
+}
+
+func setCategoryAllCache(ctx context.Context, rdb redis.UniversalClient, cats []Category) error {
+	data, err := sonic.Marshal(cats)
+	if err != nil {
+		return err
+	}
+	return rdb.Set(ctx, cacheKeyCategoryAll(), data, categoryAllTTL).Err()
+}
+
+func delCategoryAllCache(ctx context.Context, rdb redis.UniversalClient) {
+	rdb.Del(ctx, cacheKeyCategoryAll())
+}
+
+func getCategoryEntity(ctx context.Context, rdb redis.UniversalClient, id int64) (*Category, error) {
+	data, err := rdb.Get(ctx, cacheKeyCategory(id)).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	var c Category
+	if err := sonic.Unmarshal(data, &c); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func setCategoryEntity(ctx context.Context, rdb redis.UniversalClient, c *Category) error {
+	data, err := sonic.Marshal(c)
+	if err != nil {
+		return err
+	}
+	return rdb.Set(ctx, cacheKeyCategory(c.ID), data, categoryEntityTTL).Err()
+}
+
+func delCategoryEntity(ctx context.Context, rdb redis.UniversalClient, id int64) {
+	rdb.Del(ctx, cacheKeyCategory(id))
+}
+
+func delayedDeleteCategoryAll(ctx context.Context, rdb redis.UniversalClient) {
+	go func() {
+		time.Sleep(delayedDeleteDelay)
+		delCategoryAllCache(context.Background(), rdb)
+	}()
+}
+
+func delayedDeleteCategoryEntity(ctx context.Context, rdb redis.UniversalClient, id int64) {
+	go func() {
+		time.Sleep(delayedDeleteDelay)
+		delCategoryEntity(context.Background(), rdb, id)
+	}()
+}
+
 // ── TTL Jitter ──
 
 func jitteredTTL(base time.Duration, jitter float64) time.Duration {
@@ -269,6 +380,57 @@ func (c *spuLocalCache) warmupSingle(id int64, spu *SPU) {
 func (c *spuLocalCache) clear() {
 	c.mu.Lock()
 	c.single.Purge()
+	c.mu.Unlock()
+}
+
+// ── Generic Local Cache (for small datasets) ──
+
+type simpleLocalCache[T any] struct {
+	mu       sync.RWMutex
+	cache    *lru.Cache[int64, *cacheEntry[T]]
+	ttl      time.Duration
+	size     int
+}
+
+func newSimpleLocalCache[T any](size int, ttl time.Duration) *simpleLocalCache[T] {
+	c, _ := lru.New[int64, *cacheEntry[T]](size)
+	return &simpleLocalCache[T]{cache: c, ttl: ttl, size: size}
+}
+
+func (c *simpleLocalCache[T]) get(id int64) (T, bool) {
+	c.mu.RLock()
+	entry, ok := c.cache.Get(id)
+	c.mu.RUnlock()
+	if !ok || entry.expiresAt.Before(time.Now()) {
+		if ok {
+			c.mu.Lock()
+			c.cache.Remove(id)
+			c.mu.Unlock()
+		}
+		var zero T
+		return zero, false
+	}
+	return entry.item, true
+}
+
+func (c *simpleLocalCache[T]) set(id int64, item T) {
+	c.mu.Lock()
+	c.cache.Add(id, &cacheEntry[T]{
+		item:      item,
+		expiresAt: time.Now().Add(jitteredTTL(c.ttl, localJitter)),
+	})
+	c.mu.Unlock()
+}
+
+func (c *simpleLocalCache[T]) remove(id int64) {
+	c.mu.Lock()
+	c.cache.Remove(id)
+	c.mu.Unlock()
+}
+
+func (c *simpleLocalCache[T]) clear() {
+	c.mu.Lock()
+	c.cache.Purge()
 	c.mu.Unlock()
 }
 
@@ -363,6 +525,7 @@ func (h *spuHotKeyCounter) reset(id int64) {
 func delayedDeleteSPU(ctx context.Context, rdb redis.UniversalClient, id int64) {
 	go func() {
 		time.Sleep(delayedDeleteDelay)
+		logger.Info("spu cache invalidated", "id", id)
 		bg := context.Background()
 		delSPUEntity(bg, rdb, id)
 		delAllSPUListCache(bg, rdb)
