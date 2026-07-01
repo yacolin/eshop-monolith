@@ -117,17 +117,17 @@ func (s *SpuService) Create(ctx context.Context, req *CreateSPUReq) (*SPU, error
 	var spu *SPU
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		spu = &SPU{
-			Name:        req.Name,
-			Subtitle:    req.Subtitle,
-			CategoryID:  req.CategoryID,
-			BrandID:     req.BrandID,
-			Unit:        req.Unit,
-			MainImage:   req.MainImage,
-			Images:      imagesJSON,
-			VideoURL:    req.VideoURL,
-			SortOrder:   req.SortOrder,
-			CreatedBy:   req.CreatedBy,
-			Status:      0, // draft
+			Name:       req.Name,
+			Subtitle:   req.Subtitle,
+			CategoryID: req.CategoryID,
+			BrandID:    req.BrandID,
+			Unit:       req.Unit,
+			MainImage:  req.MainImage,
+			Images:     imagesJSON,
+			VideoURL:   req.VideoURL,
+			SortOrder:  req.SortOrder,
+			CreatedBy:  req.CreatedBy,
+			Status:     0, // draft
 		}
 		if req.Description != "" || req.MobileDesc != "" {
 			spu.HasDescription = 1
@@ -144,22 +144,22 @@ func (s *SpuService) Create(ctx context.Context, req *CreateSPUReq) (*SPU, error
 				specJSON = string(b)
 			}
 			skuModel := &SKU{
-				ProductID:     spu.ID,
-				SkuCode:       sku.SkuCode,
-				Barcode:       sku.Barcode,
-				Spec:          specJSON,
-				Price:         sku.Price,
-				MarketPrice:   sku.MarketPrice,
-				CostPrice:     sku.CostPrice,
-				Weight:        sku.Weight,
-				Volume:        sku.Volume,
-				Length:        sku.Length,
-				Width:         sku.Width,
-				Height:        sku.Height,
+				ProductID:      spu.ID,
+				SkuCode:        sku.SkuCode,
+				Barcode:        sku.Barcode,
+				Spec:           specJSON,
+				Price:          sku.Price,
+				MarketPrice:    sku.MarketPrice,
+				CostPrice:      sku.CostPrice,
+				Weight:         sku.Weight,
+				Volume:         sku.Volume,
+				Length:         sku.Length,
+				Width:          sku.Width,
+				Height:         sku.Height,
 				MinPurchaseQty: sku.MinPurchase,
 				MaxPurchaseQty: sku.MaxPurchase,
-				Image:         sku.Image,
-				Status:        1,
+				Image:          sku.Image,
+				Status:         1,
 			}
 			if skuModel.MinPurchaseQty <= 0 {
 				skuModel.MinPurchaseQty = 1
@@ -464,12 +464,12 @@ func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailRes
 	if desc != nil {
 		descResp = desc
 	}
-		resp := AcquireDetailResponse()
-		resp.SPU = spu
-		resp.Attributes = attrs
-		resp.Description = descResp
-		resp.SKUs = skus
-		return resp, nil
+	resp := AcquireDetailResponse()
+	resp.SPU = spu
+	resp.Attributes = attrs
+	resp.Description = descResp
+	resp.SKUs = skus
+	return resp, nil
 }
 
 // loadSKUInventory 补充 SKU 库存信息

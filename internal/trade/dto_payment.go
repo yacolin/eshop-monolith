@@ -29,8 +29,8 @@ type CreateRefundReq struct {
 
 // RefundCallbackReq 退款回调请求
 type RefundCallbackReq struct {
-	RefundNo          string `json:"refund_no" binding:"required,max=32"`
+	RefundNo             string `json:"refund_no" binding:"required,max=32"`
 	ChannelTransactionID string `json:"channel_transaction_id" binding:"max=128"`
-	Status            string `json:"status" binding:"required,oneof=success failed"`
-	FailureReason     string `json:"failure_reason" binding:"max=500"`
+	Status               string `json:"status" binding:"required,oneof=success failed"`
+	FailureReason        string `json:"failure_reason" binding:"max=500"`
 }

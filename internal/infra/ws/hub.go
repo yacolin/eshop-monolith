@@ -437,10 +437,10 @@ func (h *Hub) HandleMessage(msg rabbitmq.Message) {
 	// 低库存事件广播给所有在线用户
 	if msg.RoutingKey == "inventory.low" {
 		broadcastMsg := &RealtimeMessage{
-				Seq:     h.globalSeq.Add(1),
-				Type:    "inventory.low",
-				Payload: msg.Payload,
-			}
+			Seq:     h.globalSeq.Add(1),
+			Type:    "inventory.low",
+			Payload: msg.Payload,
+		}
 		data, _ := broadcastMsg.Marshal()
 		if data != nil {
 			h.Broadcast(data)

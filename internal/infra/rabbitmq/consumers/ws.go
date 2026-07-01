@@ -9,7 +9,7 @@ import (
 
 func StartWSConsumer(ctx context.Context, client *rabbitmq.Client, hub *ws.Hub) error {
 	consumer := rabbitmq.NewConsumer(client, rabbitmq.ConsumerConfig{
-		Queue:    "eshop.ws-push",
+		Queue: "eshop.ws-push",
 		Bindings: []string{
 			"order.paid", "order.shipped", "order.delivered", "order.cancelled",
 			"payment.success", "payment.failed",

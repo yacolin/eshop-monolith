@@ -41,8 +41,8 @@ type TokenResponse struct {
 }
 
 type LoginResponse struct {
-	UserID    int64  `json:"user_id"`
-	Username  string `json:"username,omitempty"`
+	UserID   int64  `json:"user_id"`
+	Username string `json:"username,omitempty"`
 	TokenResponse
 	IsNewUser bool `json:"is_new_user"`
 }

@@ -69,14 +69,14 @@ func (s *PaymentService) CreateRefund(ctx context.Context, req *CreateRefundReq)
 		return nil, err
 	}
 	refund := &Refund{
-		RefundNo:    fmt.Sprintf("REF%d", time.Now().UnixNano()),
-		PaymentNo:   payment.PaymentNo,
-		OrderNo:     payment.OrderNo,
-		OrderID:     payment.OrderID,
-		Amount:      req.Amount,
-		Reason:      req.Reason,
-		Status:      "pending",
-		AppliedAt:   timePtr(time.Now()),
+		RefundNo:  fmt.Sprintf("REF%d", time.Now().UnixNano()),
+		PaymentNo: payment.PaymentNo,
+		OrderNo:   payment.OrderNo,
+		OrderID:   payment.OrderID,
+		Amount:    req.Amount,
+		Reason:    req.Reason,
+		Status:    "pending",
+		AppliedAt: timePtr(time.Now()),
 	}
 	if err := s.repo.CreateRefund(ctx, refund); err != nil {
 		return nil, err
@@ -85,4 +85,3 @@ func (s *PaymentService) CreateRefund(ctx context.Context, req *CreateRefundReq)
 }
 
 func timePtr(t time.Time) *time.Time { return &t }
-

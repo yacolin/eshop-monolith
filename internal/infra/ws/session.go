@@ -19,13 +19,13 @@ const (
 
 // Session 用户会话信息
 type Session struct {
-	UserID        int64     `json:"user_id"`
-	LastSeq       int64     `json:"last_seq"`
-	ConnectedAt   time.Time `json:"connected_at"`
-	LastActiveAt  time.Time `json:"last_active_at"`
-	ClientIP      string    `json:"client_ip"`
-	UserAgent     string    `json:"user_agent"`
-	ReconnectCount int      `json:"reconnect_count"`
+	UserID         int64     `json:"user_id"`
+	LastSeq        int64     `json:"last_seq"`
+	ConnectedAt    time.Time `json:"connected_at"`
+	LastActiveAt   time.Time `json:"last_active_at"`
+	ClientIP       string    `json:"client_ip"`
+	UserAgent      string    `json:"user_agent"`
+	ReconnectCount int       `json:"reconnect_count"`
 }
 
 // SessionManager 会话管理器

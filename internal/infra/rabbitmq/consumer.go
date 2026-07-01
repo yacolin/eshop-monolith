@@ -34,7 +34,7 @@ func NewConsumer(client *Client, cfg ConsumerConfig) *Consumer {
 	if cfg.RetryLimit <= 0 {
 		cfg.RetryLimit = client.cfg.RetryLimit
 	}
-		ch, err := client.NewChannel()
+	ch, err := client.NewChannel()
 	if err != nil {
 		return nil
 	}

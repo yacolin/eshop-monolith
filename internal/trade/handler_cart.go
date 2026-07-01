@@ -28,16 +28,16 @@ func (a *skuAdapter) FindByID(ctx context.Context, skuID int64) (SkuInfo, error)
 }
 
 type skuItem struct {
-	id, productID, price int64
+	id, productID, price     int64
 	skuCode, image, specJSON string
 }
 
-func (s skuItem) GetID() int64              { return s.id }
-func (s skuItem) GetProductID() int64       { return s.productID }
-func (s skuItem) GetSkuCode() string        { return s.skuCode }
-func (s skuItem) GetPrice() int64           { return s.price }
-func (s skuItem) GetImage() string          { return s.image }
-func (s skuItem) GetSpecJSON() string       { return s.specJSON }
+func (s skuItem) GetID() int64        { return s.id }
+func (s skuItem) GetProductID() int64 { return s.productID }
+func (s skuItem) GetSkuCode() string  { return s.skuCode }
+func (s skuItem) GetPrice() int64     { return s.price }
+func (s skuItem) GetImage() string    { return s.image }
+func (s skuItem) GetSpecJSON() string { return s.specJSON }
 
 // invAdapter 适配 inventory.InventoryService → trade.InventoryService
 type invAdapter struct {
@@ -144,7 +144,9 @@ func (h *CartHandler) UpdateItem(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Router /api/v1/carts [delete]
 func (h *CartHandler) RemoveItem(c *gin.Context) {
-	var req struct{ SkuID int64 `form:"sku_id" binding:"required"` }
+	var req struct {
+		SkuID int64 `form:"sku_id" binding:"required"`
+	}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.Error(err)
 		return

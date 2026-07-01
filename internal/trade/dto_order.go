@@ -18,11 +18,11 @@ type AddressInfo struct {
 }
 
 type CreateOrderReq struct {
-	Address   AddressInfo      `json:"address" binding:"required"`
-	Items     []CreateOrderItem `json:"items" binding:"required,min=1,dive"`
-	CouponID  *int64           `json:"coupon_id"`
-	BuyerRemark string         `json:"buyer_remark" binding:"max=500"`
-	Source    string           `json:"source" binding:"max=20"`
+	Address     AddressInfo       `json:"address" binding:"required"`
+	Items       []CreateOrderItem `json:"items" binding:"required,min=1,dive"`
+	CouponID    *int64            `json:"coupon_id"`
+	BuyerRemark string            `json:"buyer_remark" binding:"max=500"`
+	Source      string            `json:"source" binding:"max=20"`
 }
 
 type OrderListReq struct {

@@ -22,7 +22,7 @@ func userID(c *gin.Context) int64 {
 }
 
 type CouponHandler struct {
-	svc      *PromotionService
+	svc       *PromotionService
 	couponSvc *CouponService
 }
 
@@ -40,7 +40,7 @@ func NewCouponHandler(svc *PromotionService, couponSvc *CouponService) *CouponHa
 // @Success 200 {object} response.Response
 // @Router /api/v1/coupons/claim [post]
 func (h *CouponHandler) Claim(c *gin.Context) {
-	
+
 	var req ClaimCouponReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
@@ -64,7 +64,7 @@ func (h *CouponHandler) Claim(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Router /api/v1/coupons/use [post]
 func (h *CouponHandler) Use(c *gin.Context) {
-	
+
 	var req UseCouponReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
@@ -87,7 +87,7 @@ func (h *CouponHandler) Use(c *gin.Context) {
 // @Success 200 {object} response.Response{data=UserPromotionListResult}
 // @Router /api/v1/coupons/me [get]
 func (h *CouponHandler) ListUserCoupons(c *gin.Context) {
-	
+
 	var req UserPromotionListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.Error(err)

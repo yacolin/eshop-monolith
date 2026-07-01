@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	dashboardCacheKey = "dashboard:stats"
-	dashboardCacheTTL = 20 * time.Minute
+	dashboardCacheKey        = "dashboard:stats"
+	dashboardCacheTTL        = 20 * time.Minute
 	dashboardRefreshInterval = 15 * time.Minute
 )
 
@@ -197,7 +197,10 @@ func (s *DashboardService) computeOrderTrend(ctx context.Context) []OrderTrendDT
 }
 
 func (s *DashboardService) computeOrderStatusDist(ctx context.Context) []StatusDistDTO {
-	type row struct{ Status string; Value int64 }
+	type row struct {
+		Status string
+		Value  int64
+	}
 	var rows []row
 	s.db.WithContext(ctx).Table("tx_orders").Select("status, COUNT(*) AS value").Group("status").Scan(&rows)
 	labelMap := map[string]string{"pending": "待付款", "paid": "已付款", "shipped": "已发货", "delivered": "已送达", "cancelled": "已取消", "refunded": "已退款"}
@@ -213,7 +216,10 @@ func (s *DashboardService) computeOrderStatusDist(ctx context.Context) []StatusD
 }
 
 func (s *DashboardService) computePaymentMethodDist(ctx context.Context) []MethodDistDTO {
-	type row struct{ Method string `gorm:"column:payment_method"`; Value int64 }
+	type row struct {
+		Method string `gorm:"column:payment_method"`
+		Value  int64
+	}
 	var rows []row
 	s.db.WithContext(ctx).Table("tx_payments").Select("payment_method, COUNT(*) AS value").Where("status IN ?", []string{"success", "paid"}).Group("payment_method").Scan(&rows)
 	labelMap := map[string]string{"alipay": "支付宝", "wechat": "微信支付", "wallet": "余额", "bank": "银行卡", "cash": "现金"}
@@ -229,7 +235,10 @@ func (s *DashboardService) computePaymentMethodDist(ctx context.Context) []Metho
 }
 
 func (s *DashboardService) computeCategoryDist(ctx context.Context) []CategoryDistDTO {
-	type row struct{ Category string; Value int64 }
+	type row struct {
+		Category string
+		Value    int64
+	}
 	var rows []row
 	s.db.WithContext(ctx).Table("sp_products p").
 		Select("COALESCE(r.name, '未分类') AS category, COUNT(p.id) AS value").
@@ -245,7 +254,10 @@ func (s *DashboardService) computeCategoryDist(ctx context.Context) []CategoryDi
 }
 
 func (s *DashboardService) computeInventoryStatusDist(ctx context.Context) []StatusDistDTO {
-	type row struct{ Status string; Value int64 }
+	type row struct {
+		Status string
+		Value  int64
+	}
 	var rows []row
 	s.db.WithContext(ctx).Table("sp_inventories").Select("status, COUNT(*) AS value").Group("status").Scan(&rows)
 	labelMap := map[string]string{"instock": "库存充足", "lowstock": "库存偏低", "outofstock": "缺货"}
@@ -261,7 +273,11 @@ func (s *DashboardService) computeInventoryStatusDist(ctx context.Context) []Sta
 }
 
 func (s *DashboardService) computeTopProducts(ctx context.Context) []TopProductDTO {
-	type row struct{ ProductID string; Count int64; Amount int64 }
+	type row struct {
+		ProductID string
+		Count     int64
+		Amount    int64
+	}
 	var rows []row
 	s.db.WithContext(ctx).Table("tx_order_items oi").
 		Select("oi.product_id, COUNT(*) AS count, COALESCE(SUM(oi.subtotal), 0) AS amount").
@@ -273,7 +289,10 @@ func (s *DashboardService) computeTopProducts(ctx context.Context) []TopProductD
 	for i, r := range rows {
 		productIDs[i] = r.ProductID
 	}
-	type nameRow struct{ ID string; Name string }
+	type nameRow struct {
+		ID   string
+		Name string
+	}
 	var nameRows []nameRow
 	s.db.WithContext(ctx).Table("sp_products").Select("CAST(id AS CHAR) AS id, name").Where("CAST(id AS CHAR) IN ?", productIDs).Scan(&nameRows)
 	nameMap := make(map[string]string, len(nameRows))

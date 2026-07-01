@@ -20,7 +20,7 @@ func NewCouponService(repo IpromotionRepository, db *gorm.DB) *CouponService {
 }
 
 type UserPromotionListResult struct {
-	Total int64           `json:"total"`
+	Total int64            `json:"total"`
 	List  []*UserPromotion `json:"list"`
 }
 
@@ -81,9 +81,9 @@ func (s *CouponService) Use(ctx context.Context, userID int64, req *UseCouponReq
 	// 直接用 db 更新
 	result := s.db.Model(&UserPromotion{}).Where("id = ? AND user_id = ? AND status = 1", req.UserPromotionID, userID).
 		Updates(map[string]interface{}{
-			"status":   2,
+			"status":    2,
 			"used_time": time.Now(),
-			"order_id": req.OrderID,
+			"order_id":  req.OrderID,
 		})
 	if result.RowsAffected == 0 {
 		return errcode.ErrCouponExpired

@@ -4,7 +4,7 @@ type CreateAttributeReq struct {
 	Name       string `json:"name" binding:"required,max=100"`
 	CategoryID int64  `json:"category_id" binding:"required"`
 	InputType  int8   `json:"input_type" binding:"oneof=1 2 3 4"`
-	Values     string `json:"values"`                                                       // JSON
+	Values     string `json:"values"` // JSON
 	Unit       string `json:"unit" binding:"max=20"`
 	Required   int8   `json:"required" binding:"oneof=0 1"`
 	Searchable int8   `json:"searchable" binding:"oneof=0 1"`

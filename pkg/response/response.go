@@ -146,4 +146,3 @@ func SysError(c *gin.Context, err error) {
 		TraceID: tid,
 	})
 }
-

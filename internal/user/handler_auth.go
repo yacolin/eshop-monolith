@@ -8,7 +8,7 @@ import (
 )
 
 type AuthHandler struct {
-	authSvc *AuthService
+	authSvc  *AuthService
 	tokenSvc *TokenService
 }
 

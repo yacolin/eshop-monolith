@@ -34,7 +34,7 @@ type UpdateSKUReq struct {
 
 type SKUListReq struct {
 	query.Pagination
-	ProductID int64 `form:"product_id"`
+	ProductID int64  `form:"product_id"`
 	SkuCode   string `form:"sku_code"`
 }
 

@@ -1,18 +1,16 @@
 package product
 
 import (
-
 	"context"
 	"errors"
 
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/errcode"
-
 )
 
 type AttributeService struct {
-	repo       IattributeRepository
+	repo         IattributeRepository
 	categoryRepo IcategoryRepository
 }
 

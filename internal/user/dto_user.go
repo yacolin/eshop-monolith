@@ -17,15 +17,15 @@ type UpdateUserInfoReq struct {
 
 // 用户资料响应
 type UserProfileResponse struct {
-	ID            int64  `json:"id"`
-	Username      string `json:"username"`
-	Email         string `json:"email"`
-	EmailVerified bool   `json:"email_verified"`
-	Phone         string `json:"phone"`
-	PhoneVerified bool   `json:"phone_verified"`
-	Avatar        string `json:"avatar"`
-	Nickname      string `json:"nickname"`
-	Status        int8   `json:"status"`
+	ID            int64             `json:"id"`
+	Username      string            `json:"username"`
+	Email         string            `json:"email"`
+	EmailVerified bool              `json:"email_verified"`
+	Phone         string            `json:"phone"`
+	PhoneVerified bool              `json:"phone_verified"`
+	Avatar        string            `json:"avatar"`
+	Nickname      string            `json:"nickname"`
+	Status        int8              `json:"status"`
 	UserInfo      *UserInfoResponse `json:"user_info,omitempty"`
 }
 

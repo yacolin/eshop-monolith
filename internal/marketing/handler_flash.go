@@ -24,7 +24,7 @@ func NewFlashHandler(svc *FlashService) *FlashHandler {
 // @Success 200 {object} response.Response
 // @Router /api/v1/flash/buy [post]
 func (h *FlashHandler) Buy(c *gin.Context) {
-	
+
 	var req FlashBuyReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
@@ -48,7 +48,7 @@ func (h *FlashHandler) Buy(c *gin.Context) {
 // @Success 200 {object} response.Response
 // @Router /api/v1/flash/confirm [post]
 func (h *FlashHandler) Confirm(c *gin.Context) {
-	
+
 	var req FlashConfirmReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)

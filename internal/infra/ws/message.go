@@ -12,10 +12,10 @@ import (
 
 // PushMessage WebSocket 推送消息
 type PushMessage struct {
-	Type        string      `json:"type"`
-	SequenceID  int64       `json:"sequence_id"`
-	Timestamp   int64       `json:"timestamp"`
-	Data        interface{} `json:"data"`
+	Type       string      `json:"type"`
+	SequenceID int64       `json:"sequence_id"`
+	Timestamp  int64       `json:"timestamp"`
+	Data       interface{} `json:"data"`
 }
 
 // NewPushMessage 从事件创建推送消息
@@ -38,7 +38,6 @@ func NewPushMessage(event interface{}, sequenceID int64) *PushMessage {
 		return &PushMessage{Type: "payment.failed", SequenceID: sequenceID, Timestamp: now, Data: e}
 	case trade.RefundCreatedEvent:
 		return &PushMessage{Type: "refund.created", SequenceID: sequenceID, Timestamp: now, Data: e}
-
 
 	case inventory.InventoryLowEvent:
 		return &PushMessage{Type: "inventory.low", SequenceID: sequenceID, Timestamp: now, Data: e}
@@ -68,7 +67,6 @@ func extractUserID(event interface{}) int64 {
 		return parseCustomerID(e.CustomerID)
 	case trade.OrderCancelledEvent:
 		return parseCustomerID(e.CustomerID)
-
 
 	case trade.PaymentSuccessEvent:
 		return 0
@@ -165,18 +163,18 @@ type UserSyncPayload struct {
 
 // SystemMessage 系统消息类型
 type SystemMessage struct {
-	Type        string `json:"type"`
-	SequenceID  int64  `json:"sequence_id"`
-	Message     string `json:"message"`
-	RequireFullSync bool `json:"require_full_sync"`
+	Type            string `json:"type"`
+	SequenceID      int64  `json:"sequence_id"`
+	Message         string `json:"message"`
+	RequireFullSync bool   `json:"require_full_sync"`
 }
 
 // NewSystemMessage 创建系统消息
 func NewSystemMessage(msgType string, message string, requireFullSync bool) *SystemMessage {
 	return &SystemMessage{
-		Type:        msgType,
-		SequenceID:  0,
-		Message:     message,
+		Type:            msgType,
+		SequenceID:      0,
+		Message:         message,
 		RequireFullSync: requireFullSync,
 	}
 }

@@ -28,28 +28,28 @@ const (
 
 // Client 代表一个 WebSocket 连接
 type Client struct {
-	Hub       *Hub
-	Conn      *websocket.Conn
-	Send      chan []byte
-	UserID    int64
-	Username  string // 用户名（用于在线事件广播）
-	Nickname  string // 昵称（用于在线事件广播）
-	LastSeq   int64 // 客户端最后收到的消息序列号
+	Hub      *Hub
+	Conn     *websocket.Conn
+	Send     chan []byte
+	UserID   int64
+	Username string // 用户名（用于在线事件广播）
+	Nickname string // 昵称（用于在线事件广播）
+	LastSeq  int64  // 客户端最后收到的消息序列号
 
 	// 心跳相关
-	pingFailCount int        // 连续Ping失败次数
-	lastPingTime  time.Time  // 上次发送Ping的时间
+	pingFailCount int       // 连续Ping失败次数
+	lastPingTime  time.Time // 上次发送Ping的时间
 	pingTicker    *time.Ticker
 }
 
 // NewClient 创建客户端
 func NewClient(hub *Hub, conn *websocket.Conn, userID int64, lastSeq int64) *Client {
 	return &Client{
-		Hub:       hub,
-		Conn:      conn,
-		Send:      make(chan []byte, sendBufferSize),
-		UserID:    userID,
-		LastSeq:   lastSeq,
+		Hub:        hub,
+		Conn:       conn,
+		Send:       make(chan []byte, sendBufferSize),
+		UserID:     userID,
+		LastSeq:    lastSeq,
 		pingTicker: time.NewTicker(pingPeriod),
 	}
 }

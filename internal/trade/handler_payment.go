@@ -76,12 +76,18 @@ func (h *PaymentHandler) GetPayment(c *gin.Context) {
 	}
 	if paymentNo != "" {
 		result, err := h.svc.GetPayment(c, paymentNo)
-		if err != nil { c.Error(err); return }
+		if err != nil {
+			c.Error(err)
+			return
+		}
 		response.Success(c, result)
 		return
 	}
 	result, err := h.svc.repo.FindByOrderNo(c, orderNo)
-	if err != nil { c.Error(err); return }
+	if err != nil {
+		c.Error(err)
+		return
+	}
 	response.Success(c, result)
 }
 

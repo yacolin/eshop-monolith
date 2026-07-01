@@ -1,14 +1,12 @@
 package product
 
 import (
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
-
 )
 
 type AttributeHandler struct {

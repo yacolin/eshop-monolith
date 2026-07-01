@@ -27,13 +27,13 @@ const (
 	delayedDeleteDelay = 500 * time.Millisecond
 
 	// L1 local cache
-	spuLocalCacheSize     = 8192
-	spuLocalCacheTTL      = 60 * time.Second
-	spuLocalJitter        = 0.2
-	brandLocalCacheSize   = 512
+	spuLocalCacheSize      = 8192
+	spuLocalCacheTTL       = 60 * time.Second
+	spuLocalJitter         = 0.2
+	brandLocalCacheSize    = 512
 	categoryLocalCacheSize = 1024
-	localCacheTTL         = 60 * time.Second
-	localJitter           = 0.2
+	localCacheTTL          = 60 * time.Second
+	localJitter            = 0.2
 
 	// Bloom Filter
 	bloomN = 100000
@@ -49,8 +49,8 @@ const (
 
 // ── Key Builders ──
 
-func cacheKeySPU(id int64) string                       { return fmt.Sprintf("spu:%d", id) }
-func cacheKeyBrandAll() string                          { return "brand:all" }
+func cacheKeySPU(id int64) string { return fmt.Sprintf("spu:%d", id) }
+func cacheKeyBrandAll() string    { return "brand:all" }
 func cacheKeySPUListIDs(categoryID, brandID *int64, status *int8) string {
 	cid := "0"
 	if categoryID != nil {
@@ -324,8 +324,8 @@ type cacheEntry[T any] struct {
 }
 
 type spuLocalCache struct {
-	mu       sync.RWMutex
-	single   *lru.Cache[int64, *cacheEntry[*SPU]]
+	mu        sync.RWMutex
+	single    *lru.Cache[int64, *cacheEntry[*SPU]]
 	singleTTL time.Duration
 }
 
@@ -386,10 +386,10 @@ func (c *spuLocalCache) clear() {
 // ── Generic Local Cache (for small datasets) ──
 
 type simpleLocalCache[T any] struct {
-	mu       sync.RWMutex
-	cache    *lru.Cache[int64, *cacheEntry[T]]
-	ttl      time.Duration
-	size     int
+	mu    sync.RWMutex
+	cache *lru.Cache[int64, *cacheEntry[T]]
+	ttl   time.Duration
+	size  int
 }
 
 func newSimpleLocalCache[T any](size int, ttl time.Duration) *simpleLocalCache[T] {

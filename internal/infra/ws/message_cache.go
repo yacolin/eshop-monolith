@@ -89,7 +89,7 @@ func (mc *MessageCache) GetMessages(userID int64, lastSeq int64, currentSeq int6
 	// max: currentSeq (inclusive)
 	messages, err := mc.redisClient.ZRangeByScore(context.Background(), key, &redis.ZRangeBy{
 		Min:    "(" + itoa(lastSeq), // 开区间
-		Max:    itoa(currentSeq),     // 闭区间
+		Max:    itoa(currentSeq),    // 闭区间
 		Offset: 0,
 		Count:  -1, // 返回所有
 	}).Result()

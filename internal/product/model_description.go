@@ -3,10 +3,10 @@ package product
 import "eshop-monolith/pkg/utils"
 
 type Description struct {
-	ID                int64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	ProductID         int64     `gorm:"not null;uniqueIndex:uk_product_id" json:"product_id"`
-	Description       string    `gorm:"type:longtext" json:"description"`
-	MobileDescription string    `gorm:"type:longtext" json:"mobile_description"`
+	ID                int64           `gorm:"primaryKey;autoIncrement" json:"id"`
+	ProductID         int64           `gorm:"not null;uniqueIndex:uk_product_id" json:"product_id"`
+	Description       string          `gorm:"type:longtext" json:"description"`
+	MobileDescription string          `gorm:"type:longtext" json:"mobile_description"`
 	CreatedAt         utils.Timestamp `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt         utils.Timestamp `gorm:"type:timestamp;not null;default:CURRENT_TIMESTAMP;onUpdate:CURRENT_TIMESTAMP" json:"updated_at"`
 }

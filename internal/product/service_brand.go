@@ -14,10 +14,10 @@ import (
 )
 
 type BrandService struct {
-	repo          IbrandRepository
-	rdb           *redis.Client
-	listLocal     *simpleLocalCache[[]Brand]
-	entityLocal   *simpleLocalCache[*Brand]
+	repo        IbrandRepository
+	rdb         *redis.Client
+	listLocal   *simpleLocalCache[[]Brand]
+	entityLocal *simpleLocalCache[*Brand]
 }
 
 func NewBrandService(repo IbrandRepository, rdb *redis.Client) *BrandService {
@@ -220,7 +220,6 @@ func (s *BrandService) Delete(ctx context.Context, id int64) error {
 	}
 	return nil
 }
-
 
 // WarmupCache 预热品牌缓存到 L1 + L2
 func (s *BrandService) WarmupCache(ctx context.Context) (int, error) {

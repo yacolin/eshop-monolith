@@ -4,13 +4,13 @@ import (
 	"context"
 	"sync/atomic"
 
-	"eshop-monolith/internal/product"
-	"eshop-monolith/internal/trade"
+	"eshop-monolith/internal/base"
+	"eshop-monolith/internal/dashboard"
 	"eshop-monolith/internal/inventory"
 	"eshop-monolith/internal/marketing"
-	"eshop-monolith/internal/dashboard"
-	"eshop-monolith/internal/base"
+	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/review"
+	"eshop-monolith/internal/trade"
 	"eshop-monolith/internal/user"
 
 	"eshop-monolith/internal/infra/rabbitmq"
@@ -31,10 +31,8 @@ import (
 	"gorm.io/gorm"
 )
 
-
 // SetupRouter 设置路由
 func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB, mqClient *rabbitmq.Client) *gin.Engine {
-	
 
 	router := gin.New()
 	router.Use(gin.Logger())
@@ -99,10 +97,10 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		product.RegisterAttributeRoutes(v1, db)
 		product.RegisterProductRoutes(v1, db, repos.Redis)
 		product.RegisterCategoryBrandRoutes(v1, db)
-			product.RegisterSKURoutes(v1, db)
+		product.RegisterSKURoutes(v1, db)
 		marketing.RegisterPromotionRoutes(v1, db, repos.Redis)
 		trade.RegisterTradeRoutes(v1, db, mqClient, func() { dashboardSvc.InvalidateCache(context.Background()) })
-			inventory.RegisterInventoryRoutes(v1, db)
+		inventory.RegisterInventoryRoutes(v1, db)
 		// categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
 		// productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)
 		// invRoutes.RegisterInventoryRoutes(v1, repos, mqClient)
@@ -114,7 +112,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		// [DEPRECATED] couponRoutes.RegisterCouponRoutes(v1, repos, db, mqClient)
 		// [DEPRECATED] couponRoutes.RegisterPromotionRoutes(v1, repos, db, mqClient)
 
-			// [DEPRECATED] orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
+		// [DEPRECATED] orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
 		tokenService := user.NewTokenService("your-secret-key-change-in-production", repos.Role)
 		user.RegisterUserRoutes(v1, db, repos.User, repos.UserInfo)
 		user.RegisterAuthRoutes(v1, db, tokenService, repos.Role, repos.User, repos.UserInfo, repos.LoginHistory)

@@ -50,19 +50,19 @@ type CreateProductAttrItem struct {
 }
 
 type CreateSPUReq struct {
-	Name        string                `json:"name" binding:"required,max=200"`
-	Subtitle    string                `json:"subtitle" binding:"max=500"`
-	CategoryID  int64                 `json:"category_id" binding:"required"`
-	BrandID     int64                 `json:"brand_id"`
-	Unit        string                `json:"unit" binding:"max=10"`
-	MainImage   string                `json:"main_image" binding:"required,max=512"`
-	Images      []string              `json:"images"`
-	VideoURL    string                `json:"video_url" binding:"max=512"`
-	Description string                `json:"description"`
-	MobileDesc  string                `json:"mobile_description"`
-	SortOrder   int                   `json:"sort_order"`
-	CreatedBy   string                `json:"created_by" binding:"max=50"`
-	SKUs        []CreateSKUItem       `json:"skus" binding:"required,min=1,dive"`
+	Name        string                  `json:"name" binding:"required,max=200"`
+	Subtitle    string                  `json:"subtitle" binding:"max=500"`
+	CategoryID  int64                   `json:"category_id" binding:"required"`
+	BrandID     int64                   `json:"brand_id"`
+	Unit        string                  `json:"unit" binding:"max=10"`
+	MainImage   string                  `json:"main_image" binding:"required,max=512"`
+	Images      []string                `json:"images"`
+	VideoURL    string                  `json:"video_url" binding:"max=512"`
+	Description string                  `json:"description"`
+	MobileDesc  string                  `json:"mobile_description"`
+	SortOrder   int                     `json:"sort_order"`
+	CreatedBy   string                  `json:"created_by" binding:"max=50"`
+	SKUs        []CreateSKUItem         `json:"skus" binding:"required,min=1,dive"`
 	Attributes  []CreateProductAttrItem `json:"attributes" binding:"dive"`
 }
 
@@ -83,14 +83,14 @@ type UpdateSPUReq struct {
 // ── List Request ──────────────────────────────────
 
 type SPUListReq struct {
-	Size       int     `form:"size,default=10" binding:"gte=1,lte=1000"`
-	Cursor     string  `form:"cursor"`
-	Name       string  `form:"name"`
-	CategoryID *int64  `form:"category_id"`
-	BrandID    *int64  `form:"brand_id"`
-	Status     *int8   `form:"status"`
-	PriceMin   int64   `form:"price_min"`
-	PriceMax   int64   `form:"price_max"`
+	Size       int    `form:"size,default=10" binding:"gte=1,lte=1000"`
+	Cursor     string `form:"cursor"`
+	Name       string `form:"name"`
+	CategoryID *int64 `form:"category_id"`
+	BrandID    *int64 `form:"brand_id"`
+	Status     *int8  `form:"status"`
+	PriceMin   int64  `form:"price_min"`
+	PriceMax   int64  `form:"price_max"`
 }
 
 func (r *SPUListReq) Normalize() {

@@ -14,7 +14,7 @@ type ListResult[T any] struct {
 
 // 通用分页
 type Pagination struct {
-	Page int `form:"page,default=1" binding:"gte=1"`          // 页码，最小 1
+	Page int `form:"page,default=1" binding:"gte=1"`           // 页码，最小 1
 	Size int `form:"size,default=10" binding:"gte=1,lte=1000"` // 每页条数，范围 1..1000
 }
 

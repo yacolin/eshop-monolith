@@ -214,4 +214,3 @@ func isValidTransition(from, to string) bool {
 }
 
 // ── PaymentService ───────────────────────────────
-

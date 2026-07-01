@@ -13,9 +13,9 @@ import (
 )
 
 type CategoryService struct {
-	repo       IcategoryRepository
-	rdb        *redis.Client
-	allLocal   *simpleLocalCache[[]Category]
+	repo        IcategoryRepository
+	rdb         *redis.Client
+	allLocal    *simpleLocalCache[[]Category]
 	entityLocal *simpleLocalCache[*Category]
 }
 
@@ -75,7 +75,6 @@ func (s *CategoryService) WarmupCache(ctx context.Context) (int, error) {
 	}
 	return len(all), nil
 }
-
 
 func (s *CategoryService) invalidateCache(ctx context.Context) {
 	s.allLocal.remove(0)
@@ -158,7 +157,7 @@ func (s *CategoryService) GetByID(ctx context.Context, id int64) (*Category, err
 		}
 	}
 	// DB
-		logger.Info("category entity cache miss, fallback to DB", "id", id)
+	logger.Info("category entity cache miss, fallback to DB", "id", id)
 	cat, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

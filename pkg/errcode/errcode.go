@@ -71,7 +71,7 @@ var (
 	ErrUnexpectedSigningMethod = &BizError{Code: 1021, Message: "unexpected signing method"}
 	ErrParseToken              = &BizError{Code: 1022, Message: "parse token failed"}
 
-	ErrDuplicateSKU           = &BizError{Code: 1023, Message: "duplicate sku"}
+	ErrDuplicateSKU          = &BizError{Code: 1023, Message: "duplicate sku"}
 	ErrInsufficientInventory = &BizError{Code: 1024, Message: "insufficient inventory"}
 )
 
@@ -85,55 +85,55 @@ var (
 
 // ==================== 域：品牌/类目（4001-4099） ====================
 var (
-	ErrBrandNotFound     = &BizError{Code: 4001, Message: "brand not found"}
-	ErrBrandNameExists   = &BizError{Code: 4002, Message: "brand name already exists"}
-	ErrCategoryNotFound  = &BizError{Code: 4010, Message: "category not found"}
-	ErrCategoryNameExists = &BizError{Code: 4011, Message: "category name already exists"}
-	ErrCategoryHasChildren = &BizError{Code: 4012, Message: "category has children, cannot delete"}
+	ErrBrandNotFound          = &BizError{Code: 4001, Message: "brand not found"}
+	ErrBrandNameExists        = &BizError{Code: 4002, Message: "brand name already exists"}
+	ErrCategoryNotFound       = &BizError{Code: 4010, Message: "category not found"}
+	ErrCategoryNameExists     = &BizError{Code: 4011, Message: "category name already exists"}
+	ErrCategoryHasChildren    = &BizError{Code: 4012, Message: "category has children, cannot delete"}
 	ErrCategoryParentNotFound = &BizError{Code: 4013, Message: "parent category not found"}
-	ErrCategoryLevelExceed = &BizError{Code: 4014, Message: "category level exceeds maximum (3)"}
-	ErrCategoryLevelInvalid = &BizError{Code: 4015, Message: "category level must be between 1 and 3"}
-	ErrAttributeNotFound    = &BizError{Code: 4020, Message: "attribute not found"}
-	ErrSPUNotFound          = &BizError{Code: 4030, Message: "product not found"}
-	ErrSKUCodeExists        = &BizError{Code: 4031, Message: "sku code already exists"}
-	ErrSPUInvalidStatus     = &BizError{Code: 4032, Message: "invalid product status transition"}
-	ErrProductAttrDuplicate = &BizError{Code: 4033, Message: "duplicate product attribute"}
-	ErrSPUHasNoSKU          = &BizError{Code: 4034, Message: "product must have at least one sku"}
+	ErrCategoryLevelExceed    = &BizError{Code: 4014, Message: "category level exceeds maximum (3)"}
+	ErrCategoryLevelInvalid   = &BizError{Code: 4015, Message: "category level must be between 1 and 3"}
+	ErrAttributeNotFound      = &BizError{Code: 4020, Message: "attribute not found"}
+	ErrSPUNotFound            = &BizError{Code: 4030, Message: "product not found"}
+	ErrSKUCodeExists          = &BizError{Code: 4031, Message: "sku code already exists"}
+	ErrSPUInvalidStatus       = &BizError{Code: 4032, Message: "invalid product status transition"}
+	ErrProductAttrDuplicate   = &BizError{Code: 4033, Message: "duplicate product attribute"}
+	ErrSPUHasNoSKU            = &BizError{Code: 4034, Message: "product must have at least one sku"}
 
 	// ==================== 域：库存（5001-5099） ====================
-	ErrInventoryNotFound    = &BizError{Code: 5001, Message: "inventory not found"}
-	ErrInsufficientStock    = &BizError{Code: 5002, Message: "insufficient stock"}
-	ErrInvalidStockChange   = &BizError{Code: 5003, Message: "invalid stock change"}
+	ErrInventoryNotFound  = &BizError{Code: 5001, Message: "inventory not found"}
+	ErrInsufficientStock  = &BizError{Code: 5002, Message: "insufficient stock"}
+	ErrInvalidStockChange = &BizError{Code: 5003, Message: "invalid stock change"}
 
 	// ==================== 域：交易（6001-6099） ====================
-	ErrPaymentNotFound    = &BizError{Code: 6001, Message: "payment not found"}
-	ErrRefundNotFound     = &BizError{Code: 6010, Message: "refund not found"}
-	ErrRefundFailed       = &BizError{Code: 6011, Message: "refund failed"}
+	ErrPaymentNotFound = &BizError{Code: 6001, Message: "payment not found"}
+	ErrRefundNotFound  = &BizError{Code: 6010, Message: "refund not found"}
+	ErrRefundFailed    = &BizError{Code: 6011, Message: "refund failed"}
 
 	// ==================== 域：用户/地址（9001-9099） ====================
-	ErrAddressLimit   = &BizError{Code: 9001, Message: "address limit reached"}
+	ErrAddressLimit    = &BizError{Code: 9001, Message: "address limit reached"}
 	ErrAddressNotFound = &BizError{Code: 9002, Message: "address not found"}
 
 	// ==================== 域：订单（7001-7099） ====================
 	ErrInvalidOrderStatus = &BizError{Code: 7002, Message: "invalid order status transition"}
 
 	// ==================== 域：营销（8001-8099） ====================
-	ErrPromotionNotFound    = &BizError{Code: 8001, Message: "promotion not found"}
-	ErrPromotionRuleInvalid = &BizError{Code: 8002, Message: "invalid promotion rule"}
+	ErrPromotionNotFound        = &BizError{Code: 8001, Message: "promotion not found"}
+	ErrPromotionRuleInvalid     = &BizError{Code: 8002, Message: "invalid promotion rule"}
 	ErrPromotionProductConflict = &BizError{Code: 8003, Message: "promotion product already exists"}
-	ErrCouponExpired        = &BizError{Code: 8010, Message: "coupon expired"}
-	ErrCouponSoldOut        = &BizError{Code: 8011, Message: "coupon sold out"}
-	ErrCouponAlreadyClaimed = &BizError{Code: 8012, Message: "coupon already claimed"}
-	ErrOrderItemNotFound  = &BizError{Code: 7003, Message: "order item not found"}
+	ErrCouponExpired            = &BizError{Code: 8010, Message: "coupon expired"}
+	ErrCouponSoldOut            = &BizError{Code: 8011, Message: "coupon sold out"}
+	ErrCouponAlreadyClaimed     = &BizError{Code: 8012, Message: "coupon already claimed"}
+	ErrOrderItemNotFound        = &BizError{Code: 7003, Message: "order item not found"}
 )
 
 // ==================== 域：评论评分（3001-3999） ====================
 var (
-	ErrReviewNotFound         = &BizError{Code: 3001, Message: "review not found"}
-	ErrReviewDuplicate        = &BizError{Code: 3002, Message: "review already exists for this order item"}
-	ErrReviewNotPurchased     = &BizError{Code: 3003, Message: "only purchased products can be reviewed"}
-	ErrReviewInvalidRating    = &BizError{Code: 3004, Message: "rating must be between 1 and 5"}
-	ErrReviewMediaLimitExceed = &BizError{Code: 3005, Message: "media count exceeds the limit"}
-	ErrReviewNotOwner         = &BizError{Code: 3006, Message: "not the owner of the review"}
+	ErrReviewNotFound          = &BizError{Code: 3001, Message: "review not found"}
+	ErrReviewDuplicate         = &BizError{Code: 3002, Message: "review already exists for this order item"}
+	ErrReviewNotPurchased      = &BizError{Code: 3003, Message: "only purchased products can be reviewed"}
+	ErrReviewInvalidRating     = &BizError{Code: 3004, Message: "rating must be between 1 and 5"}
+	ErrReviewMediaLimitExceed  = &BizError{Code: 3005, Message: "media count exceeds the limit"}
+	ErrReviewNotOwner          = &BizError{Code: 3006, Message: "not the owner of the review"}
 	ErrReviewPendingModeration = &BizError{Code: 3007, Message: "review is pending moderation"}
 )

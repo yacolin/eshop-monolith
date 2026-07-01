@@ -10,9 +10,9 @@ import (
 // ── 外部依赖接口 ─────────────────────────────────
 
 type CartService struct {
-	repo       IcartRepository
+	repo        IcartRepository
 	skuProvider SkuProvider
-	db         *gorm.DB
+	db          *gorm.DB
 }
 
 func NewCartService(repo IcartRepository, skuProvider SkuProvider, db *gorm.DB) *CartService {
@@ -126,4 +126,3 @@ func (s *CartService) ClearCart(ctx context.Context, userID int64, sessionID str
 }
 
 // ── OrderService ─────────────────────────────────
-

@@ -42,13 +42,13 @@ type ReviewListReq struct {
 }
 
 type ReviewListResult struct {
-	Total int64        `json:"total"`
+	Total int64         `json:"total"`
 	List  []*ReviewResp `json:"list"`
 }
 
 type CreateMediaReq struct {
-	ReviewID int64  `json:"review_id" binding:"required"`
-	MediaType int8  `json:"media_type" binding:"required,oneof=1 2"`
+	ReviewID  int64  `json:"review_id" binding:"required"`
+	MediaType int8   `json:"media_type" binding:"required,oneof=1 2"`
 	MediaURL  string `json:"media_url" binding:"required,max=500"`
 }
 
