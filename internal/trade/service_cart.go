@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -13,13 +14,21 @@ type CartService struct {
 	repo        IcartRepository
 	skuProvider SkuProvider
 	db          *gorm.DB
+	rdb         *redis.Client
 }
 
-func NewCartService(repo IcartRepository, skuProvider SkuProvider, db *gorm.DB) *CartService {
-	return &CartService{repo: repo, skuProvider: skuProvider, db: db}
+func NewCartService(repo IcartRepository, skuProvider SkuProvider, db *gorm.DB, rdb *redis.Client) *CartService {
+	return &CartService{repo: repo, skuProvider: skuProvider, db: db, rdb: rdb}
 }
 
 func (s *CartService) GetCart(ctx context.Context, userID int64, sessionID string) (*CartResponse, error) {
+	if s.rdb != nil && userID > 0 {
+		resp, err := s.getCartFromCache(ctx, userID)
+		if err == nil && resp != nil {
+			return resp, nil
+		}
+	}
+
 	cart, err := s.repo.FindOrCreate(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
@@ -28,10 +37,25 @@ func (s *CartService) GetCart(ctx context.Context, userID int64, sessionID strin
 	if err != nil {
 		return nil, err
 	}
+	resp := buildCartResponse(cart, items)
+
+	if s.rdb != nil && userID > 0 {
+		_ = setCartCache(ctx, s.rdb, userID, &cartMetaCache{
+			ItemCount:   resp.ItemCount,
+			TotalAmount: resp.TotalAmount,
+		}, items)
+	}
+	return resp, nil
+}
+
+func (s *CartService) getCartFromCache(ctx context.Context, userID int64) (*CartResponse, error) {
+	meta, items, err := getCartCache(ctx, s.rdb, userID)
+	if err != nil {
+		return nil, err
+	}
 	resp := &CartResponse{
-		ID:          cart.ID,
-		ItemCount:   cart.ItemCount,
-		TotalAmount: cart.TotalAmount,
+		ItemCount:   meta.ItemCount,
+		TotalAmount: meta.TotalAmount,
 		Items:       make([]CartItemResponse, 0, len(items)),
 	}
 	for _, item := range items {
@@ -84,6 +108,9 @@ func (s *CartService) AddItem(ctx context.Context, userID int64, sessionID strin
 		return nil, err
 	}
 	s.db.Transaction(func(tx *gorm.DB) error { return s.repo.UpdateSummary(tx, cart.ID) })
+	if s.rdb != nil && userID > 0 {
+		delCartCache(ctx, s.rdb, userID)
+	}
 	return s.GetCart(ctx, userID, sessionID)
 }
 
@@ -99,6 +126,9 @@ func (s *CartService) UpdateQuantity(ctx context.Context, userID int64, sessionI
 		return tx.Model(&CartItem{}).Where("cart_id = ? AND sku_id = ?", cart.ID, req.SkuID).Update("quantity", req.Quantity).Error
 	})
 	s.db.Transaction(func(tx *gorm.DB) error { return s.repo.UpdateSummary(tx, cart.ID) })
+	if s.rdb != nil && userID > 0 {
+		delCartCache(ctx, s.rdb, userID)
+	}
 	return s.GetCart(ctx, userID, sessionID)
 }
 
@@ -109,6 +139,9 @@ func (s *CartService) RemoveItem(ctx context.Context, userID int64, sessionID st
 	}
 	s.db.Transaction(func(tx *gorm.DB) error { return s.repo.RemoveItem(tx, cart.ID, skuID) })
 	s.db.Transaction(func(tx *gorm.DB) error { return s.repo.UpdateSummary(tx, cart.ID) })
+	if s.rdb != nil && userID > 0 {
+		delCartCache(ctx, s.rdb, userID)
+	}
 	return s.GetCart(ctx, userID, sessionID)
 }
 
@@ -117,12 +150,38 @@ func (s *CartService) ClearCart(ctx context.Context, userID int64, sessionID str
 	if err != nil {
 		return err
 	}
+	if s.rdb != nil && userID > 0 {
+		delCartCache(ctx, s.rdb, userID)
+	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		if err := s.repo.ClearItems(tx, cart.ID); err != nil {
 			return err
 		}
 		return s.repo.UpdateSummary(tx, cart.ID)
 	})
+}
+
+func buildCartResponse(cart *Cart, items []CartItem) *CartResponse {
+	resp := &CartResponse{
+		ID:          cart.ID,
+		ItemCount:   cart.ItemCount,
+		TotalAmount: cart.TotalAmount,
+		Items:       make([]CartItemResponse, 0, len(items)),
+	}
+	for _, item := range items {
+		resp.Items = append(resp.Items, CartItemResponse{
+			ID:          item.ID,
+			SkuID:       item.SkuID,
+			ProductID:   item.ProductID,
+			ProductName: item.ProductName,
+			SkuSpec:     item.SkuSpec,
+			Image:       item.Image,
+			Price:       item.Price,
+			Quantity:    item.Quantity,
+			Subtotal:    item.Price * int64(item.Quantity),
+		})
+	}
+	return resp
 }
 
 // ── OrderService ─────────────────────────────────

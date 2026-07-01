@@ -8,6 +8,7 @@ import (
 	"eshop-monolith/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -79,7 +80,7 @@ func NewCartHandler(svc *CartService) *CartHandler {
 // @Tags frontend
 // @Security ApiKeyAuth
 // @Produce json
-// @Success 200 {object} response.Response{data=Cart}
+// @Success 200 {object} response.Response{data=CartResponse}
 // @Router /api/v1/carts [get]
 func (h *CartHandler) GetCart(c *gin.Context) {
 	result, err := h.svc.GetCart(c, getCurrentUser(c), c.Query("session_id"))
@@ -99,7 +100,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 // @Produce json
 // @Param request body AddItemReq true "商品信息"
 // @Success 200 {object} response.Response
-// @Router /api/v1/carts [post]
+// @Router /api/v1/carts/items [post]
 func (h *CartHandler) AddItem(c *gin.Context) {
 	var req AddItemReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -123,7 +124,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 // @Produce json
 // @Param request body UpdateItemReq true "更新信息"
 // @Success 200 {object} response.Response
-// @Router /api/v1/carts [put]
+// @Router /api/v1/carts/items [put]
 func (h *CartHandler) UpdateItem(c *gin.Context) {
 	var req UpdateItemReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -146,7 +147,7 @@ func (h *CartHandler) UpdateItem(c *gin.Context) {
 // @Produce json
 // @Param sku_id query int true "SKU ID"
 // @Success 200 {object} response.Response
-// @Router /api/v1/carts [delete]
+// @Router /api/v1/carts/items [delete]
 func (h *CartHandler) RemoveItem(c *gin.Context) {
 	var req struct {
 		SkuID int64 `form:"sku_id" binding:"required"`
@@ -180,10 +181,10 @@ func (h *CartHandler) ClearCart(c *gin.Context) {
 	response.Success(c, nil)
 }
 
-func RegisterCartRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
+func RegisterCartRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 	repo := NewCartRepository(db)
 	skuA := &skuAdapter{repo: product.NewSpuRepository(db)}
-	svc := NewCartService(repo, skuA, db)
+	svc := NewCartService(repo, skuA, db, rdb)
 	h := NewCartHandler(svc)
 
 	v1.Group("/carts").GET("", h.GetCart)
