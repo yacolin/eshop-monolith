@@ -42,3 +42,26 @@ type PromotionListReq struct {
 	Status    *int8 `form:"status"`
 	PromoType *int8 `form:"promo_type"`
 }
+
+// ── Detail ────────────────────────────────────────
+
+type PromotionProductItem struct {
+	ID          int64  `json:"id"`
+	ProductType int8   `json:"product_type"`
+	ProductID   *int64 `json:"product_id,omitempty"`
+	CategoryID  *int64 `json:"category_id,omitempty"`
+	SpuName     string `json:"spu_name"`
+	Subtitle    string `json:"subtitle"`
+	MainImage   string `json:"main_image"`
+	Unit        string `json:"unit"`
+	MinPrice    int64  `json:"min_price"`
+	MaxPrice    int64  `json:"max_price"`
+	SalesCount  int    `json:"sales_count"`
+	SpuStatus   int8   `json:"spu_status"`
+}
+
+type PromotionDetailResponse struct {
+	*Promotion
+	Rule     *PromotionRule       `json:"rule"`
+	Products []PromotionProductItem `json:"products"`
+}

@@ -410,33 +410,33 @@ func (s *SpuService) fetchFullFromDB(ctx context.Context, ids []int64, hasMore b
 // GetDetailByID 获取商品详情（含 SKU 规格维度、属性、图文描述）
 // Fan-Out 并发获取 SPU / SKU / 属性 / 图文描述以降低 p95 延迟
 func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailResponse, error) {
-	g, ctx := errgroup.WithContext(ctx)
+	g, egCtx := errgroup.WithContext(ctx)
 
 	var spu *SPU
 	g.Go(func() error {
 		var err error
-		spu, err = s.GetByID(ctx, id)
+		spu, err = s.GetByID(egCtx, id)
 		return err
 	})
 
 	var skus []SKU
 	g.Go(func() error {
 		var err error
-		skus, err = s.repo.FindSKUsByProductID(ctx, id, "")
+		skus, err = s.repo.FindSKUsByProductID(egCtx, id, "")
 		return err
 	})
 
 	var prodAttrs []ProductAttrResponse
 	g.Go(func() error {
 		var err error
-		prodAttrs, err = s.repo.FindProductAttrsWithName(ctx, id)
+		prodAttrs, err = s.repo.FindProductAttrsWithName(egCtx, id)
 		return err
 	})
 
 	var desc *Description
 	g.Go(func() error {
 		var err error
-		desc, err = s.repo.FindDescriptionByProductID(ctx, id)
+		desc, err = s.repo.FindDescriptionByProductID(egCtx, id)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}

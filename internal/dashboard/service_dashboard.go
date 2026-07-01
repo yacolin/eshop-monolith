@@ -63,7 +63,7 @@ func (s *DashboardService) GetStats(ctx context.Context) (*DashboardResponse, er
 
 // rebuildStats 并行执行 7 个统计查询
 func (s *DashboardService) rebuildStats(ctx context.Context) (*DashboardResponse, error) {
-	g, ctx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 
 	var summary SummaryDTO
 	g.Go(func() error {

@@ -37,11 +37,11 @@ func (p *WarmupPipeline) Add(stage WarmupStage) {
 // Run 并行执行所有已注册的预热阶段
 func (p *WarmupPipeline) Run(ctx context.Context) map[string]int {
 	results := make(map[string]int, len(p.stages))
-	g, ctx := errgroup.WithContext(ctx)
+	g, egCtx := errgroup.WithContext(ctx)
 	for _, stage := range p.stages {
 		stage := stage
 		g.Go(func() error {
-			n, err := stage.Warmup(ctx)
+			n, err := stage.Warmup(egCtx)
 			if err == nil {
 				results[stage.Name()] = n
 			}

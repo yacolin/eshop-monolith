@@ -2,6 +2,9 @@ package marketing
 
 import (
 	"context"
+	"log"
+
+	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
@@ -42,8 +45,8 @@ func (h *PromotionHandler) Create(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// GetByID 获取促销详情
-// @Summary 获取促销详情
+// GetByID 获取促销
+// @Summary 获取促销
 // @Tags promotions
 // @Produce json
 // @Param id path int true "促销ID"
@@ -56,6 +59,27 @@ func (h *PromotionHandler) GetByID(c *gin.Context) {
 		return
 	}
 	result, err := h.svc.GetByID(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
+// GetDetail 获取促销详情（含规则、商品范围）
+// @Summary 获取促销详情（含规则、商品范围）
+// @Tags promotions
+// @Produce json
+// @Param id path int true "促销ID"
+// @Success 200 {object} response.Response{data=PromotionDetailResponse}
+// @Router /api/v1/promotions/{id}/detail [get]
+func (h *PromotionHandler) GetDetail(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	result, err := h.svc.GetDetailByID(c, id)
 	if err != nil {
 		c.Error(err)
 		return
@@ -137,7 +161,7 @@ func (h *PromotionHandler) Delete(c *gin.Context) {
 
 func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 	repo := NewPromotionRepository(db)
-	svc := NewPromotionService(repo, db)
+	svc := NewPromotionService(repo, db, rdb)
 	couponSvc := NewCouponService(repo, db)
 	h := NewPromotionHandler(svc)
 	ch := NewCouponHandler(svc, couponSvc)
@@ -146,6 +170,7 @@ func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client
 	{
 		promo.GET("", h.List)
 		promo.GET("/:id", h.GetByID)
+		promo.GET("/:id/detail", h.GetDetail)
 	}
 	auth := v1.Group("/promotions")
 	auth.Use(middleware.JWTAuth())
@@ -174,9 +199,19 @@ func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client
 		flash.POST("/confirm", fh.Confirm)
 	}
 
-	// 预热所有进行中的秒杀库存到 Redis
+	// 预热促销缓存 + 秒杀库存到 Redis
 	go func() {
 		ctx := context.Background()
+
+		// 全量预热促销实体缓存
+		if n, err := svc.WarmupCache(ctx); err != nil {
+			logger.Warn("promotion cache warmup failed", "error", err)
+			log.Printf("[warmup] promotion cache warmup failed: %v", err)
+		} else {
+			logger.Info("promotion cache warmup done", "items", n)
+			log.Printf("[warmup] promotion cache warmup done: %d items", n)
+		}
+
 		active := int8(2)
 		flashType := int8(3)
 		promotions, _, err := repo.List(ctx, &active, &flashType, 1, 1000)
