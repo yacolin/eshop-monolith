@@ -10,6 +10,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 
@@ -442,15 +443,45 @@ func (s *SpuService) fetchFullFromDB(ctx context.Context, ids []int64, hasMore b
 }
 
 // GetDetailByID 获取商品详情（含 SKU 规格维度、属性、图文描述）
+// Fan-Out 并发获取 SPU / SKU / 属性 / 图文描述以降低 p95 延迟
 func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailResponse, error) {
-	spu, err := s.GetByID(ctx, id)
-	if err != nil {
+	g, ctx := errgroup.WithContext(ctx)
+
+	var spu *SPU
+	g.Go(func() error {
+		var err error
+		spu, err = s.GetByID(ctx, id)
+		return err
+	})
+
+	var skus []SKU
+	g.Go(func() error {
+		var err error
+		skus, err = s.repo.FindSKUsByProductID(ctx, id, "")
+		return err
+	})
+
+	var prodAttrs []ProductAttrResponse
+	g.Go(func() error {
+		var err error
+		prodAttrs, err = s.repo.FindProductAttrsWithName(ctx, id)
+		return err
+	})
+
+	var desc *Description
+	g.Go(func() error {
+		var err error
+		desc, err = s.repo.FindDescriptionByProductID(ctx, id)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	skus, err := s.repo.FindSKUsByProductID(ctx, id, "")
-	if err != nil {
-		return nil, err
-	}
+
 	if skus == nil {
 		skus = []SKU{}
 	}
@@ -460,15 +491,10 @@ func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailRes
 
 	// SKU 规格维度从 SKU spec 聚合（多值）
 	specAttrs := s.aggregateSpecAttrs(skus)
-	// 非 SKU 规格属性从 sp_product_attributes 取（单值）
-	prodAttrs, _ := s.repo.FindProductAttrsWithName(ctx, id)
 
+	// 合并规格维度与商品属性
 	attrs := s.mergeAttrs(specAttrs, prodAttrs, spu.CategoryID, ctx)
 
-	desc, err := s.repo.FindDescriptionByProductID(ctx, id)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
 	var descResp *Description
 	if desc != nil {
 		descResp = desc
