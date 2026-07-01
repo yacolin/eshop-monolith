@@ -484,11 +484,12 @@ func (s *SpuService) loadSKUInventory(ctx context.Context, skus []SKU) {
 	type inventoryRow struct {
 		SkuID    int64  `gorm:"column:sku_id"`
 		Quantity int64  `gorm:"column:quantity"`
+		Reserved int64  `gorm:"column:reserved"`
 		Status   string `gorm:"column:status"`
 	}
 	var rows []inventoryRow
 	s.db.WithContext(ctx).Table("sp_inventories").
-		Select("sku_id, quantity, status").
+		Select("sku_id, quantity, reserved, status").
 		Where("sku_id IN ?", ids).
 		Scan(&rows)
 	invMap := make(map[int64]inventoryRow, len(rows))
@@ -497,7 +498,7 @@ func (s *SpuService) loadSKUInventory(ctx context.Context, skus []SKU) {
 	}
 	for i := range skus {
 		if inv, ok := invMap[skus[i].ID]; ok {
-			skus[i].AvailableQuantity = inv.Quantity
+			skus[i].AvailableQuantity = inv.Quantity - inv.Reserved
 			skus[i].InventoryStatus = inv.Status
 		}
 	}

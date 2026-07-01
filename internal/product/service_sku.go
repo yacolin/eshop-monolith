@@ -11,10 +11,11 @@ import (
 
 type SKUService struct {
 	repo IspuRepository
+	db   *gorm.DB
 }
 
-func NewSKUService(repo IspuRepository) *SKUService {
-	return &SKUService{repo: repo}
+func NewSKUService(repo IspuRepository, db *gorm.DB) *SKUService {
+	return &SKUService{repo: repo, db: db}
 }
 
 func (s *SKUService) Create(ctx context.Context, req *CreateSKUReq) (*SKU, error) {
@@ -48,7 +49,25 @@ func (s *SKUService) GetByID(ctx context.Context, id int64) (*SKU, error) {
 		}
 		return nil, err
 	}
+	s.loadInventory(ctx, sku)
 	return sku, nil
+}
+
+func (s *SKUService) loadInventory(ctx context.Context, sku *SKU) {
+	type invRow struct {
+		Quantity int64  `gorm:"column:quantity"`
+		Reserved int64  `gorm:"column:reserved"`
+		Status   string `gorm:"column:status"`
+	}
+	var row invRow
+	if err := s.db.WithContext(ctx).Table("sp_inventories").
+		Select("quantity, reserved, status").
+		Where("sku_id = ? AND warehouse_id = 0", sku.ID).
+		Scan(&row).Error; err != nil {
+		return
+	}
+	sku.AvailableQuantity = row.Quantity - row.Reserved
+	sku.InventoryStatus = row.Status
 }
 
 func (s *SKUService) GetByCode(ctx context.Context, code string) (*SKU, error) {

@@ -163,7 +163,7 @@ func (h *SKUHandler) ListByProduct(c *gin.Context) {
 
 func RegisterSKURoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 	repo := NewSpuRepository(db)
-	svc := NewSKUService(repo)
+	svc := NewSKUService(repo, db)
 	h := NewSKUHandler(svc)
 
 	skus := v1.Group("/skus")
