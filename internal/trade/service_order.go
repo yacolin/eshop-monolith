@@ -17,6 +17,9 @@ type OrderService struct {
 	invSvc   InventoryService
 	db       *gorm.DB
 	eventBus *rabbitmq.Client
+
+	// InvalidateCache 异步回调，由外部注入（如 Dashboard 缓存清除）
+	InvalidateCache func()
 }
 
 func NewOrderService(repo IorderRepository, skuSvc SkuProvider, invSvc InventoryService, db *gorm.DB, eventBus *rabbitmq.Client) *OrderService {
@@ -97,6 +100,10 @@ func (s *OrderService) Create(ctx context.Context, userID int64, req *CreateOrde
 	})
 	if err != nil {
 		return nil, err
+	}
+	// 异步清除关联缓存
+	if s.InvalidateCache != nil {
+		s.InvalidateCache()
 	}
 	return order, nil
 }

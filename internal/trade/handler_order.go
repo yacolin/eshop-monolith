@@ -105,10 +105,13 @@ func (h *OrderHandler) UpdateStatus(c *gin.Context) {
 	response.Success(c, result)
 }
 
-func RegisterOrderRoutes(v1 *gin.RouterGroup, db *gorm.DB, mqClient *rabbitmq.Client) {
+func RegisterOrderRoutes(v1 *gin.RouterGroup, db *gorm.DB, mqClient *rabbitmq.Client, invalidateCache ...func()) {
 	repo := NewOrderRepository(db)
 	skuA := &skuAdapter{repo: product.NewSpuRepository(db)}
 	svc := NewOrderService(repo, skuA, &inventorySvc{}, db, mqClient)
+	if len(invalidateCache) > 0 {
+		svc.InvalidateCache = invalidateCache[0]
+	}
 	h := NewOrderHandler(svc)
 
 	orders := v1.Group("/orders")

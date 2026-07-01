@@ -7,8 +7,8 @@ import (
 	"eshop-monolith/internal/infra/rabbitmq"
 )
 
-func RegisterTradeRoutes(v1 *gin.RouterGroup, db *gorm.DB, mqClient *rabbitmq.Client) {
+func RegisterTradeRoutes(v1 *gin.RouterGroup, db *gorm.DB, mqClient *rabbitmq.Client, invalidateCache ...func()) {
 	RegisterCartRoutes(v1, db)
 	RegisterPaymentRoutes(v1, db)
-	RegisterOrderRoutes(v1, db, mqClient)
+	RegisterOrderRoutes(v1, db, mqClient, invalidateCache...)
 }

@@ -102,7 +102,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		product.RegisterCategoryBrandRoutes(v1, db)
 			product.RegisterSKURoutes(v1, db)
 		marketing.RegisterPromotionRoutes(v1, db, repos.Redis)
-		trade.RegisterTradeRoutes(v1, db, mqClient)
+		trade.RegisterTradeRoutes(v1, db, mqClient, func() { dashboardSvc.InvalidateCache(context.Background()) })
 			inventory.RegisterInventoryRoutes(v1, db)
 		// categorySvc = invRoutes.RegisterCategoryRoutes(v1, repos, mqClient)
 		// productSvc = invRoutes.RegisterProductRoutes(v1, repos, db, mqClient)

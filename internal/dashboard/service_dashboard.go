@@ -10,6 +10,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
@@ -40,18 +41,15 @@ func (s *DashboardService) GetStats(ctx context.Context) (*DashboardResponse, er
 				return &resp, nil
 			}
 		}
-		resp := &DashboardResponse{}
-		resp.Summary = s.computeSummary(ctx)
-		resp.OrderTrend = s.computeOrderTrend(ctx)
-		resp.OrderStatusDist = s.computeOrderStatusDist(ctx)
-		resp.PaymentMethodDist = s.computePaymentMethodDist(ctx)
-		resp.CategoryDist = s.computeCategoryDist(ctx)
-		resp.InventoryStatusDist = s.computeInventoryStatusDist(ctx)
-		resp.TopProducts = s.computeTopProducts(ctx)
 
-		data, err := sonic.Marshal(resp)
-		if err == nil {
-			s.rdb.Set(context.Background(), dashboardCacheKey, data, dashboardCacheTTL)
+		resp, err := s.rebuildStats(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		data, marshalErr := sonic.Marshal(resp)
+		if marshalErr == nil {
+			s.rdb.Set(ctx, dashboardCacheKey, data, dashboardCacheTTL)
 		}
 		return resp, nil
 	})
@@ -61,25 +59,81 @@ func (s *DashboardService) GetStats(ctx context.Context) (*DashboardResponse, er
 	return v.(*DashboardResponse), nil
 }
 
-func (s *DashboardService) RefreshCache(ctx context.Context) error {
-	resp := &DashboardResponse{}
-	resp.Summary = s.computeSummary(ctx)
-	resp.OrderTrend = s.computeOrderTrend(ctx)
-	resp.OrderStatusDist = s.computeOrderStatusDist(ctx)
-	resp.PaymentMethodDist = s.computePaymentMethodDist(ctx)
-	resp.CategoryDist = s.computeCategoryDist(ctx)
-	resp.InventoryStatusDist = s.computeInventoryStatusDist(ctx)
-	resp.TopProducts = s.computeTopProducts(ctx)
+// rebuildStats 并行执行 7 个统计查询
+func (s *DashboardService) rebuildStats(ctx context.Context) (*DashboardResponse, error) {
+	g, ctx := errgroup.WithContext(ctx)
 
-	data, err := sonic.Marshal(resp)
+	var summary SummaryDTO
+	g.Go(func() error {
+		summary = s.computeSummary(ctx)
+		return nil
+	})
+
+	var orderTrend []OrderTrendDTO
+	g.Go(func() error {
+		orderTrend = s.computeOrderTrend(ctx)
+		return nil
+	})
+
+	var orderStatusDist []StatusDistDTO
+	g.Go(func() error {
+		orderStatusDist = s.computeOrderStatusDist(ctx)
+		return nil
+	})
+
+	var paymentMethodDist []MethodDistDTO
+	g.Go(func() error {
+		paymentMethodDist = s.computePaymentMethodDist(ctx)
+		return nil
+	})
+
+	var categoryDist []CategoryDistDTO
+	g.Go(func() error {
+		categoryDist = s.computeCategoryDist(ctx)
+		return nil
+	})
+
+	var inventoryStatusDist []StatusDistDTO
+	g.Go(func() error {
+		inventoryStatusDist = s.computeInventoryStatusDist(ctx)
+		return nil
+	})
+
+	var topProducts []TopProductDTO
+	g.Go(func() error {
+		topProducts = s.computeTopProducts(ctx)
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return &DashboardResponse{
+		Summary:             summary,
+		OrderTrend:          orderTrend,
+		OrderStatusDist:     orderStatusDist,
+		PaymentMethodDist:   paymentMethodDist,
+		CategoryDist:        categoryDist,
+		InventoryStatusDist: inventoryStatusDist,
+		TopProducts:         topProducts,
+	}, nil
+}
+
+func (s *DashboardService) RefreshCache(ctx context.Context) error {
+	resp, err := s.rebuildStats(ctx)
 	if err != nil {
 		return err
 	}
-	return s.rdb.Set(context.Background(), dashboardCacheKey, data, dashboardCacheTTL).Err()
+	data, marshalErr := sonic.Marshal(resp)
+	if marshalErr != nil {
+		return marshalErr
+	}
+	return s.rdb.Set(ctx, dashboardCacheKey, data, dashboardCacheTTL).Err()
 }
 
-func (s *DashboardService) InvalidateCache() {
-	s.rdb.Del(context.Background(), dashboardCacheKey)
+func (s *DashboardService) InvalidateCache(ctx context.Context) {
+	s.rdb.Del(ctx, dashboardCacheKey)
 }
 
 func (s *DashboardService) computeSummary(ctx context.Context) SummaryDTO {
