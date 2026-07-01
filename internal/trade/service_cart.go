@@ -3,32 +3,43 @@ package trade
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
-
-// ── 外部依赖接口 ─────────────────────────────────
 
 type CartService struct {
 	repo        IcartRepository
 	skuProvider SkuProvider
 	db          *gorm.DB
 	rdb         *redis.Client
+
+	mu          sync.Mutex
+	pendingSync map[int64]*time.Timer // userID → debounce timer
 }
 
 func NewCartService(repo IcartRepository, skuProvider SkuProvider, db *gorm.DB, rdb *redis.Client) *CartService {
-	return &CartService{repo: repo, skuProvider: skuProvider, db: db, rdb: rdb}
+	return &CartService{
+		repo:        repo,
+		skuProvider: skuProvider,
+		db:          db,
+		rdb:         rdb,
+		pendingSync: make(map[int64]*time.Timer),
+	}
 }
+
+// ── Redis CRUD（主存） ─────────────────────────────
 
 func (s *CartService) GetCart(ctx context.Context, userID int64, sessionID string) (*CartResponse, error) {
 	if s.rdb != nil && userID > 0 {
-		resp, err := s.getCartFromCache(ctx, userID)
-		if err == nil && resp != nil {
+		resp, err := readCartFromRedis(ctx, s.rdb, userID)
+		if err == nil {
 			return resp, nil
 		}
 	}
-
+	// DB 兜底 + 回填 Redis
 	cart, err := s.repo.FindOrCreate(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
@@ -37,39 +48,9 @@ func (s *CartService) GetCart(ctx context.Context, userID int64, sessionID strin
 	if err != nil {
 		return nil, err
 	}
-	resp := buildCartResponse(cart, items)
-
+	resp := buildCartResp(cart, items)
 	if s.rdb != nil && userID > 0 {
-		_ = setCartCache(ctx, s.rdb, userID, &cartMetaCache{
-			ItemCount:   resp.ItemCount,
-			TotalAmount: resp.TotalAmount,
-		}, items)
-	}
-	return resp, nil
-}
-
-func (s *CartService) getCartFromCache(ctx context.Context, userID int64) (*CartResponse, error) {
-	meta, items, err := getCartCache(ctx, s.rdb, userID)
-	if err != nil {
-		return nil, err
-	}
-	resp := &CartResponse{
-		ItemCount:   meta.ItemCount,
-		TotalAmount: meta.TotalAmount,
-		Items:       make([]CartItemResponse, 0, len(items)),
-	}
-	for _, item := range items {
-		resp.Items = append(resp.Items, CartItemResponse{
-			ID:          item.ID,
-			SkuID:       item.SkuID,
-			ProductID:   item.ProductID,
-			ProductName: item.ProductName,
-			SkuSpec:     item.SkuSpec,
-			Image:       item.Image,
-			Price:       item.Price,
-			Quantity:    item.Quantity,
-			Subtotal:    item.Price * int64(item.Quantity),
-		})
+		_ = writeCartToRedis(ctx, s.rdb, userID, resp)
 	}
 	return resp, nil
 }
@@ -79,79 +60,106 @@ func (s *CartService) AddItem(ctx context.Context, userID int64, sessionID strin
 	if err != nil {
 		return nil, fmt.Errorf("sku not found: %d", req.SkuID)
 	}
-	cart, err := s.repo.FindOrCreate(ctx, userID, sessionID)
+
+	// 读取当前 Redis 购物车，追加或更新商品
+	resp, err := s.loadOrCreateCartRedis(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		var existing CartItem
-		err := tx.Where("cart_id = ? AND sku_id = ?", cart.ID, sku.GetID()).First(&existing).Error
-		if err == nil {
-			existing.Quantity += req.Quantity
-			existing.Price = sku.GetPrice()
-			return tx.Model(&existing).Updates(map[string]interface{}{
-				"quantity": existing.Quantity,
-				"price":    existing.Price,
-			}).Error
+
+	found := false
+	for i, item := range resp.Items {
+		if item.SkuID == req.SkuID {
+			resp.Items[i].Quantity += req.Quantity
+			resp.Items[i].Price = sku.GetPrice()
+			resp.Items[i].Subtotal = resp.Items[i].Price * int64(resp.Items[i].Quantity)
+			found = true
+			break
 		}
-		return tx.Create(&CartItem{
-			CartID:    cart.ID,
-			SkuID:     sku.GetID(),
-			ProductID: sku.GetProductID(),
-			SkuSpec:   sku.GetSpecJSON(),
-			Image:     sku.GetImage(),
-			Price:     sku.GetPrice(),
-			Quantity:  req.Quantity,
-		}).Error
-	})
-	if err != nil {
-		return nil, err
 	}
-	s.db.Transaction(func(tx *gorm.DB) error { return s.repo.UpdateSummary(tx, cart.ID) })
+	if !found {
+		resp.Items = append(resp.Items, CartItemResponse{
+			SkuID:       sku.GetID(),
+			ProductID:   sku.GetProductID(),
+			ProductName: sku.GetProductName(),
+			SkuSpec:     sku.GetSpecJSON(),
+			Image:       sku.GetImage(),
+			Price:       sku.GetPrice(),
+			Quantity:    req.Quantity,
+			Subtotal:    sku.GetPrice() * int64(req.Quantity),
+		})
+	}
+
+	resp.recalc()
 	if s.rdb != nil && userID > 0 {
-		delCartCache(ctx, s.rdb, userID)
+		_ = writeCartToRedis(ctx, s.rdb, userID, resp)
 	}
-	return s.GetCart(ctx, userID, sessionID)
+	s.debounceSync(userID)
+	return resp, nil
 }
 
 func (s *CartService) UpdateQuantity(ctx context.Context, userID int64, sessionID string, req *UpdateItemReq) (*CartResponse, error) {
-	cart, err := s.repo.FindOrCreate(ctx, userID, sessionID)
+	resp, err := s.loadOrCreateCartRedis(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
-	s.db.Transaction(func(tx *gorm.DB) error {
-		if req.Quantity <= 0 {
-			return s.repo.RemoveItem(tx, cart.ID, req.SkuID)
+
+	if req.Quantity <= 0 {
+		for i, item := range resp.Items {
+			if item.SkuID == req.SkuID {
+				resp.Items = append(resp.Items[:i], resp.Items[i+1:]...)
+				break
+			}
 		}
-		return tx.Model(&CartItem{}).Where("cart_id = ? AND sku_id = ?", cart.ID, req.SkuID).Update("quantity", req.Quantity).Error
-	})
-	s.db.Transaction(func(tx *gorm.DB) error { return s.repo.UpdateSummary(tx, cart.ID) })
-	if s.rdb != nil && userID > 0 {
-		delCartCache(ctx, s.rdb, userID)
+	} else {
+		for i, item := range resp.Items {
+			if item.SkuID == req.SkuID {
+				resp.Items[i].Quantity = req.Quantity
+				resp.Items[i].Subtotal = item.Price * int64(req.Quantity)
+				break
+			}
+		}
 	}
-	return s.GetCart(ctx, userID, sessionID)
+
+	resp.recalc()
+	if s.rdb != nil && userID > 0 {
+		_ = writeCartToRedis(ctx, s.rdb, userID, resp)
+	}
+	s.debounceSync(userID)
+	return resp, nil
 }
 
 func (s *CartService) RemoveItem(ctx context.Context, userID int64, sessionID string, skuID int64) (*CartResponse, error) {
-	cart, err := s.repo.FindOrCreate(ctx, userID, sessionID)
+	resp, err := s.loadOrCreateCartRedis(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
-	s.db.Transaction(func(tx *gorm.DB) error { return s.repo.RemoveItem(tx, cart.ID, skuID) })
-	s.db.Transaction(func(tx *gorm.DB) error { return s.repo.UpdateSummary(tx, cart.ID) })
-	if s.rdb != nil && userID > 0 {
-		delCartCache(ctx, s.rdb, userID)
+
+	for i, item := range resp.Items {
+		if item.SkuID == skuID {
+			resp.Items = append(resp.Items[:i], resp.Items[i+1:]...)
+			break
+		}
 	}
-	return s.GetCart(ctx, userID, sessionID)
+
+	resp.recalc()
+	if s.rdb != nil && userID > 0 {
+		_ = writeCartToRedis(ctx, s.rdb, userID, resp)
+	}
+	s.debounceSync(userID)
+	return resp, nil
 }
 
 func (s *CartService) ClearCart(ctx context.Context, userID int64, sessionID string) error {
+	if s.rdb != nil && userID > 0 {
+		delCartFromRedis(ctx, s.rdb, userID)
+		s.debounceSync(userID)
+		return nil
+	}
+	// 无 Redis 时兜底 DB
 	cart, err := s.repo.FindOrCreate(ctx, userID, sessionID)
 	if err != nil {
 		return err
-	}
-	if s.rdb != nil && userID > 0 {
-		delCartCache(ctx, s.rdb, userID)
 	}
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		if err := s.repo.ClearItems(tx, cart.ID); err != nil {
@@ -161,16 +169,92 @@ func (s *CartService) ClearCart(ctx context.Context, userID int64, sessionID str
 	})
 }
 
-func buildCartResponse(cart *Cart, items []CartItem) *CartResponse {
+// loadOrCreateCartRedis 读 Redis 购物车，不存在则建空车
+func (s *CartService) loadOrCreateCartRedis(ctx context.Context, userID int64, sessionID string) (*CartResponse, error) {
+	if s.rdb != nil && userID > 0 {
+		resp, err := readCartFromRedis(ctx, s.rdb, userID)
+		if err == nil {
+			return resp, nil
+		}
+	}
+	// Redis miss → 从 DB 读
+	cart, err := s.repo.FindOrCreate(ctx, userID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.repo.ListItems(ctx, cart.ID)
+	if err != nil {
+		return nil, err
+	}
+	return buildCartResp(cart, items), nil
+}
+
+// ── 异步落库 ────────────────────────────────────
+
+// debounceSync 防抖延迟同步：5s 内无新写入再落库
+func (s *CartService) debounceSync(userID int64) {
+	if s.rdb == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if t, ok := s.pendingSync[userID]; ok {
+		t.Stop()
+	}
+	s.pendingSync[userID] = time.AfterFunc(5*time.Second, func() {
+		s.syncToDB(context.Background(), userID)
+	})
+}
+
+func (s *CartService) syncToDB(ctx context.Context, userID int64) {
+	defer func() {
+		s.mu.Lock()
+		delete(s.pendingSync, userID)
+		s.mu.Unlock()
+	}()
+
+	resp, err := readCartFromRedis(ctx, s.rdb, userID)
+	if err != nil {
+		return
+	}
+
+	cart, err := s.repo.FindOrCreate(ctx, userID, "")
+	if err != nil {
+		return
+	}
+	_ = s.db.Transaction(func(tx *gorm.DB) error {
+		_ = s.repo.ClearItems(tx, cart.ID)
+		for _, item := range resp.Items {
+			ci := &CartItem{
+				CartID:      cart.ID,
+				SkuID:       item.SkuID,
+				ProductID:   item.ProductID,
+				ProductName: item.ProductName,
+				Image:       item.Image,
+				Price:       item.Price,
+				Quantity:    item.Quantity,
+			}
+			if item.SkuSpec != "" {
+				ci.SkuSpec = item.SkuSpec
+			}
+			if err := tx.Create(ci).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	_ = s.repo.UpdateSummary(s.db, cart.ID)
+}
+
+// ── Helper ────────────────────────────────────────
+
+func buildCartResp(cart *Cart, items []CartItem) *CartResponse {
 	resp := &CartResponse{
-		ID:          cart.ID,
-		ItemCount:   cart.ItemCount,
-		TotalAmount: cart.TotalAmount,
-		Items:       make([]CartItemResponse, 0, len(items)),
+		ID:    cart.ID,
+		Items: make([]CartItemResponse, 0, len(items)),
 	}
 	for _, item := range items {
 		resp.Items = append(resp.Items, CartItemResponse{
-			ID:          item.ID,
 			SkuID:       item.SkuID,
 			ProductID:   item.ProductID,
 			ProductName: item.ProductName,
@@ -181,7 +265,15 @@ func buildCartResponse(cart *Cart, items []CartItem) *CartResponse {
 			Subtotal:    item.Price * int64(item.Quantity),
 		})
 	}
+	resp.recalc()
 	return resp
 }
 
-// ── OrderService ─────────────────────────────────
+// recalc 从 items 重新计算 item_count / total_amount
+func (r *CartResponse) recalc() {
+	r.ItemCount = len(r.Items)
+	r.TotalAmount = 0
+	for _, item := range r.Items {
+		r.TotalAmount += item.Subtotal
+	}
+}

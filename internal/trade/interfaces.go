@@ -13,6 +13,7 @@ type SkuInfo interface {
 	GetPrice() int64
 	GetImage() string
 	GetSpecJSON() string
+	GetProductName() string
 }
 
 type SkuProvider interface {

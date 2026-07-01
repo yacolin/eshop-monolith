@@ -22,15 +22,22 @@ func (a *skuAdapter) FindByID(ctx context.Context, skuID int64) (SkuInfo, error)
 	if err != nil {
 		return nil, err
 	}
-	return skuItem{
+	item := skuItem{
 		id: sku.ID, productID: sku.ProductID, skuCode: sku.SkuCode,
 		price: sku.Price, image: sku.Image, specJSON: sku.Spec,
-	}, nil
+	}
+	if sku.ProductID > 0 {
+		spu, err := a.repo.FindByID(ctx, sku.ProductID)
+		if err == nil {
+			item.productName = spu.Name
+		}
+	}
+	return item, nil
 }
 
 type skuItem struct {
-	id, productID, price     int64
-	skuCode, image, specJSON string
+	id, productID, price               int64
+	skuCode, image, specJSON, productName string
 }
 
 func (s skuItem) GetID() int64        { return s.id }
@@ -39,6 +46,7 @@ func (s skuItem) GetSkuCode() string  { return s.skuCode }
 func (s skuItem) GetPrice() int64     { return s.price }
 func (s skuItem) GetImage() string    { return s.image }
 func (s skuItem) GetSpecJSON() string { return s.specJSON }
+func (s skuItem) GetProductName() string { return s.productName }
 
 // invAdapter 适配 inventory.InventoryService → trade.InventoryService
 type invAdapter struct {
@@ -60,8 +68,18 @@ func getCurrentUser(c *gin.Context) int64 {
 	if uid == nil {
 		return 0
 	}
-	id, _ := uid.(int64)
-	return id
+	switch v := uid.(type) {
+	case float64:
+		return int64(v)
+	case uint:
+		return int64(v)
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	default:
+		return 0
+	}
 }
 
 // ── Cart Handler ─────────────────────────────────
@@ -187,13 +205,13 @@ func RegisterCartRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 	svc := NewCartService(repo, skuA, db, rdb)
 	h := NewCartHandler(svc)
 
-	v1.Group("/carts").GET("", h.GetCart)
 	auth := v1.Group("/carts")
 	auth.Use(middleware.JWTAuth())
 	{
+		auth.GET("", h.GetCart)
 		auth.POST("/items", h.AddItem)
 		auth.PUT("/items", h.UpdateItem)
 		auth.DELETE("/items", h.RemoveItem)
-		auth.DELETE("", h.ClearCart)
+		auth.POST("/clear", h.ClearCart)
 	}
 }

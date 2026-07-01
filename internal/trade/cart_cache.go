@@ -11,71 +11,90 @@ import (
 )
 
 const (
-	cartCacheTTL = 2 * time.Hour
+	cartCacheTTL = 24 * time.Hour
 )
 
-// ── Key Builders ──
+func cartItemsKey(userID int64) string { return fmt.Sprintf("cart:%d:items", userID) }
+func cartMetaKey(userID int64) string  { return fmt.Sprintf("cart:%d:meta", userID) }
 
-func cacheKeyCartItems(userID int64) string { return fmt.Sprintf("cart:items:%d", userID) }
-func cacheKeyCartMeta(userID int64) string  { return fmt.Sprintf("cart:meta:%d", userID) }
-
-// ── CartItem Cache ──
-
-type cartMetaCache struct {
+type cartMeta struct {
 	ItemCount   int   `json:"item_count"`
 	TotalAmount int64 `json:"total_amount"`
 }
 
-func getCartCache(ctx context.Context, rdb redis.UniversalClient, userID int64) (*cartMetaCache, map[int64]*CartItem, error) {
-	pipe := rdb.Pipeline()
-	metaCmd := pipe.Get(ctx, cacheKeyCartMeta(userID))
-	itemsCmd := pipe.HGetAll(ctx, cacheKeyCartItems(userID))
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Meta
-	metaData, err := metaCmd.Bytes()
-	if err != nil {
-		return nil, nil, err
-	}
-	var meta cartMetaCache
-	if err := sonic.Unmarshal(metaData, &meta); err != nil {
-		return nil, nil, err
-	}
-
-	// Items
-	items := make(map[int64]*CartItem, len(itemsCmd.Val()))
-	for skuIDStr, itemJSON := range itemsCmd.Val() {
-		skuID, _ := strconv.ParseInt(skuIDStr, 10, 64)
-		var item CartItem
-		if err := sonic.Unmarshal([]byte(itemJSON), &item); err != nil {
-			continue
-		}
-		items[skuID] = &item
-	}
-	return &meta, items, nil
+type cachedCartItem struct {
+	ProductID   int64  `json:"product_id"`
+	ProductName string `json:"product_name"`
+	SkuSpec     string `json:"sku_spec"`
+	Image       string `json:"image"`
+	Price       int64  `json:"price"`
+	Quantity    int    `json:"quantity"`
 }
 
-func setCartCache(ctx context.Context, rdb redis.UniversalClient, userID int64, meta *cartMetaCache, items []CartItem) error {
+func readCartFromRedis(ctx context.Context, rdb redis.UniversalClient, userID int64) (*CartResponse, error) {
 	pipe := rdb.Pipeline()
-
-	metaData, _ := sonic.Marshal(meta)
-	pipe.Set(ctx, cacheKeyCartMeta(userID), metaData, cartCacheTTL)
-
-	itemKey := cacheKeyCartItems(userID)
-	pipe.Del(ctx, itemKey)
-	for i := range items {
-		itemData, _ := sonic.Marshal(&items[i])
-		pipe.HSet(ctx, itemKey, strconv.FormatInt(items[i].SkuID, 10), itemData)
+	metaCmd := pipe.Get(ctx, cartMetaKey(userID))
+	itemsCmd := pipe.HGetAll(ctx, cartItemsKey(userID))
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, err
 	}
-	pipe.Expire(ctx, itemKey, cartCacheTTL)
 
+	var meta cartMeta
+	metaData, err := metaCmd.Bytes()
+	if err != nil {
+		return nil, err
+	}
+	if err := sonic.Unmarshal(metaData, &meta); err != nil {
+		return nil, err
+	}
+
+	items := make([]CartItemResponse, 0, len(itemsCmd.Val()))
+	for skuIDStr, itemJSON := range itemsCmd.Val() {
+		var ci cachedCartItem
+		if err := sonic.Unmarshal([]byte(itemJSON), &ci); err != nil {
+			continue
+		}
+		skuID, _ := strconv.ParseInt(skuIDStr, 10, 64)
+		items = append(items, CartItemResponse{
+			SkuID:       skuID,
+			ProductID:   ci.ProductID,
+			ProductName: ci.ProductName,
+			SkuSpec:     ci.SkuSpec,
+			Image:       ci.Image,
+			Price:       ci.Price,
+			Quantity:    ci.Quantity,
+			Subtotal:    ci.Price * int64(ci.Quantity),
+		})
+	}
+
+	return &CartResponse{
+		ItemCount:   meta.ItemCount,
+		TotalAmount: meta.TotalAmount,
+		Items:       items,
+	}, nil
+}
+
+func writeCartToRedis(ctx context.Context, rdb redis.UniversalClient, userID int64, resp *CartResponse) error {
+	pipe := rdb.Pipeline()
+	metaData, _ := sonic.Marshal(cartMeta{ItemCount: resp.ItemCount, TotalAmount: resp.TotalAmount})
+	pipe.Set(ctx, cartMetaKey(userID), metaData, cartCacheTTL)
+	pipe.Del(ctx, cartItemsKey(userID))
+	for _, item := range resp.Items {
+		data, _ := sonic.Marshal(cachedCartItem{
+			ProductID:   item.ProductID,
+			ProductName: item.ProductName,
+			SkuSpec:     item.SkuSpec,
+			Image:       item.Image,
+			Price:       item.Price,
+			Quantity:    item.Quantity,
+		})
+		pipe.HSet(ctx, cartItemsKey(userID), strconv.FormatInt(item.SkuID, 10), data)
+	}
+	pipe.Expire(ctx, cartItemsKey(userID), cartCacheTTL)
 	_, err := pipe.Exec(ctx)
 	return err
 }
 
-func delCartCache(ctx context.Context, rdb redis.UniversalClient, userID int64) {
-	rdb.Del(ctx, cacheKeyCartItems(userID), cacheKeyCartMeta(userID))
+func delCartFromRedis(ctx context.Context, rdb redis.UniversalClient, userID int64) {
+	rdb.Del(ctx, cartItemsKey(userID), cartMetaKey(userID))
 }
