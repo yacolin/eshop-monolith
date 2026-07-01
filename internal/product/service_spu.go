@@ -462,12 +462,12 @@ func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailRes
 	if desc != nil {
 		descResp = desc
 	}
-	return &SPUDetailResponse{
-		SPU:         spu,
-		Attributes:  attrs,
-		Description: descResp,
-		SKUs:        skus,
-	}, nil
+		resp := AcquireDetailResponse()
+		resp.SPU = spu
+		resp.Attributes = attrs
+		resp.Description = descResp
+		resp.SKUs = skus
+		return resp, nil
 }
 
 // loadSKUInventory 补充 SKU 库存信息

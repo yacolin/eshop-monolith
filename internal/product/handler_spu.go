@@ -63,6 +63,7 @@ func (h *SpuHandler) GetByID(c *gin.Context) {
 		return
 	}
 	response.Success(c, result)
+	ReleaseDetailResponse(result)
 }
 
 // List 商品列表
@@ -153,19 +154,18 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) 
 	h := NewSpuHandler(svc)
 
 	// 异步预热 SPU 缓存（L1 + Bloom Filter + L2）
-		if rdb != nil {
-			go func() {
-				n, err := svc.WarmupCache(context.Background())
-				if err != nil {
-					logger.Warn("SPU cache warmup failed", "error", err)
-					log.Printf("[warmup] SPU cache warmup failed: %v", err)
-				} else {
-					logger.Info("SPU cache warmup done", "items", n)
-					log.Printf("[warmup] SPU cache warmup done: %d items", n)
-				}
-			}()
-		}
-
+	if rdb != nil {
+		go func() {
+			n, err := svc.WarmupCache(context.Background())
+			if err != nil {
+				logger.Warn("SPU cache warmup failed", "error", err)
+				log.Printf("[warmup] SPU cache warmup failed: %v", err)
+			} else {
+				logger.Info("SPU cache warmup done", "items", n)
+				log.Printf("[warmup] SPU cache warmup done: %d items", n)
+			}
+		}()
+	}
 
 	products := v1.Group("/products")
 	{

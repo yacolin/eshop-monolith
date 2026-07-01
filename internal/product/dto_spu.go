@@ -1,5 +1,30 @@
 package product
 
+import "sync"
+
+// ── sync.Pool for DTO ───────────────────────────────
+
+var detailRespPool = sync.Pool{
+	New: func() any {
+		return &SPUDetailResponse{
+			Attributes: make([]ProductAttrResponse, 0, 8),
+			SKUs:       make([]SKU, 0, 4),
+		}
+	},
+}
+
+func AcquireDetailResponse() *SPUDetailResponse {
+	return detailRespPool.Get().(*SPUDetailResponse)
+}
+
+func ReleaseDetailResponse(resp *SPUDetailResponse) {
+	resp.SPU = nil
+	resp.Attributes = resp.Attributes[:0]
+	resp.Description = nil
+	resp.SKUs = resp.SKUs[:0]
+	detailRespPool.Put(resp)
+}
+
 // ── Create ───────────────────────────────────────
 
 type CreateSKUItem struct {
