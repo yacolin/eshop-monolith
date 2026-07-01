@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
@@ -381,42 +380,6 @@ func (s *SpuService) buildListResult(ctx context.Context, ids []int64, size int)
 		cursor = base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(last.ID, 10)))
 	}
 	return &SPUListResult{List: list, Cursor: cursor, HasMore: hasMore}, nil
-}
-
-// WarmupCache 全量预热 SPU 到 Bloom Filter + L2 + L1
-func (s *SpuService) WarmupCache(ctx context.Context) (int, error) {
-	all, err := s.repo.FindAll(ctx)
-	if err != nil {
-		return 0, err
-	}
-	if len(all) == 0 {
-		return 0, nil
-	}
-
-	ids := make([]int64, len(all))
-	for i := range all {
-		ids[i] = all[i].ID
-	}
-	s.bloomFilter.addAll(ids)
-
-	if s.rdb != nil {
-		pipe := s.rdb.Pipeline()
-		for i := range all {
-			data, err := sonic.Marshal(&all[i])
-			if err != nil {
-				continue
-			}
-			pipe.Set(ctx, cacheKeySPU(all[i].ID), data, spuEntityTTL)
-		}
-		if _, err := pipe.Exec(ctx); err != nil {
-			_ = err
-		}
-	}
-
-	for i := range all {
-		s.localCache.warmupSingle(all[i].ID, &all[i])
-	}
-	return len(all), nil
 }
 
 func (s *SpuService) fetchFullFromDB(ctx context.Context, ids []int64, hasMore bool) (*SPUListResult, error) {
