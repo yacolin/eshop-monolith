@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"eshop-monolith/pkg/errcode"
+
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -60,11 +62,22 @@ func (s *CartService) AddItem(ctx context.Context, userID int64, sessionID strin
 	if err != nil {
 		return nil, fmt.Errorf("sku not found: %d", req.SkuID)
 	}
-
 	// 读取当前 Redis 购物车，追加或更新商品
 	resp, err := s.loadOrCreateCartRedis(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
+	}
+
+	// 计算添加后的总数量
+	existingQty := 0
+	for _, item := range resp.Items {
+		if item.SkuID == req.SkuID {
+			existingQty = item.Quantity
+			break
+		}
+	}
+	if existingQty+req.Quantity > int(sku.GetAvailableQuantity()) {
+		return nil, errcode.ErrInsufficientStock
 	}
 
 	found := false

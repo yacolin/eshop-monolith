@@ -15,6 +15,7 @@ import (
 // skuAdapter 适配 product.SKU → trade.SkuInfo
 type skuAdapter struct {
 	repo product.IspuRepository
+	db   *gorm.DB
 }
 
 func (a *skuAdapter) FindByID(ctx context.Context, skuID int64) (SkuInfo, error) {
@@ -32,21 +33,34 @@ func (a *skuAdapter) FindByID(ctx context.Context, skuID int64) (SkuInfo, error)
 			item.productName = spu.Name
 		}
 	}
+	// 查询可用库存
+	var inv struct {
+		Quantity int64  `gorm:"column:quantity"`
+		Reserved int64  `gorm:"column:reserved"`
+	}
+	if err := a.db.WithContext(ctx).Table("sp_inventories").
+		Select("quantity, reserved").
+		Where("sku_id = ? AND warehouse_id = 0", skuID).
+		Scan(&inv).Error; err == nil {
+		item.availableQuantity = inv.Quantity - inv.Reserved
+	}
 	return item, nil
 }
 
 type skuItem struct {
-	id, productID, price               int64
+	id, productID, price    int64
+	availableQuantity       int64
 	skuCode, image, specJSON, productName string
 }
 
-func (s skuItem) GetID() int64        { return s.id }
-func (s skuItem) GetProductID() int64 { return s.productID }
-func (s skuItem) GetSkuCode() string  { return s.skuCode }
-func (s skuItem) GetPrice() int64     { return s.price }
-func (s skuItem) GetImage() string    { return s.image }
-func (s skuItem) GetSpecJSON() string { return s.specJSON }
-func (s skuItem) GetProductName() string { return s.productName }
+func (s skuItem) GetID() int64               { return s.id }
+func (s skuItem) GetProductID() int64        { return s.productID }
+func (s skuItem) GetSkuCode() string         { return s.skuCode }
+func (s skuItem) GetPrice() int64            { return s.price }
+func (s skuItem) GetImage() string           { return s.image }
+func (s skuItem) GetSpecJSON() string        { return s.specJSON }
+func (s skuItem) GetProductName() string     { return s.productName }
+func (s skuItem) GetAvailableQuantity() int64 { return s.availableQuantity }
 
 // invAdapter 适配 inventory.InventoryService → trade.InventoryService
 type invAdapter struct {
@@ -201,7 +215,7 @@ func (h *CartHandler) ClearCart(c *gin.Context) {
 
 func RegisterCartRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 	repo := NewCartRepository(db)
-	skuA := &skuAdapter{repo: product.NewSpuRepository(db)}
+	skuA := &skuAdapter{repo: product.NewSpuRepository(db), db: db}
 	svc := NewCartService(repo, skuA, db, rdb)
 	h := NewCartHandler(svc)
 
