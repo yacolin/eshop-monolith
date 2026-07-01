@@ -1,11 +1,13 @@
 package marketing
 
 import (
+	"context"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -133,7 +135,7 @@ func (h *PromotionHandler) Delete(c *gin.Context) {
 	response.Success(c, gin.H{"message": "deleted"})
 }
 
-func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
+func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) {
 	repo := NewPromotionRepository(db)
 	svc := NewPromotionService(repo, db)
 	couponSvc := NewCouponService(repo, db)
@@ -163,7 +165,7 @@ func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 	}
 
 	// 秒杀
-	flashSvc := NewFlashService(repo, db)
+	flashSvc := NewFlashService(repo, db, rdb)
 	fh := NewFlashHandler(flashSvc)
 	flash := v1.Group("/flash")
 	flash.Use(middleware.JWTAuth())
@@ -171,4 +173,18 @@ func RegisterPromotionRoutes(v1 *gin.RouterGroup, db *gorm.DB) {
 		flash.POST("/buy", fh.Buy)
 		flash.POST("/confirm", fh.Confirm)
 	}
+
+	// 预热所有进行中的秒杀库存到 Redis
+	go func() {
+		ctx := context.Background()
+		active := int8(2)
+		flashType := int8(3)
+		promotions, _, err := repo.List(ctx, &active, &flashType, 1, 1000)
+		if err != nil {
+			return
+		}
+		for _, p := range promotions {
+			_ = flashSvc.LoadStockToRedis(ctx, p.ID)
+		}
+	}()
 }
