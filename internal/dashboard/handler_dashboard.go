@@ -1,6 +1,8 @@
 package dashboard
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
@@ -42,6 +44,9 @@ func RegisterDashboardRoutes(v1 *gin.RouterGroup, repos *repository.Repositories
 	{
 		dashboard.GET("/stats", h.GetStats)
 	}
+
+	// 后台定时刷新缓存（模块自身管理生命周期）
+	svc.StartPeriodicRefresh(context.Background())
 
 	return svc
 }

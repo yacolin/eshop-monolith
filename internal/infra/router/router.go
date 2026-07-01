@@ -3,7 +3,6 @@ package router
 import (
 	"context"
 	"sync/atomic"
-	"time"
 
 	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/trade"
@@ -163,26 +162,6 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 	// 		}
 	// 	}()
 	// }
-	// 仪表盘缓存预热 + 定时刷新（每4分钟刷新，略短于5分钟 TTL 防止过期）
-	if dashboardSvc != nil {
-		go func() {
-			logger.Info("Starting dashboard cache warmup...")
-			if err := dashboardSvc.RefreshCache(context.Background()); err != nil {
-				logger.Error("Dashboard cache warmup failed", "error", err)
-			} else {
-				logger.Info("Dashboard cache warmup completed")
-			}
-
-			// 定时刷新
-			ticker := time.NewTicker(4 * time.Minute)
-			defer ticker.Stop()
-			for range ticker.C {
-				if err := dashboardSvc.RefreshCache(context.Background()); err != nil {
-					logger.Error("Dashboard cache refresh failed", "error", err)
-				}
-			}
-		}()
-	}
 
 	// Start RabbitMQ consumers（WS 独立，业务合并）
 	go func() {

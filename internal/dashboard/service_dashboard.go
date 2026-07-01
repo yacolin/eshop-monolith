@@ -7,6 +7,7 @@ import (
 
 	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/infra/repository"
+	"eshop-monolith/pkg/logger"
 
 	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
@@ -17,7 +18,8 @@ import (
 
 const (
 	dashboardCacheKey = "dashboard:stats"
-	dashboardCacheTTL = 5 * time.Minute
+	dashboardCacheTTL = 20 * time.Minute
+	dashboardRefreshInterval = 15 * time.Minute
 )
 
 type DashboardService struct {
@@ -134,6 +136,26 @@ func (s *DashboardService) RefreshCache(ctx context.Context) error {
 
 func (s *DashboardService) InvalidateCache(ctx context.Context) {
 	s.rdb.Del(ctx, dashboardCacheKey)
+}
+
+// StartPeriodicRefresh 启动后台定时刷新。应在服务初始化时启动一次。
+func (s *DashboardService) StartPeriodicRefresh(ctx context.Context) {
+	go func() {
+		logger.Info("Starting dashboard cache warmup...")
+		if err := s.RefreshCache(ctx); err != nil {
+			logger.Error("Dashboard cache warmup failed", "error", err)
+		} else {
+			logger.Info("Dashboard cache warmup completed")
+		}
+
+		ticker := time.NewTicker(dashboardRefreshInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := s.RefreshCache(ctx); err != nil {
+				logger.Error("Dashboard cache refresh failed", "error", err)
+			}
+		}
+	}()
 }
 
 func (s *DashboardService) computeSummary(ctx context.Context) SummaryDTO {
