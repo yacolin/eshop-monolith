@@ -12,6 +12,7 @@ import (
 	"eshop-monolith/pkg/logger"
 
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/errgroup"
 )
 
 // UserInfoProvider 用户信息查询回调
@@ -138,48 +139,109 @@ func (h *Hub) handleShutdown() {
 	logger.Info("WebSocket Hub 已关闭所有连接")
 }
 
-// SendToUser 向指定用户发送消息（JSON bytes）
-func (h *Hub) SendToUser(userID int64, data []byte) {
+// ── Snapshot helpers ──
+
+// snapshotClients 返回所有客户端的快照（读锁释放后安全使用）
+func (h *Hub) snapshotClients() []*Client {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+	total := 0
+	for _, clients := range h.clients {
+		total += len(clients)
+	}
+	snapshot := make([]*Client, 0, total)
+	for _, clients := range h.clients {
+		for c := range clients {
+			snapshot = append(snapshot, c)
+		}
+	}
+	return snapshot
+}
 
-	if clients, ok := h.clients[userID]; ok {
-		for client := range clients {
-			select {
-			case client.Send <- data:
-				client.LastSeq = extractSeqID(data)
-			default:
-				logger.Warn("WebSocket 客户端发送缓冲区满，断开", "user_id", userID)
-				close(client.Send)
-				delete(clients, client)
+// snapshotUserClients 返回指定用户的客户端快照
+func (h *Hub) snapshotUserClients(userID int64) []*Client {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	clients := h.clients[userID]
+	snapshot := make([]*Client, 0, len(clients))
+	for c := range clients {
+		snapshot = append(snapshot, c)
+	}
+	return snapshot
+}
+
+// snapshotTargetClients 收集指定用户列表下所有客户端的快照
+func (h *Hub) snapshotTargetClients(userIDs []int64) []*Client {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	var snapshot []*Client
+	for _, uid := range userIDs {
+		if clients, ok := h.clients[uid]; ok {
+			for c := range clients {
+				snapshot = append(snapshot, c)
 			}
+		}
+	}
+	return snapshot
+}
+
+// sendToClient 向单个客户端发送数据，缓冲区满时断开连接
+func (h *Hub) sendToClient(client *Client, data []byte) {
+	select {
+	case client.Send <- data:
+		if id := extractSeqID(data); id > 0 {
+			client.LastSeq = id
+		}
+	default:
+		logger.Warn("WebSocket 客户端发送缓冲区满，断开", "user_id", client.UserID)
+		select {
+		case h.unregister <- client:
+		default:
 		}
 	}
 }
 
-// SendToUsers 向多个用户发送消息
-func (h *Hub) SendToUsers(userIDs []int64, data []byte) {
-	for _, uid := range userIDs {
-		h.SendToUser(uid, data)
+// SendToUser 向指定用户发送消息（JSON bytes）
+func (h *Hub) SendToUser(userID int64, data []byte) {
+	for _, client := range h.snapshotUserClients(userID) {
+		h.sendToClient(client, data)
 	}
+}
+
+// SendToUsers 向多个用户并发发送消息
+func (h *Hub) SendToUsers(userIDs []int64, data []byte) {
+	clients := h.snapshotTargetClients(userIDs)
+	g, _ := errgroup.WithContext(context.Background())
+	for _, client := range clients {
+		client := client
+		g.Go(func() error {
+			h.sendToClient(client, data)
+			return nil
+		})
+	}
+	g.Wait()
 }
 
 // Broadcast 向所有连接的客户端广播消息
 func (h *Hub) Broadcast(data []byte) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	for _, clients := range h.clients {
-		for client := range clients {
+	clients := h.snapshotClients()
+	g, _ := errgroup.WithContext(context.Background())
+	for _, client := range clients {
+		client := client
+		g.Go(func() error {
 			select {
 			case client.Send <- data:
 			default:
 				logger.Warn("WebSocket 广播：客户端缓冲区满，断开", "user_id", client.UserID)
-				close(client.Send)
-				delete(clients, client)
+				select {
+				case h.unregister <- client:
+				default:
+				}
 			}
-		}
+			return nil
+		})
 	}
+	g.Wait()
 }
 
 // broadcastSafe 向所有客户端广播，缓冲区满时静默丢弃，不主动断开连接
