@@ -1,6 +1,6 @@
 # eshop-monolith
 
-一个完整的电商单体应用系统 Demo，展示了清晰的分层架构和最佳实践。
+一个完整的电商单体应用系统 Demo，展示了 Go + Gin + GORM 的分层架构和工程最佳实践。
 
 ## 技术栈
 
@@ -8,255 +8,178 @@
 - **Web 框架**: Gin
 - **ORM**: GORM
 - **数据库**: MySQL 8.0
-- **缓存**: Redis 7
+- **缓存**: Redis 7 + Bloom Filter + 本地 LRU Cache
+- **消息队列**: RabbitMQ
 - **配置管理**: Viper
-- **日志**: Zap
+- **日志**: Zap + Lumberjack
+- **序列化**: Sonic (bytedance)
+- **WebSocket**: Gorilla WebSocket
+- **监控**: Prometheus
+- **文档**: Swagger
+- **限流**: Rate limiting middleware
 
 ## 核心特性
 
-- ✅ **清晰分层架构**: API → Service → Domain → Repository 四层架构
-- ✅ **模块化设计**: 购物车、库存、订单、支付、用户五大模块低耦合高内聚
+- ✅ **8 大业务模块**: product / trade / user / inventory / marketing / review / base / dashboard
+- ✅ **扁平化模块结构**: 每个模块 handler/model/repo/service/dto 同包，无冗余嵌套
+- ✅ **多级缓存体系**: L1 本地 LRU → Bloom Filter 拦截 → L2 Redis → DB 兜底
+- ✅ **Keyset 游标分页**: 基于 base64 编码游标的高性能分页，避免 offset 性能衰减
 - ✅ **统一认证授权**: JWT 认证 + RBAC 权限控制
-- ✅ **本地事务保证**: 基于 MySQL 的 ACID 事务
-- ✅ **幂等性控制**: 基于 Redis 的请求幂等性保证
-- ✅ **事件驱动**: 内部事件总线实现模块间解耦
-- ✅ **可观测性**: 结构化日志 + 请求追踪
+- ✅ **消息队列集成**: RabbitMQ 实现模块间异步通信 + WebSocket 实时推送
+- ✅ **WebSocket 实时推送**: 在线通知、断线重连、增量同步
+- ✅ **Prometheus 监控**: 业务指标暴露
+- ✅ **Swagger 文档**: 自动生成 API 文档
+- ✅ **统一错误处理**: 错误分类中间件，业务错误码 + 参数校验 + 404 自动处理
 
-## 项目亮点
-
-### 1. 清晰的架构分层
-
-```
-API 层 (Handlers) → 处理 HTTP 请求/响应
-    ↓
-Service 层 → 业务逻辑编排
-    ↓
-Domain 层 → 领域模型 + 仓储接口
-    ↓
-Repository 层 → 数据持久化
-```
-
-### 2. 模块化设计
-
-- **购物车模块**: 购物车管理、商品项增删改查、库存检查
-- **库存模块**: 产品管理、分类管理、库存管理、预占/释放
-- **订单模块**: 订单管理、状态流转、事件发布
-- **支付模块**: 支付管理、退款管理、支付方式管理
-- **用户模块**: 用户管理、JWT 认证、RBAC 权限
-
-### 3. 本地事务保证
-
-使用 MySQL 数据库事务保证数据一致性，避免了分布式事务的复杂性：
-
-```go
-// 示例：创建订单时自动扣减库存
-func (s *orderService) CreateOrder(ctx context.Context, req *CreateOrderRequest) error {
-    return s.db.Transaction(func(tx *gorm.DB) error {
-        // 1. 创建订单
-        // 2. 扣减库存
-        // 3. 发布订单创建事件
-        return nil
-    })
-}
-```
-
-### 4. 事件驱动架构
-
-通过内部事件总线实现模块间解耦：
-
-- 订单创建 → 发送通知
-- 库存不足 → 触发补货
-- 订单完成 → 更新统计
-
-## 适用场景
-
-本 Demo 适合用于：
-
-- 📚 学习 Go 语言分层架构设计
-- 🎓 面试项目展示（展示架构设计能力）
-- 💼 中小型项目快速开发模板
-- 🚀 从零开始的 Go Web 项目脚手架
-
-## 目录结构
+## 项目结构
 
 ```
 eshop-monolith/
 ├── cmd/
 │   └── server/
-│       └── main.go                    # 应用入口
+│       └── main.go                      # 应用入口
 ├── internal/
-│   ├── cart/                          # 购物车模块
-│   ├── inventory/                     # 库存模块（产品、分类、库存管理）
-│   ├── order/                         # 订单模块（订单管理、状态流转、事件发布）
-│   ├── payment/                       # 支付模块（支付管理、退款管理、支付方式管理）
-│   ├── user/                          # 用户模块（用户管理、JWT认证、RBAC权限控制）
-│   └── infra/                         # 基础设施（非业务模块）
-│       ├── domain/
-│       ├── eventbus/                  # 内部事件总线
-│       ├── repository/                # 数据库初始化 + 仓储集合
-│       └── router/                    # 统一路由注册
-├── pkg/                               # 通用工具包
-│   ├── config/                        # 配置管理（Viper）
-│   ├── errcode/                       # 业务错误码
-│   ├── logger/                        # 结构化日志（Zap）
-│   ├── middleware/                     # HTTP 中间件
-│   │   ├── errorhandler.go            # 全局错误处理
-│   │   └── jwtauth.go                 # JWT 认证
-│   ├── query/                         # 分页/排序查询
-│   ├── response/                      # 统一 JSON 响应
-│   └── utils/                         # 工具函数
-│       ├── cryptopwd.go
-│       ├── parseIntParam.go
-│       └── timestamp.go
+│   ├── product/                         # 商品模块（品牌、类目、属性、SPU/SKU）
+│   ├── trade/                           # 交易模块（购物车、订单、支付/退款）
+│   ├── user/                            # 用户模块（用户、认证、RBAC、地址）
+│   ├── inventory/                       # 库存模块（预占、释放、扣减、补货）
+│   ├── marketing/                       # 营销模块（促销、优惠券、秒杀）
+│   ├── review/                          # 评价模块（商品评价、审核、评分汇总）
+│   ├── base/                            # 基础模块（通知推送）
+│   ├── dashboard/                       # 仪表盘模块（运营数据汇总）
+│   └── infra/                           # 基础设施层
+│       ├── repository/                  # 数据库/Redis 初始化 + 仓储聚合
+│       ├── router/                      # 统一路由注册
+│       ├── rabbitmq/                    # RabbitMQ 客户端 + 消费者
+│       └── ws/                          # WebSocket Hub + 会话管理
+├── pkg/                                 # 通用工具包
+│   ├── config/                          # 配置管理（Viper）
+│   ├── errcode/                         # 业务错误码
+│   ├── logger/                          # 结构化日志（Zap）
+│   ├── middleware/                      # HTTP 中间件
+│   │   ├── errorhandler.go              # 全局错误处理
+│   │   └── jwtauth.go                   # JWT 认证
+│   ├── query/                           # 分页/排序查询
+│   ├── response/                        # 统一 JSON 响应
+│   └── utils/                           # 工具函数
 ├── configs/
-│   └── config.yaml                    # 配置文件
-├── docs/
-│   ├── API.md
-│   ├── DEPLOYMENT.md
-│   └── DEVELOPMENT.md
-├── scripts/
-│   ├── init.sql
-│   └── seed_rbac.sql
-├── .gitignore
-├── go.mod
-├── go.sum
-└── README.md
+│   └── config.yaml                      # 配置文件
+├── docs/                                # Swagger + 项目文档
+├── scripts/                             # SQL 脚本 + 工具脚本
+├── sample_data/                         # 示例数据集
+├── tests/                               # 集成测试
+├── docker-compose.yml
+├── Makefile
+└── go.mod
 ```
 
-## 架构说明
+## 模块一览
 
-### 分层职责
+| 模块 | 说明 | API 标签 |
+|------|------|----------|
+| **product** | 商品 SPU/SKU 管理、品牌、类目、属性规格 | `products`, `brands`, `categories`, `attributes` |
+| **trade** | 购物车、订单、支付/退款 | `carts`, `orders`, `payments`, `refunds` |
+| **user** | 用户注册登录、资料管理、地址管理、RBAC 权限 | `users`, `auth`, `roles`, `permissions`, `addresses` |
+| **inventory** | 库存管理、预占、扣减、补货、流水 | `inventories` |
+| **marketing** | 促销活动、优惠券领取核销、秒杀抢购 | `promotions`, `coupons`, `flash` |
+| **review** | 商品评价创建、审核、评分汇总 | `reviews` |
+| **base** | 站内通知推送、系统通知 | `notifications` |
+| **dashboard** | 运营仪表盘数据汇总 | `dashboard` |
 
-| 层级          | 目录            | 职责                                | 依赖                     |
-| ------------- | --------------- | ----------------------------------- | ------------------------ |
-| API 层        | `*/api/`        | HTTP 请求处理、参数验证、响应格式化 | Service 层               |
-| Service 层    | `*/service/`    | 业务逻辑编排、事务管理、事件发布    | Domain 层、Repository 层 |
-| Domain 层     | `*/domain/`     | 领域模型定义、业务规则、仓储接口    | 无（核心层）             |
-| Repository 层 | `*/repository/` | 数据持久化、SQL 操作                | Domain 层                |
-| EventBus      | `eventbus/`     | 模块间事件通信                      | Service 层               |
+## 架构设计
+
+### 扁平化模块架构
+
+```
+Handler → Service → Repository → DB
+              ↑
+         External Dependency（跨模块接口）
+```
+
+每个业务模块采用**扁平包结构**，文件按职责命名，不嵌套子目录：
+
+```
+internal/product/
+├── model_spu.go            # 领域模型 + TableName
+├── model_sku.go
+├── model_category.go
+├── repo_spu.go             # Repository 接口 + GORM 实现（同一文件）
+├── repo_category.go
+├── service_spu.go          # 业务逻辑
+├── service_brand.go
+├── handler_spu.go          # Gin Handler + 路由注册
+├── handler_brand.go
+├── dto_spu.go              # 请求/响应 DTO
+└── cache.go                # 缓存层（L1/L2/BloomFilter/热 Key 计数）
+```
+
+### 跨模块依赖
+
+跨模块调用通过**接口依赖反转**实现，而非直接导入对方包：
+
+```go
+// trade/interfaces.go — 定义 trade 需要的外部依赖
+type SkuProvider interface {
+    FindByID(ctx context.Context, skuID int64) (SkuInfo, error)
+}
+type InventoryService interface {
+    Lock(ctx context.Context, skuID int64, quantity int) error
+    Unlock(ctx context.Context, skuID int64, quantity int) error
+}
+```
 
 ### 依赖方向
 
 ```
-API 层 → Service 层 → Domain 层 ← Repository 层
-                      ↑
-                 EventBus
+product → DB
+   ↑
+trade  → product (via interface) + inventory (via interface)
+   ↑
+review → trade (via interface) + user (via interface)
 ```
 
-## 当前实现
+### 多级缓存架构（Product SPU）
 
-### 1. 订单模块
+```
+请求到达
+  │
+  ├── L1 Local LRU Cache (8K 条目, 60s TTL + jitter)
+  │     └── 命中 → 返回
+  │
+  ├── Bloom Filter（快速拦截不存在的 ID）
+  │     └── 不存在 → 直接返回 404（无 DB 查询）
+  │
+  ├── L2 Redis (10min TTL)
+  │     └── 命中 → 回填 L1 → 返回
+  │
+  └── DB 兜底
+        └── 回填 L2 + L1 + Bloom Filter → 返回
+```
 
-**API 端点**:
+- 列表查询使用 **Redis ZSET** 缓存 ID 列表，支持游标分页
+- 热 Key 计数窗口 10s，超阈值触发本地缓存强化
+- 写操作使用**延迟双删**策略保证缓存一致性
+- 启动时异步预热全量数据到 Bloom Filter + L2 + L1
 
-- `POST /api/v1/orders` 创建订单（本地事务）
-- `GET /api/v1/orders` 订单列表（支持分页、筛选）
-- `GET /api/v1/orders/:id` 订单详情
-- `PUT /api/v1/orders/:id` 更新订单状态
-- `DELETE /api/v1/orders/:id` 取消订单
-- `POST /api/v1/orders/:id/cancel` 取消订单
-- `PATCH /api/v1/orders/:id/status` 更新订单状态
+### 错误处理
 
-**核心功能**:
+```go
+// handler 中通过 c.Error(err) 传递错误
+func (h *SpuHandler) GetByID(c *gin.Context) {
+    result, err := h.svc.GetByID(c, id)
+    if err != nil {
+        c.Error(err)  // → ErrorHandler 中间件自动分类处理
+        return
+    }
+    response.Success(c, result)
+}
+```
 
-- ✅ 订单 CRUD
-- ✅ 本地事务保证（订单创建 + 库存扣减）
-- ✅ 订单状态机管理
-- ✅ 领域事件发布
-
-### 2. 库存模块
-
-**API 端点**:
-
-- `POST /api/v1/products` 创建产品
-- `GET /api/v1/products` 产品列表
-- `GET /api/v1/products/:id` 产品详情
-- `PUT /api/v1/products/:id` 更新产品
-- `DELETE /api/v1/products/:id` 删除产品
-- `POST /api/v1/inventories` 创建库存
-- `GET /api/v1/inventories` 库存列表
-- `POST /api/v1/inventories/reserve` 预占库存
-- `POST /api/v1/inventories/release` 释放库存
-- `POST /api/v1/categories` 创建分类
-- `GET /api/v1/categories` 分类列表
-- `GET /api/v1/categories/:id` 分类详情
-- `PUT /api/v1/categories/:id` 更新分类
-- `DELETE /api/v1/categories/:id` 删除分类
-
-**核心功能**:
-
-- ✅ 产品管理（CRUD）
-- ✅ 库存管理（预占、释放、调整）
-- ✅ 库存检查
-- ✅ 库存预警
-- ✅ 分类管理（CRUD）
-
-### 3. 用户模块
-
-**API 端点**:
-
-- `POST /api/v1/users/register` 用户注册
-- `POST /api/v1/users/login` 用户登录
-- `GET /api/v1/users/profile` 获取用户资料
-- `PUT /api/v1/users/profile` 更新用户资料
-- `POST /api/v1/auth/refresh` 刷新 Token
-- `GET /api/v1/roles` 角色管理
-- `GET /api/v1/permissions` 权限管理
-- `POST /api/v1/permissions/check` 权限检查
-- `GET /api/v1/users` 用户列表
-- `GET /api/v1/users/:user_id` 获取用户详情
-- `GET /api/v1/users/:user_id/roles` 获取用户角色
-- `POST /api/v1/users/:user_id/roles` 分配角色给用户
-- `DELETE /api/v1/users/:user_id/roles/:role_id` 从用户移除角色
-
-**核心功能**:
-
-- ✅ 用户注册与登录
-- ✅ JWT 认证
-- ✅ 密码加密（bcrypt）
-- ✅ Token 刷新机制
-- ✅ RBAC 权限控制
-- ✅ 用户信息管理
-
-### 4. 支付模块
-
-**API 端点**:
-
-- `POST /api/v1/payments` 创建支付
-- `GET /api/v1/payments` 支付列表（支持分页、筛选）
-- `GET /api/v1/payments/:id` 支付详情
-- `PATCH /api/v1/payments/:id/status` 更新支付状态
-- `GET /api/v1/orders/payment/:order_id` 根据订单ID获取支付
-- `POST /api/v1/refunds` 创建退款
-- `GET /api/v1/refunds` 退款列表（支持分页、筛选）
-- `PATCH /api/v1/refunds/:id/status` 更新退款状态
-- `GET /api/v1/payment-methods` 获取支付方式列表
-
-**核心功能**:
-
-- ✅ 支付管理（创建、查询、更新状态）
-- ✅ 退款管理（创建、查询、更新状态）
-- ✅ 支付方式管理
-- ✅ 与订单系统集成
-- ✅ 支付状态变更触发订单状态更新
-- ✅ 领域事件发布
-
-### 5. 购物车模块
-
-**API 端点**:
-
-- `GET /api/v1/carts` 获取购物车（支持 user_id 或 session_id）
-- `POST /api/v1/carts/items` 添加商品到购物车
-- `PUT /api/v1/carts/items/{item_id}` 更新购物车项
-- `DELETE /api/v1/carts/items/{item_id}` 删除购物车项
-- `DELETE /api/v1/carts` 清空购物车
-
-**核心功能**:
-
-- ✅ 购物车 CRUD
-- ✅ 用户/会话购物车管理
-- ✅ 库存检查
-- ✅ 领域事件发布
+ErrorHandler 自动分类：
+- `*errcode.BizError` → 业务错误，返回 code + message
+- `validator.ValidationErrors` → 422 + 字段级错误详情
+- `gorm.ErrRecordNotFound` → 自动转为 404
+- 其他 → 500 系统错误
 
 ## 本地运行
 
@@ -265,546 +188,218 @@ API 层 → Service 层 → Domain 层 ← Repository 层
 - Go 1.21+
 - MySQL 8.0+
 - Redis 7+
+- RabbitMQ（可选，用于消息推送）
 - Make (可选)
 
 ### 运行步骤
 
-#### 1. 启动依赖服务
-
 ```bash
-# 本地安装并启动 MySQL 和 Redis
-# MySQL: 确保 3306 端口可用
-# Redis: 确保 6379 端口可用
-```
+# 1. 启动依赖服务（MySQL + Redis + RabbitMQ）
+#    或使用 Docker Compose：
+docker-compose up -d
 
-#### 2. 初始化数据库
+# 2. 初始化数据库
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS eshop_db;"
 
-```bash
-# 创建数据库
-mysql -u root -p -e "CREATE DATABASE eshop_db;"
-
-# 执行初始化脚本（仅建库，表结构由 AutoMigrate 自动创建）
-mysql -u root -p eshop_db < scripts/init.sql
-
-# 导入 RBAC 权限与测试用户数据
-mysql -u root -p eshop_db < scripts/seed_rbac.sql
-```
-
-#### 3. 配置环境
-
-```bash
-# 配置文件已存在于 configs/config.yaml
-# 可根据需要修改数据库密码等配置
-# 例如：修改 MySQL 密码
-# vim configs/config.yaml
-```
-
-#### 4. 运行应用
-
-```bash
-# 下载依赖
+# 3. 下载依赖
 go mod download
 
-# 运行应用
+# 4. 运行应用（表结构由 AutoMigrate 自动创建）
 go run ./cmd/server
 
-# 或使用 make
-make run
+# 或使用 Make
+make start
 ```
 
-#### 5. 生成 API 文档
+### 生成 Swagger 文档
 
 ```bash
-# 安装 swag CLI（首次使用）
 go install github.com/swaggo/swag/cmd/swag@latest
-
-# 生成 Swagger 文档
 swag init -g cmd/server/main.go --output docs
 ```
 
-启动服务后访问：**http://localhost:8080/swagger/index.html**
+启动后访问: **http://localhost:8080/swagger/index.html**
 
-### 使用 Makefile
+## API 端点
 
-```bash
-# 查看所有命令
-make help
+### 商品 Product
 
-# 安装依赖
-make deps
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/products` | 商品列表（Keyset 游标分页） |
+| GET | `/api/v1/products/:id` | 商品详情（含 SKU + 属性 + 图文描述） |
+| POST | `/api/v1/products` | 创建商品（事务内写 SPU+SKU+Description+Attribute） |
+| PUT | `/api/v1/products/:id` | 更新商品 |
+| DELETE | `/api/v1/products/:id` | 删除商品 |
+| GET | `/api/v1/categories` | 类目树（层级聚合子类目品牌） |
+| GET | `/api/v1/brands` | 品牌列表 |
+| GET | `/api/v1/attributes` | 属性列表 |
+| GET | `/api/v1/category-brands` | 类目品牌关联 |
+| GET | `/api/v1/skus` | SKU 列表（含库存信息） |
 
-# 运行测试
-make test
+### 交易 Trade
 
-# 构建应用
-make build
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/carts` | 获取购物车 |
+| POST | `/api/v1/orders` | 创建订单 |
+| GET | `/api/v1/orders` | 订单列表 |
+| GET | `/api/v1/orders/:id` | 订单详情（含订单项） |
+| POST | `/api/v1/payments` | 创建支付 |
+| POST | `/api/v1/refunds` | 创建退款 |
 
-# 运行应用
-make run
+### 用户 User
 
-# 清理
-make clean
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/users/register` | 用户注册 |
+| POST | `/api/v1/users/login` | 用户登录 |
+| GET | `/api/v1/users/profile` | 获取用户资料 |
+| PUT | `/api/v1/users/profile` | 更新用户资料 |
+| POST | `/api/v1/auth/refresh` | 刷新 Token |
+| GET/POST | `/api/v1/roles` | 角色管理 |
+| GET/POST | `/api/v1/permissions` | 权限管理 |
+| GET/POST/PUT/DELETE | `/api/v1/addresses` | 地址管理 |
+
+### 库存 Inventory
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/inventories/stock` | 查询库存 |
+| POST | `/api/v1/inventories/lock` | 预占库存 |
+| POST | `/api/v1/inventories/unlock` | 释放库存 |
+| POST | `/api/v1/inventories/deduct` | 扣减库存 |
+| POST | `/api/v1/inventories/restock` | 入库/补货 |
+| GET | `/api/v1/inventories/logs` | 库存变更流水 |
+
+### 营销 Marketing
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET/POST | `/api/v1/promotions` | 促销管理 |
+| POST | `/api/v1/coupons/claim` | 领取优惠券 |
+| POST | `/api/v1/coupons/use` | 使用优惠券 |
+| POST | `/api/v1/flash/buy` | 秒杀抢购 |
+| POST | `/api/v1/flash/confirm` | 确认秒杀订单 |
+
+### 评价 Review
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/reviews` | 创建评价 |
+| GET | `/api/v1/reviews/me` | 我的评价 |
+| GET | `/api/v1/products/:id/reviews` | 商品评价列表 |
+| GET | `/api/v1/products/:id/rating` | 商品评分汇总 |
+| PATCH | `/api/v1/admin/reviews/:id/moderate` | 审核评价 |
+
+### 通知 Notification
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/notifications` | 通知列表 |
+| GET | `/api/v1/notifications/unread` | 未读通知数 |
+| PUT | `/api/v1/notifications/:id/read` | 标记已读 |
+
+### 仪表盘 Dashboard
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/dashboard/stats` | 运营数据汇总 |
+
+### WebSocket
+
+| 路径 | 说明 |
+|------|------|
+| GET | `/api/v1/ws?token=xxx&last_seq=0` | WebSocket 连接 |
+| GET | `/api/v1/ws/stats` | 在线统计 |
+| POST | `/api/v1/ws/reconnect` | 断线重连 |
+| GET | `/api/v1/ws/session` | 会话信息 |
+
+### 系统
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/health` | 健康检查（含预热状态） |
+| GET | `/metrics` | Prometheus 监控指标 |
+| GET | `/swagger/*any` | Swagger UI |
+
+## 关键设计
+
+### Keyset 游标分页
+
+使用 base64 编码的游标替代传统 offset/limit：
+
+```
+请求: GET /api/v1/products?cursor=MTIz&size=10
+响应: { "list": [...], "cursor": "MTM0", "has_more": true }
 ```
 
-## 配置说明
+- 避免大 offset 时的性能衰减
+- 列表 ID 缓存于 Redis ZSET，按 score 排序支持游标定位
 
-### 配置文件 `configs/config.yaml`
+### 缓存一致性（延迟双删）
 
-```yaml
-server:
-  port: 8080
-  mode: debug # debug, release, test
-  read_timeout: 30s
-  write_timeout: 30s
+写操作时：
+1. 删除 L1 缓存
+2. 删除 L2 Redis 缓存
+3. 执行数据库写操作
+4. 500ms 后再次异步删除 L2（解决主从延迟读脏）
 
-mysql:
-  host: localhost
-  port: 3306
-  username: root
-  password: root
-  database: eshop_db
-  charset: utf8mb4
-  max_idle_conns: 10
-  max_open_conns: 100
+### 秒杀
 
-redis:
-  host: localhost
-  port: 6379
-  password: ""
-  db: 0
-  pool_size: 10
+秒杀流程按步骤拆分，防止库存超卖：
+1. `POST /flash/buy` — 预占资格
+2. `POST /flash/confirm` — 确认订单（正式扣减）
 
-jwt:
-  secret: "your-secret-key-change-in-production"
-  expire_hours: 24
-  refresh_expire_hours: 168 # 7 days
+## 并发优化（已实施）
 
-log:
-  level: info # debug, info, warn, error
-  format: json # json, text
-  output: stdout # stdout, file
-  file_path: logs/app.log
+以下 7 个方向的并发优化已全部落地，覆盖 Dashboard 查询、列表 COUNT+LIMIT、商品详情、通知落库、WebSocket 广播、缓存预热、DTO 复用：
 
-rate_limit:
-  enabled: true
-  requests_per_second: 100
-  burst: 200
-
-cors:
-  allowed_origins:
-    - "http://localhost:3000"
-    - "http://localhost:8080"
-  allowed_methods:
-    - "GET"
-    - "POST"
-    - "PUT"
-    - "DELETE"
-    - "OPTIONS"
-  allowed_headers:
-    - "Origin"
-    - "Content-Type"
-    - "Authorization"
-```
-
-### 环境变量覆盖
-
-所有配置都支持环境变量覆盖（使用 `.` 替换为 `_`）：
-
-```bash
-SERVER_PORT=8081 \
-MYSQL_PASSWORD=secret \
-JWT_SECRET=production-secret \
-go run ./cmd/server
-```
-
-## API 使用示例
-
-### 用户注册
-
-```bash
-curl -X POST http://localhost:8080/api/v1/users/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "email": "test@example.com",
-    "password": "password123"
-  }'
-```
-
-### 用户登录
-
-```bash
-curl -X POST http://localhost:8080/api/v1/users/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "password": "password123"
-  }'
-```
-
-**响应**:
-
-```json
-{
-  "code": 0,
-  "message": "success",
-  "data": {
-    "access_token": "eyJhbGciOiJIUzI1NiIs...",
-    "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
-    "expires_in": 86400
-  }
-}
-```
-
-### 创建产品
-
-```bash
-curl -X POST http://localhost:8080/api/v1/products \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer {access_token}" \
-  -d '{
-    "name": "iPhone 15",
-    "description": "Apple iPhone 15 Pro Max",
-    "price": 999900,
-    "sku": "IPHONE15-001"
-  }'
-```
-
-### 创建订单（自动扣减库存）
-
-```bash
-curl -X POST http://localhost:8080/api/v1/orders \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer {access_token}" \
-  -d '{
-    "items": [
-      {
-        "product_id": "product-uuid",
-        "quantity": 2,
-        "unit_price": 999900
-      }
-    ],
-    "shipping_address": {
-      "province": "Guangdong",
-      "city": "Shenzhen",
-      "address": "Nanshan District"
-    }
-  }'
-```
-
-### 查询订单
-
-```bash
-curl -X GET http://localhost:8080/api/v1/orders \
-  -H "Authorization: Bearer {access_token}" \
-  -H "X-Idempotency-Key: unique-request-id"
-```
+| # | 方向 | 关键变更 | Commit |
+|---|------|---------|--------|
+| 1 | Dashboard 并行聚合 | errgroup 并行执行 7 个统计查询；InvalidateCache 接入订单创建 | d64c273 |
+| 2 | 列表 COUNT+LIMIT 并发 | 泛型 ConcurrentCountList[T]，Order/Inventory 列表 COUNT+LIMIT 并发 | 28e4b34 |
+| 3 | 商品详情 Fan-Out | SPU/SKU/属性/描述四路 errgroup 并发获取后合并 | 773489e |
+| 4 | 通知 Worker Pool | 4 worker goroutine + buffered channel 异步落库，降级同步写 | 5d4133a |
+| 5 | WS 广播 Fan-Out | snapshot 快照 + errgroup 并发发送，读锁仅用于复制不阻塞 | c286189 |
+| 6 | 批量预热 Pipeline | DB Bloom Filter/Redis Pipeline/L1 三阶段 errgroup 并行 | f3bd696 |
+| 7 | sync.Pool 复用 DTO | SPUDetailResponse 对象池化复用，减少高频路径 GC | be07444 |
 
 ## 测试
-
-### 运行测试
 
 ```bash
 # 运行所有测试
 go test ./...
 
-# 运行单元测试
-go test ./test/unit/...
-
-# 运行集成测试
-go test ./test/integration/...
-
 # 运行测试并显示覆盖率
-go test -cover ./...
-
-# 生成覆盖率报告
 go test -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
+
+# 执行集成测试
+go test ./tests/...
 ```
 
-### 性能测试
+## 配置说明
+
+配置通过 `configs/config.yaml` 加载，支持环境变量覆盖：
 
 ```bash
-# 使用 wrk 进行压力测试
-wrk -t12 -c400 -d30s http://localhost:8080/api/v1/health
-
-# 使用 ab 测试
-ab -n 10000 -c 100 http://localhost:8080/api/v1/health
+MYSQL_PASSWORD=secret \
+JWT_SECRET=production-secret \
+RABBITMQ_HOST=192.168.1.100 \
+go run ./cmd/server
 ```
 
-## 性能优化建议
+## 生产建议
 
-### 数据库优化
-
-- ✅ 添加合适的索引
-- ✅ 使用连接池
-- ✅ 避免 N+1 查询
-- ✅ 使用预编译语句
-
-### 缓存策略
-
-- ✅ 热点数据缓存（用户信息、产品信息）
-- ✅ 本地缓存 + Redis 二级缓存
-- ✅ 缓存穿透、雪崩防护
-
-### 并发控制
-
-- ✅ 使用 sync.Pool 复用对象
-- ✅ 限流中间件
-- ✅ 熔断降级
-
-## 从微服务迁移到单体的变化
-
-### 移除的组件
-
-- ❌ gRPC 客户端/服务端
-- ❌ RabbitMQ 消息队列
-- ❌ Saga 分布式事务协调器
-- ❌ 服务发现和负载均衡
-- ❌ 独立的服务配置文件
-
-### 新增/改造的组件
-
-- ✅ 内部事件总线（替代 MQ）
-- ✅ 统一的事务管理器
-- ✅ 模块间直接调用
-- ✅ 统一的配置管理
-- ✅ 共享的领域模型
-
-### 架构对比
-
-| 方面     | 微服务版本      | 单体版本      |
-| -------- | --------------- | ------------- |
-| 部署单元 | 3个独立服务     | 1个应用       |
-| 事务     | Saga 最终一致性 | ACID 强一致性 |
-| 通信     | HTTP/gRPC + MQ  | 直接方法调用  |
-| 数据存储 | 3个独立数据库   | 1个共享数据库 |
-| 复杂度   | 高              | 中            |
-| 开发效率 | 低              | 高            |
-| 运维成本 | 高              | 低            |
-
-## 生产部署建议
-
-### 1. 安全配置
-
-```yaml
-# 生产环境必须修改
-jwt:
-  secret: "使用强随机密钥（至少32位）"
-
-mysql:
-  password: "使用强密码"
-
-# 启用 HTTPS
-server:
-  tls_enabled: true
-  cert_file: /path/to/cert.pem
-  key_file: /path/to/key.pem
-```
-
-### 2. 日志和监控
-
-```yaml
-# 使用结构化日志
-log:
-  format: json
-  output: file
-  file_path: /var/log/eshop/app.log
-
-# 启用健康检查
-health:
-  enabled: true
-  path: /health
-```
-
-### 3. 性能调优
-
-```bash
-# 设置 GOMAXPROCS
-export GOMAXPROCS=8
-
-# 设置 GC 百分比
-export GOGC=100
-
-# 使用优化编译
-go build -ldflags="-s -w" -o app ./cmd/server
-```
-
-## 故障排查
-
-### 应用无法启动
-
-1. 检查配置文件：
-   ```bash
-   cat configs/config.yaml
-   ```
-2. 检查数据库连接：
-   ```bash
-   mysql -h localhost -u root -p -e "SELECT 1"
-   ```
-3. 检查 Redis 连接：
-   ```bash
-   redis-cli ping
-   ```
-4. 查看应用日志：
-   ```bash
-   # 直接查看应用输出日志
-   ```
-
-### 性能问题
-
-1. 开启慢查询日志：
-   ```sql
-   SET GLOBAL slow_query_log = 'ON';
-   SET GLOBAL long_query_time = 1;
-   ```
-2. 查看数据库连接数：
-   ```sql
-   SHOW PROCESSLIST;
-   ```
-3. 分析索引使用：
-   ```sql
-   EXPLAIN SELECT * FROM orders WHERE user_id = 'xxx';
-   ```
-
-### 常见错误
-
-| 错误                        | 原因           | 解决方案               |
-| --------------------------- | -------------- | ---------------------- |
-| `connection refused`        | 数据库未启动   | 启动本地 MySQL 服务    |
-| `invalid token`             | JWT 密钥不匹配 | 检查 `jwt.secret` 配置 |
-| `duplicate key`             | 唯一约束冲突   | 检查业务逻辑           |
-| `context deadline exceeded` | 超时           | 增加超时时间或优化查询 |
-
-## 开发指南
-
-### 添加新功能模块
-
-1. 创建领域模型：
-   ```go
-   // internal/{module}/domain/models/{model}.go
-   type Payment struct {
-       ID     string
-       Amount int64
-       Status string
-   }
-   ```
-2. 定义仓储接口：
-   ```go
-   // internal/{module}/domain/repositories/{repo}.go
-   type PaymentRepository interface {
-       Create(ctx context.Context, payment *Payment) error
-       FindByID(ctx context.Context, id string) (*Payment, error)
-   }
-   ```
-3. 实现仓储：
-   ```go
-   // internal/{module}/domain/repositories/{repo}.go
-   type paymentRepo struct {
-       db *gorm.DB
-   }
-   ```
-4. 创建服务：
-   ```go
-   // internal/{module}/service/{service}.go
-   type PaymentService struct {
-       repo PaymentRepository
-   }
-   ```
-5. 添加处理器：
-   ```go
-   // internal/{module}/api/handlers/{handler}.go
-   func (h *PaymentHandler) CreatePayment(c *gin.Context) {
-       // 处理请求
-   }
-   ```
-6. 注册路由：
-   ```go
-   // internal/{module}/api/routes/{routes}.go
-   func RegisterPaymentRoutes(r *gin.RouterGroup, repos *repository.Repositories) {
-       paymentGroup := r.Group("/payments")
-       paymentGroup.POST("/", handlers.Payment.CreatePayment)
-   }
-   ```
-7. 在 `internal/infra/router/router.go` 中调用路由注册函数
-
-### 代码规范
-
-1. **命名规范**：
-   - 包名：小写，单数
-   - 文件名：snake_case
-   - 变量/函数：camelCase
-   - 导出类型/函数：PascalCase
-2. **错误处理**：
-   ```go
-   if err != nil {
-       return fmt.Errorf("failed to create order: %w", err)
-   }
-   ```
-3. **日志规范**：
-   ```go
-   logger.Info("order created",
-       zap.String("order_id", order.ID),
-       zap.Int64("amount", order.TotalAmount),
-   )
-   ```
-
-### Git 提交规范
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-类型：
-
-- `feat`: 新功能
-- `fix`: Bug 修复
-- `docs`: 文档更新
-- `style`: 代码格式
-- `refactor`: 重构
-- `test`: 测试
-- `chore`: 构建/工具
-
-示例：
-
-```
-feat(order): add order cancellation feature
-
-- Add cancel order endpoint
-- Implement order status validation
-- Add refund logic for cancelled orders
-
-Closes #123
-```
-
-## 贡献指南
-
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'feat: add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-### Pull Request 要求
-
-- ✅ 通过所有测试
-- ✅ 更新相关文档
-- ✅ 符合代码规范
-- ✅ 添加必要的注释
+- 修改 JWT secret 和数据库密码
+- 启用 HTTPS
+- 设置 `server.mode: release`
+- 日志格式切换为 `format: json`
+- 调整连接池参数
+- 配置 Prometheus 监控
+- 部署 RabbitMQ 集群
 
 ## 许可证
 
-本项目采用 MIT 许可证 - 查看 LICENSE 文件了解详情
-
-## 联系方式
-
-- 项目链接: <https://github.com/yourusername/eshop-monolith>
-- 问题反馈: [Issues](https://github.com/yourusername/eshop-monolith/issues)
-
-## 致谢
-
-感谢所有贡献者的支持！
+MIT
