@@ -3,6 +3,8 @@ package trade
 import (
 	"context"
 
+	"eshop-monolith/pkg/query"
+
 	"gorm.io/gorm"
 )
 
@@ -57,16 +59,7 @@ func (r *OrderRepository) List(ctx context.Context, userID int64, status string,
 	if status != "" {
 		db = db.Where("status = ?", status)
 	}
-	var total int64
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	var list []Order
-	offset := (page - 1) * size
-	if err := db.Offset(offset).Limit(size).Order("id DESC").Find(&list).Error; err != nil {
-		return nil, 0, err
-	}
-	return list, total, nil
+	return query.ConcurrentCountList[Order](db.Order("id DESC"), page, size)
 }
 
 func (r *OrderRepository) ListItems(ctx context.Context, orderID int64) ([]OrderItem, error) {

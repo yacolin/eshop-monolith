@@ -3,6 +3,8 @@ package inventory
 import (
 	"context"
 
+	"eshop-monolith/pkg/query"
+
 	"gorm.io/gorm"
 )
 
@@ -27,7 +29,7 @@ func NewInventoryRepository(db *gorm.DB) IinventoryRepository {
 func (r *InventoryRepository) FindBySkuForUpdate(tx *gorm.DB, skuID, warehouseID int64) (*Inventory, error) {
 	var inv Inventory
 	err := tx.Where("sku_id = ? AND warehouse_id = ?", skuID, warehouseID).
-		Session(&gorm.Session{}).First(&inv).Error // Session to avoid sharing with outer context
+		Session(&gorm.Session{}).First(&inv).Error
 	return &inv, err
 }
 
@@ -58,16 +60,7 @@ func (r *InventoryRepository) ListLogs(ctx context.Context, skuID int64, changeT
 	if changeType != "" {
 		db = db.Where("change_type = ?", changeType)
 	}
-	var total int64
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	var list []InventoryLog
-	offset := (page - 1) * size
-	if err := db.Offset(offset).Limit(size).Order("id DESC").Find(&list).Error; err != nil {
-		return nil, 0, err
-	}
-	return list, total, nil
+	return query.ConcurrentCountList[InventoryLog](db.Order("id DESC"), page, size)
 }
 
 func (r *InventoryRepository) FindOrCreateWithTx(tx *gorm.DB, skuID, warehouseID int64) (*Inventory, error) {
