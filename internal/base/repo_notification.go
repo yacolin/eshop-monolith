@@ -9,7 +9,7 @@ import (
 
 type InotificationRepository interface {
 	Create(ctx context.Context, n *Notification) error
-	ListByUserID(ctx context.Context, userID int64, page, size int) ([]Notification, int64, error)
+	ListByUserID(ctx context.Context, userID int64, req *NotificationListReq) ([]Notification, int64, error)
 	GetUnreadCount(ctx context.Context, userID int64) (int64, error)
 	MarkAsRead(ctx context.Context, id, userID int64) error
 	MarkAllAsRead(ctx context.Context, userID int64) error
@@ -30,7 +30,7 @@ func (r *NotificationRepository) Create(ctx context.Context, n *Notification) er
 	return r.db.WithContext(ctx).Create(n).Error
 }
 
-func (r *NotificationRepository) ListByUserID(ctx context.Context, userID int64, page, size int) ([]Notification, int64, error) {
+func (r *NotificationRepository) ListByUserID(ctx context.Context, userID int64, req *NotificationListReq) ([]Notification, int64, error) {
 	db := r.db.WithContext(ctx)
 
 	var total int64
@@ -47,7 +47,7 @@ func (r *NotificationRepository) ListByUserID(ctx context.Context, userID int64,
 		Where("n.user_id IN (0, ?)", userID).
 		Where("n.deleted_at IS NULL").
 		Order("n.priority ASC, n.created_at DESC").
-		Offset((page - 1) * size).Limit(size).
+		Offset((req.Page - 1) * req.Size).Limit(req.Size).
 		Find(&list).Error
 	return list, total, err
 }

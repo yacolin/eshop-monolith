@@ -2,7 +2,6 @@ package base
 
 import (
 	"encoding/json"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -49,19 +48,18 @@ func currentUserID(c *gin.Context) int64 {
 // @Success 200 {object} response.Response{data=NotificationListResult}
 // @Router /api/v1/notifications [get]
 func (h *NotificationHandler) ListNotifications(c *gin.Context) {
-	page, size := 1, 10
-	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
-		page = p
+	var req NotificationListReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.Error(err)
+		return
 	}
-	if s, err := strconv.Atoi(c.Query("size")); err == nil && s > 0 && s <= 100 {
-		size = s
-	}
-	list, total, err := h.svc.ListNotifications(c, currentUserID(c), page, size)
+	result, err := h.svc.ListNotifications(c, currentUserID(c), &req)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	response.Success(c, &NotificationListResult{Total: total, List: toRespList(list)})
+	// response.Success(c, &NotificationListResult{Total: total, List: toRespList(list)})
+	response.Success(c, result)
 }
 
 // GetUnreadCount 未读通知数
@@ -296,4 +294,3 @@ func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositor
 
 	return svc
 }
-

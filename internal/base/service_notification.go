@@ -71,25 +71,17 @@ func (s *NotificationService) GetTemplateByCode(ctx context.Context, code string
 	return s.repo.GetTemplateByCode(ctx, code)
 }
 
-func (s *NotificationService) ListNotifications(ctx context.Context, userID int64, page, size int) ([]*Notification, int64, error) {
-	if page <= 0 {
-		page = 1
-	}
-	if size <= 0 {
-		size = 10
-	}
-	if size > 100 {
-		size = 100
-	}
-	list, total, err := s.repo.ListByUserID(ctx, userID, page, size)
+func (s *NotificationService) ListNotifications(ctx context.Context, userID int64, req *NotificationListReq) (*NotificationListResult, error) {
+	req.Normalize()
+	list, total, err := s.repo.ListByUserID(ctx, userID, req)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	result := make([]*Notification, len(list))
+	respList := make([]*NotificationResp, len(list))
 	for i := range list {
-		result[i] = &list[i]
+		respList[i] = toResp(&list[i])
 	}
-	return result, total, nil
+	return &NotificationListResult{Total: total, List: respList}, nil
 }
 
 func (s *NotificationService) GetUnreadCount(ctx context.Context, userID int64) (int64, error) {
