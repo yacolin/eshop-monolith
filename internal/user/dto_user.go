@@ -1,5 +1,32 @@
 package user
 
+// ── Request ──
+
+type UserListReq struct {
+	Page    int    `form:"page,default=1" binding:"gte=1"`
+	Size    int    `form:"size,default=20" binding:"gte=1,lte=100"`
+	Status  *int8  `form:"status"`
+	Keyword string `form:"keyword"`
+}
+
+// ── Response ──
+
+type UserRoleBrief struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+}
+
+type UserListItem struct {
+	*User
+	Roles []UserRoleBrief `json:"roles"`
+}
+
+type UserListResult struct {
+	Total int64           `json:"total"`
+	List  []*UserListItem `json:"list"`
+}
+
 // 用户更新个人信息请求
 type UpdateUserInfoReq struct {
 	Nickname string `json:"nickname" binding:"max=50"`

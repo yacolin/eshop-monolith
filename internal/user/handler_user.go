@@ -102,22 +102,12 @@ func (h *UserHandler) List(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	users, total, err := h.userSvc.List(c, &req)
+	result, err := h.userSvc.List(c, &req)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-
-	items := make([]*UserListItem, len(users))
-	for i := range users {
-		roles, _ := h.roleSvc.GetUserRoles(c, users[i].ID)
-		roleBriefs := make([]UserRoleBrief, len(roles))
-		for j := range roles {
-			roleBriefs[j] = UserRoleBrief{ID: roles[j].ID, Name: roles[j].Name, DisplayName: roles[j].DisplayName}
-		}
-		items[i] = &UserListItem{User: &users[i], Roles: roleBriefs}
-	}
-	response.Success(c, &UserListResult{Total: total, List: items})
+	response.Success(c, result)
 }
 
 // AssignRole 给用户分配角色
@@ -178,7 +168,7 @@ func (h *UserHandler) RemoveRole(c *gin.Context) {
 // ── Routes ────────────────────────────────────────
 
 func RegisterUserRoutes(v1 *gin.RouterGroup, db *gorm.DB, userRepo IuserRepository, infoRepo IuserInfoRepository, roleRepo IroleRepository) {
-	userSvc := NewUserService(userRepo, infoRepo)
+	userSvc := NewUserService(userRepo, infoRepo, roleRepo)
 	roleSvc := NewRoleService(roleRepo)
 	h := NewUserHandler(userSvc, roleSvc)
 	roleCfg := NewRequireRoleConfig(roleRepo)

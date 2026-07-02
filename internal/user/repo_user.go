@@ -78,7 +78,7 @@ func (r *UserRepository) List(ctx context.Context, keyword string, status *int8,
 	}
 	var list []User
 	offset := (page - 1) * size
-	if err := db.Offset(offset).Limit(size).Order("id DESC").Find(&list).Error; err != nil {
+	if err := db.Offset(offset).Limit(size).Order("id ASC").Find(&list).Error; err != nil {
 		return nil, 0, err
 	}
 	return list, total, nil
