@@ -22,7 +22,7 @@ func (s *RoleService) Create(ctx context.Context, req *CreateRoleReq) (*Role, er
 		Name:        req.Name,
 		DisplayName: req.DisplayName,
 		Description: req.Description,
-		IsSystem:    req.IsSystem,
+		RoleType:    req.RoleType,
 	}
 	if req.Status != nil {
 		role.Status = *req.Status
@@ -67,7 +67,7 @@ func (s *RoleService) Update(ctx context.Context, id int64, req *UpdateRoleReq) 
 		return nil, err
 	}
 
-	if role.IsSystem {
+	if role.RoleType != "builtin" {
 		return nil, errcode.ErrCannotModifySystemRole
 	}
 
@@ -98,7 +98,7 @@ func (s *RoleService) Delete(ctx context.Context, id int64) error {
 		}
 		return err
 	}
-	if role.IsSystem {
+	if role.RoleType != "builtin" {
 		return errcode.ErrCannotDeleteSystemRole
 	}
 	return s.roleRepo.Delete(ctx, id)
