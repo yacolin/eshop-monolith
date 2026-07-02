@@ -20,10 +20,6 @@ type NotificationResp struct {
 	RedirectURL     string `json:"redirect_url,omitempty"`
 	IconURL         string `json:"icon_url,omitempty"`
 	IsRead          bool   `json:"is_read"`
-	ReadAt          int64  `json:"read_at,omitempty"`
-	IsProcessed     bool   `json:"is_processed"`
-	ProcessedAt     int64  `json:"processed_at,omitempty"`
-	ProcessResult   string `json:"process_result,omitempty"`
 	Priority        int8   `json:"priority"`
 	CreatedBy       int64  `json:"created_by"`
 	CreatedAt       int64  `json:"created_at"`

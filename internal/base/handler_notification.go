@@ -197,7 +197,7 @@ func (h *NotificationHandler) buildWSMessage(n *Notification) map[string]interfa
 // ── helpers ────────────────────────────────────────
 
 func toResp(n *Notification) *NotificationResp {
-	r := &NotificationResp{
+	return &NotificationResp{
 		ID:              n.ID,
 		UserID:          n.UserID,
 		Title:           n.Title,
@@ -211,20 +211,11 @@ func toResp(n *Notification) *NotificationResp {
 		RedirectURL:     n.RedirectURL,
 		IconURL:         n.IconURL,
 		IsRead:          n.IsRead,
-		IsProcessed:     n.IsProcessed,
-		ProcessResult:   n.ProcessResult,
 		Priority:        n.Priority,
 		CreatedBy:       n.CreatedBy,
 		CreatedAt:       n.CreatedAt.UnixMilli(),
 		UpdatedAt:       n.UpdatedAt.UnixMilli(),
 	}
-	if n.ReadAt != nil {
-		r.ReadAt = n.ReadAt.UnixMilli()
-	}
-	if n.ProcessedAt != nil {
-		r.ProcessedAt = n.ProcessedAt.UnixMilli()
-	}
-	return r
 }
 
 func toRespList(list []*Notification) []*NotificationResp {

@@ -10,7 +10,8 @@ import (
 
 type Notification struct {
 	ID              int64           `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID          int64           `gorm:"not null;index:idx_user_read" json:"user_id"`
+	UserID          int64           `gorm:"not null;index:idx_user_id" json:"user_id"`
+	MerchantID      int64           `gorm:"not null;default:0" json:"merchant_id"`
 	Title           string          `gorm:"type:varchar(200);not null" json:"title"`
 	Content         string          `gorm:"type:text;not null" json:"content"`
 	ContentTemplate string          `gorm:"type:varchar(100)" json:"content_template,omitempty"`
@@ -18,23 +19,31 @@ type Notification struct {
 	Channel         int8            `gorm:"type:tinyint;not null;index:idx_channel" json:"channel"`
 	Category        int8            `gorm:"type:tinyint;not null;index:idx_category" json:"category"`
 	TargetType      string          `gorm:"type:varchar(30)" json:"target_type,omitempty"`
-	TargetID        *int64          `gorm:"" json:"target_id,omitempty"`
+	TargetID        *int64          `json:"target_id,omitempty"`
 	RedirectURL     string          `gorm:"type:varchar(500)" json:"redirect_url,omitempty"`
 	IconURL         string          `gorm:"type:varchar(500)" json:"icon_url,omitempty"`
-	IsRead          bool            `gorm:"not null;default:false" json:"is_read"`
-	ReadAt          *time.Time      `gorm:"type:datetime(3)" json:"read_at,omitempty"`
-	IsProcessed     bool            `gorm:"not null;default:false;index:idx_processed" json:"is_processed"`
-	ProcessedAt     *time.Time      `gorm:"type:datetime(3)" json:"processed_at,omitempty"`
-	ProcessResult   string          `gorm:"type:varchar(200)" json:"process_result,omitempty"`
-	IsDeletedByUser bool            `gorm:"not null;default:false" json:"is_deleted_by_user"`
 	Priority        int8            `gorm:"type:tinyint;not null;default:1" json:"priority"`
 	CreatedBy       int64           `gorm:"not null;default:0" json:"created_by"`
 	CreatedAt       utils.Timestamp `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);index:idx_created" json:"created_at"`
 	UpdatedAt       utils.Timestamp `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
 	DeletedAt       gorm.DeletedAt  `gorm:"type:datetime(3)" json:"-"`
+
+	// computed: LEFT JOIN base_notification_reads, 只读不写入
+	IsRead bool `gorm:"->;default:0" json:"is_read"`
 }
 
 func (Notification) TableName() string { return "base_notifications" }
+
+// NotificationRead 已读记录
+type NotificationRead struct {
+	ID             int64           `gorm:"primaryKey;autoIncrement" json:"id"`
+	NotificationID int64           `gorm:"not null;uniqueIndex:uk_notification_user" json:"notification_id"`
+	UserID         int64           `gorm:"not null;uniqueIndex:uk_notification_user;index:idx_user" json:"user_id"`
+	ReadAt         time.Time       `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"read_at"`
+	CreatedAt      utils.Timestamp `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
+}
+
+func (NotificationRead) TableName() string { return "base_notification_reads" }
 
 type NotificationTemplate struct {
 	ID              int64           `gorm:"primaryKey;autoIncrement" json:"id"`

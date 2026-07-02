@@ -29,40 +29,61 @@ func (r *NotificationRepository) Create(ctx context.Context, n *Notification) er
 }
 
 func (r *NotificationRepository) ListByUserID(ctx context.Context, userID int64, page, size int) ([]Notification, int64, error) {
-	q := r.db.WithContext(ctx).Model(&Notification{}).
-		Where("(user_id = ? OR user_id = 0) AND is_deleted_by_user = ?", userID, false)
+	db := r.db.WithContext(ctx)
+
 	var total int64
-	if err := q.Count(&total).Error; err != nil {
+	if err := db.Model(&Notification{}).
+		Where("user_id IN (0, ?)", userID).
+		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
+
 	var list []Notification
-	err := q.Order("priority ASC, created_at DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error
+	err := db.Table("base_notifications n").
+		Select("n.*, IF(nr.id IS NOT NULL, TRUE, FALSE) as is_read").
+		Joins("LEFT JOIN base_notification_reads nr ON nr.notification_id = n.id AND nr.user_id = ?", userID).
+		Where("n.user_id IN (0, ?)", userID).
+		Where("n.deleted_at IS NULL").
+		Order("n.priority ASC, n.created_at DESC").
+		Offset((page - 1) * size).Limit(size).
+		Find(&list).Error
 	return list, total, err
 }
 
 func (r *NotificationRepository) GetUnreadCount(ctx context.Context, userID int64) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&Notification{}).
-		Where("(user_id = ? OR user_id = 0) AND is_read = ? AND is_deleted_by_user = ?", userID, false, false).
-		Count(&count).Error
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT COUNT(*)
+		FROM base_notifications n
+		LEFT JOIN base_notification_reads nr ON nr.notification_id = n.id AND nr.user_id = ?
+		WHERE n.user_id IN (0, ?)
+		  AND nr.id IS NULL
+		  AND n.deleted_at IS NULL
+	`, userID, userID).Scan(&count).Error
 	return count, err
 }
 
 func (r *NotificationRepository) MarkAsRead(ctx context.Context, id, userID int64) error {
-	now := time.Now()
-	return r.db.WithContext(ctx).Model(&Notification{}).
-		Where("id = ? AND (user_id = ? OR user_id = 0)", id, userID).
-		Updates(map[string]any{"is_read": true, "read_at": now}).Error
+	return r.db.WithContext(ctx).Exec(
+		"INSERT IGNORE INTO base_notification_reads (notification_id, user_id, read_at) VALUES (?, ?, ?)",
+		id, userID, time.Now(),
+	).Error
 }
 
 func (r *NotificationRepository) MarkAllAsRead(ctx context.Context, userID int64) error {
-	return r.db.WithContext(ctx).Model(&Notification{}).
-		Where("(user_id = ? OR user_id = 0) AND is_read = ?", userID, false).
-		Update("is_read", true).Error
+	return r.db.WithContext(ctx).Exec(`
+		INSERT IGNORE INTO base_notification_reads (notification_id, user_id, read_at)
+		SELECT n.id, ?, ?
+		FROM base_notifications n
+		LEFT JOIN base_notification_reads nr ON nr.notification_id = n.id AND nr.user_id = ?
+		WHERE n.user_id IN (0, ?)
+		  AND nr.id IS NULL
+		  AND n.deleted_at IS NULL
+	`, userID, time.Now(), userID, userID).Error
 }
 
 func (r *NotificationRepository) Delete(ctx context.Context, id, userID int64) error {
-	return r.db.WithContext(ctx).Model(&Notification{}).
-		Where("id = ? AND (user_id = ? OR user_id = 0)", id, userID).
-		Update("is_deleted_by_user", true).Error
+	return r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Delete(&Notification{}, id).Error
 }
