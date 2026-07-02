@@ -26,11 +26,6 @@ func NewOrderService(repo IorderRepository, skuSvc SkuProvider, invSvc Inventory
 	return &OrderService{repo: repo, skuSvc: skuSvc, invSvc: invSvc, db: db, eventBus: eventBus}
 }
 
-type OrderListResult struct {
-	Total int64    `json:"total"`
-	List  []*Order `json:"list"`
-}
-
 func (s *OrderService) Create(ctx context.Context, userID int64, req *CreateOrderReq) (*Order, error) {
 	type skuWithQty struct {
 		SkuInfo
@@ -126,7 +121,7 @@ func (s *OrderService) GetOrderDetail(ctx context.Context, orderNo string) (*Ord
 
 func (s *OrderService) List(ctx context.Context, req *OrderListReq) (*OrderListResult, error) {
 	req.Normalize()
-	list, total, err := s.repo.List(ctx, req.UserID, req.Status, req.Page, req.Size)
+	list, total, err := s.repo.List(ctx, req)
 	if err != nil {
 		return nil, err
 	}

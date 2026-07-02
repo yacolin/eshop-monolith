@@ -14,7 +14,7 @@ type IorderRepository interface {
 	CreateLog(ctx context.Context, log *OrderLog) error
 	FindByOrderNo(ctx context.Context, orderNo string) (*Order, error)
 	FindByID(ctx context.Context, id int64) (*Order, error)
-	List(ctx context.Context, userID int64, status string, page, size int) ([]Order, int64, error)
+	List(ctx context.Context, req *OrderListReq) ([]Order, int64, error)
 	ListItems(ctx context.Context, orderID int64) ([]OrderItem, error)
 	UpdateStatus(ctx context.Context, orderNo string, fromStatus, toStatus string) error
 }
@@ -51,15 +51,24 @@ func (r *OrderRepository) FindByID(ctx context.Context, id int64) (*Order, error
 	return &o, err
 }
 
-func (r *OrderRepository) List(ctx context.Context, userID int64, status string, page, size int) ([]Order, int64, error) {
+func (r *OrderRepository) List(ctx context.Context, req *OrderListReq) ([]Order, int64, error) {
 	db := r.db.WithContext(ctx).Model(&Order{})
-	if userID > 0 {
-		db = db.Where("user_id = ?", userID)
+	if req.UserID > 0 {
+		db = db.Where("user_id = ?", req.UserID)
 	}
-	if status != "" {
-		db = db.Where("status = ?", status)
+	if req.Status != "" {
+		db = db.Where("status = ?", req.Status)
 	}
-	return query.ConcurrentCountList[Order](db.Order("id DESC"), page, size)
+	if req.PaymentStatus != "" {
+		db = db.Where("payment_status = ?", req.PaymentStatus)
+	}
+	if req.MerchantID > 0 {
+		db = db.Where("merchant_id = ?", req.MerchantID)
+	}
+	if req.OrderNo != "" {
+		db = db.Where("order_no = ?", req.OrderNo)
+	}
+	return query.ConcurrentCountList[Order](db.Order("id DESC"), req.Page, req.Size)
 }
 
 func (r *OrderRepository) ListItems(ctx context.Context, orderID int64) ([]OrderItem, error) {

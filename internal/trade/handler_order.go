@@ -66,6 +66,11 @@ func (h *OrderHandler) GetByOrderNo(c *gin.Context) {
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param size query int false "每页条数" default(10)
+// @Param user_id query int false "用户ID"
+// @Param status query string false "订单状态"
+// @Param payment_status query string false "支付状态"
+// @Param merchant_id query int false "商户ID"
+// @Param order_no query string false "订单号"
 // @Success 200 {object} response.Response{data=OrderListResult}
 // @Router /api/v1/orders [get]
 func (h *OrderHandler) List(c *gin.Context) {

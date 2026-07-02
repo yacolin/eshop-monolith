@@ -27,8 +27,16 @@ type CreateOrderReq struct {
 
 type OrderListReq struct {
 	query.Pagination
-	Status string `form:"status"`
-	UserID int64  `form:"user_id"`
+	UserID        int64  `form:"user_id"`
+	Status        string `form:"status"`
+	PaymentStatus string `form:"payment_status"`
+	MerchantID    int64  `form:"merchant_id"`
+	OrderNo       string `form:"order_no"`
+}
+
+type OrderListResult struct {
+	Total int64    `json:"total"`
+	List  []*Order `json:"list"`
 }
 
 type UpdateOrderStatusReq struct {
