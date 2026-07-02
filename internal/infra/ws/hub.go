@@ -534,6 +534,11 @@ func (h *Hub) GetUserLastSeq(userID int64) (int64, error) {
 	return session.LastSeq, nil
 }
 
+// NextSeq 获取下一个全局序列号
+func (h *Hub) NextSeq() int64 {
+	return h.globalSeq.Add(1)
+}
+
 // sendWelcomeMessage 发送欢迎消息
 func (h *Hub) sendWelcomeMessage(client *Client) {
 	go func() {

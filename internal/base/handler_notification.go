@@ -1,12 +1,14 @@
 package base
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"eshop-monolith/internal/infra/repository"
+	ws "eshop-monolith/internal/infra/ws"
 	"eshop-monolith/internal/user"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
@@ -15,10 +17,11 @@ import (
 
 type NotificationHandler struct {
 	svc *NotificationService
+	hub *ws.Hub
 }
 
-func NewNotificationHandler(svc *NotificationService) *NotificationHandler {
-	return &NotificationHandler{svc: svc}
+func NewNotificationHandler(svc *NotificationService, h *ws.Hub) *NotificationHandler {
+	return &NotificationHandler{svc: svc, hub: h}
 }
 
 func currentUserID(c *gin.Context) int64 {
@@ -146,11 +149,49 @@ func (h *NotificationHandler) SendSystemNotification(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	if _, err := h.svc.CreateNotification(c, req.UserID, req.Title, req.Content, ChannelInApp, CategorySystem); err != nil {
+	n, err := h.svc.CreateNotification(c, req.UserID, req.Title, req.Content, ChannelInApp, CategorySystem)
+	if err != nil {
 		c.Error(err)
 		return
 	}
+	// WebSocket 实时推送
+	if h.hub != nil {
+		if req.UserID == 0 {
+			h.broadcastToAll(n)
+		} else {
+			h.pushToWS(req.UserID, n)
+		}
+	}
 	response.Success(c, nil)
+}
+
+// pushToWS 通过 WebSocket 推送通知给指定用户
+func (h *NotificationHandler) pushToWS(userID int64, n *Notification) {
+	msg := h.buildWSMessage(n)
+	data, _ := json.Marshal(msg)
+	h.hub.SendToUser(userID, data)
+}
+
+// broadcastToAll 通过 WebSocket 广播通知给所有在线用户
+func (h *NotificationHandler) broadcastToAll(n *Notification) {
+	msg := h.buildWSMessage(n)
+	data, _ := json.Marshal(msg)
+	h.hub.Broadcast(data)
+}
+
+func (h *NotificationHandler) buildWSMessage(n *Notification) map[string]interface{} {
+	return map[string]interface{}{
+		"seq":   h.hub.NextSeq(),
+		"type":  "notification",
+		"payload": map[string]interface{}{
+			"id":       n.ID,
+			"title":    n.Title,
+			"content":  n.Content,
+			"channel":  n.Channel,
+			"category": n.Category,
+			"is_read":  false,
+		},
+	}
 }
 
 // ── helpers ────────────────────────────────────────
@@ -162,7 +203,7 @@ func toResp(n *Notification) *NotificationResp {
 		Title:           n.Title,
 		Content:         n.Content,
 		ContentTemplate: n.ContentTemplate,
-		TemplateParams:  n.TemplateParams,
+		TemplateParams:  safeStr(n.TemplateParams),
 		Channel:         n.Channel,
 		Category:        n.Category,
 		TargetType:      n.TargetType,
@@ -194,12 +235,19 @@ func toRespList(list []*Notification) []*NotificationResp {
 	return resp
 }
 
+func safeStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // ── Routes ────────────────────────────────────────
 
-func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB) *NotificationService {
+func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, wsHub *ws.Hub) *NotificationService {
 	repo := NewNotificationRepository(db)
 	svc := NewNotificationService(repo)
-	h := NewNotificationHandler(svc)
+	h := NewNotificationHandler(svc, wsHub)
 
 	notify := v1.Group("/notifications")
 	notify.Use(middleware.JWTAuth())

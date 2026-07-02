@@ -5,105 +5,42 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"sync"
 	"time"
 
 	"eshop-monolith/internal/infra/rabbitmq"
 	"eshop-monolith/internal/inventory"
 	"eshop-monolith/internal/trade"
 	"eshop-monolith/pkg/logger"
+	"eshop-monolith/pkg/utils"
 )
 
-type notificationJob struct {
-	UserID   int64
-	Title    string
-	Content  string
-	Channel  int8
-	Category int8
-}
-
 type NotificationService struct {
-	repo      InotificationRepository
-	jobChan   chan *notificationJob
-	workerWg  sync.WaitGroup
-	closeOnce sync.Once
+	repo InotificationRepository
 }
 
 func NewNotificationService(repo InotificationRepository) *NotificationService {
-	svc := &NotificationService{
-		repo:    repo,
-		jobChan: make(chan *notificationJob, 1024),
-	}
-	svc.startWorkers()
-	return svc
-}
-
-func (s *NotificationService) startWorkers() {
-	for i := 0; i < 4; i++ {
-		s.workerWg.Add(1)
-		go func() {
-			defer s.workerWg.Done()
-			for job := range s.jobChan {
-				n := &Notification{
-					UserID:   job.UserID,
-					Title:    job.Title,
-					Content:  job.Content,
-					Channel:  job.Channel,
-					Category: job.Category,
-					IsRead:   false,
-				}
-				if err := s.repo.Create(context.Background(), n); err != nil {
-					time.Sleep(50 * time.Millisecond)
-					_ = s.repo.Create(context.Background(), n)
-				}
-			}
-		}()
+	return &NotificationService{
+		repo: repo,
 	}
 }
 
-// Shutdown 等待所有 worker 处理完残留任务。服务关闭前调用。
-func (s *NotificationService) Shutdown() {
-	s.closeOnce.Do(func() {
-		close(s.jobChan)
-	})
-	s.workerWg.Wait()
-}
-
-// CreateNotification 异步创建通知（channel 满时降级同步写）
+// CreateNotification 同步创建通知
 func (s *NotificationService) CreateNotification(ctx context.Context, userID int64, title, content string, channel, category int8) (*Notification, error) {
-	job := &notificationJob{
-		UserID:   userID,
-		Title:    title,
-		Content:  content,
-		Channel:  channel,
-		Category: category,
+	now := time.Now()
+	n := &Notification{
+		UserID:    userID,
+		Title:     title,
+		Content:   content,
+		Channel:   channel,
+		Category:  category,
+		IsRead:    false,
+		CreatedAt: utils.Timestamp(now),
+		UpdatedAt: utils.Timestamp(now),
 	}
-
-	select {
-	case s.jobChan <- job:
-		return &Notification{
-			UserID:   userID,
-			Title:    title,
-			Content:  content,
-			Channel:  channel,
-			Category: category,
-			IsRead:   false,
-		}, nil
-	default:
-		// channel 满 → 降级同步写
-		n := &Notification{
-			UserID:   userID,
-			Title:    title,
-			Content:  content,
-			Channel:  channel,
-			Category: category,
-			IsRead:   false,
-		}
-		if err := s.repo.Create(ctx, n); err != nil {
-			return nil, fmt.Errorf("create notification failed: %w", err)
-		}
-		return n, nil
+	if err := s.repo.Create(ctx, n); err != nil {
+		return nil, fmt.Errorf("create notification failed: %w", err)
 	}
+	return n, nil
 }
 
 func (s *NotificationService) ListNotifications(ctx context.Context, userID int64, page, size int) ([]*Notification, int64, error) {

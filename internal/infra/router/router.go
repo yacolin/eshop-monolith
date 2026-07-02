@@ -118,7 +118,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		user.RegisterAuthRoutes(v1, db, tokenService, repos.Role, repos.User, repos.UserInfo, repos.LoginHistory)
 		user.RegisterPermissionRoutes(v1, db, repos.Permission, repos.Role)
 		user.RegisterRoleRoutes(v1, db, repos.Role)
-		notifSvc = base.RegisterNotificationRoutes(v1, repos, db)
+		notifSvc = base.RegisterNotificationRoutes(v1, repos, db, wsHub)
 		review.RegisterReviewRoutes(v1, repos, db)
 		user.RegisterAddressRoutes(v1, db)
 		dashboardSvc = dashboard.RegisterDashboardRoutes(v1, repos, db, mqClient)

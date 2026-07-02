@@ -14,7 +14,7 @@ type Notification struct {
 	Title           string          `gorm:"type:varchar(200);not null" json:"title"`
 	Content         string          `gorm:"type:text;not null" json:"content"`
 	ContentTemplate string          `gorm:"type:varchar(100)" json:"content_template,omitempty"`
-	TemplateParams  string          `gorm:"type:json" json:"template_params,omitempty"`
+	TemplateParams  *string         `gorm:"type:json" json:"template_params,omitempty"`
 	Channel         int8            `gorm:"type:tinyint;not null;index:idx_channel" json:"channel"`
 	Category        int8            `gorm:"type:tinyint;not null;index:idx_category" json:"category"`
 	TargetType      string          `gorm:"type:varchar(30)" json:"target_type,omitempty"`

@@ -30,7 +30,7 @@ func (r *NotificationRepository) Create(ctx context.Context, n *Notification) er
 
 func (r *NotificationRepository) ListByUserID(ctx context.Context, userID int64, page, size int) ([]Notification, int64, error) {
 	q := r.db.WithContext(ctx).Model(&Notification{}).
-		Where("user_id = ? AND is_deleted_by_user = ?", userID, false)
+		Where("(user_id = ? OR user_id = 0) AND is_deleted_by_user = ?", userID, false)
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -43,7 +43,7 @@ func (r *NotificationRepository) ListByUserID(ctx context.Context, userID int64,
 func (r *NotificationRepository) GetUnreadCount(ctx context.Context, userID int64) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&Notification{}).
-		Where("user_id = ? AND is_read = ? AND is_deleted_by_user = ?", userID, false, false).
+		Where("(user_id = ? OR user_id = 0) AND is_read = ? AND is_deleted_by_user = ?", userID, false, false).
 		Count(&count).Error
 	return count, err
 }
@@ -51,18 +51,18 @@ func (r *NotificationRepository) GetUnreadCount(ctx context.Context, userID int6
 func (r *NotificationRepository) MarkAsRead(ctx context.Context, id, userID int64) error {
 	now := time.Now()
 	return r.db.WithContext(ctx).Model(&Notification{}).
-		Where("id = ? AND user_id = ?", id, userID).
+		Where("id = ? AND (user_id = ? OR user_id = 0)", id, userID).
 		Updates(map[string]any{"is_read": true, "read_at": now}).Error
 }
 
 func (r *NotificationRepository) MarkAllAsRead(ctx context.Context, userID int64) error {
 	return r.db.WithContext(ctx).Model(&Notification{}).
-		Where("user_id = ? AND is_read = ?", userID, false).
+		Where("(user_id = ? OR user_id = 0) AND is_read = ?", userID, false).
 		Update("is_read", true).Error
 }
 
 func (r *NotificationRepository) Delete(ctx context.Context, id, userID int64) error {
 	return r.db.WithContext(ctx).Model(&Notification{}).
-		Where("id = ? AND user_id = ?", id, userID).
+		Where("id = ? AND (user_id = ? OR user_id = 0)", id, userID).
 		Update("is_deleted_by_user", true).Error
 }
