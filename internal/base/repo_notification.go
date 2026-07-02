@@ -14,6 +14,8 @@ type InotificationRepository interface {
 	MarkAsRead(ctx context.Context, id, userID int64) error
 	MarkAllAsRead(ctx context.Context, userID int64) error
 	Delete(ctx context.Context, id, userID int64) error
+	FindActiveTemplates(ctx context.Context) ([]NotificationTemplate, error)
+	GetTemplateByCode(ctx context.Context, code string) (*NotificationTemplate, error)
 }
 
 type NotificationRepository struct {
@@ -86,4 +88,21 @@ func (r *NotificationRepository) Delete(ctx context.Context, id, userID int64) e
 	return r.db.WithContext(ctx).
 		Where("user_id = ?", userID).
 		Delete(&Notification{}, id).Error
+}
+
+func (r *NotificationRepository) FindActiveTemplates(ctx context.Context) ([]NotificationTemplate, error) {
+	var list []NotificationTemplate
+	err := r.db.WithContext(ctx).
+		Where("status = 1").
+		Order("priority ASC, id ASC").
+		Find(&list).Error
+	return list, err
+}
+
+func (r *NotificationRepository) GetTemplateByCode(ctx context.Context, code string) (*NotificationTemplate, error) {
+	var t NotificationTemplate
+	err := r.db.WithContext(ctx).
+		Where("template_code = ?", code).
+		First(&t).Error
+	return &t, err
 }

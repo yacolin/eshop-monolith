@@ -56,7 +56,6 @@ type NotificationTemplate struct {
 	Status          int8            `gorm:"type:tinyint;not null;default:1" json:"status"`
 	CreatedAt       utils.Timestamp `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3)" json:"created_at"`
 	UpdatedAt       utils.Timestamp `gorm:"type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);onUpdate:CURRENT_TIMESTAMP(3)" json:"updated_at"`
-	DeletedAt       gorm.DeletedAt  `gorm:"type:datetime(3)" json:"-"`
 }
 
 func (NotificationTemplate) TableName() string { return "base_notification_templates" }

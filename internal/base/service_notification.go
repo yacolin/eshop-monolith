@@ -43,6 +43,34 @@ func (s *NotificationService) CreateNotification(ctx context.Context, userID int
 	return n, nil
 }
 
+// CreateSystemNotification 根据模板代码或直接参数创建系统通知
+func (s *NotificationService) CreateSystemNotification(ctx context.Context, userID int64, templateCode, title, content string) (*Notification, error) {
+	if templateCode != "" {
+		tmpl, err := s.repo.GetTemplateByCode(ctx, templateCode)
+		if err != nil {
+			return nil, fmt.Errorf("resolve template %q: %w", templateCode, err)
+		}
+		if title == "" {
+			title = tmpl.TitleTemplate
+		}
+		if content == "" {
+			content = tmpl.ContentTemplate
+		}
+	}
+	if title == "" || content == "" {
+		return nil, fmt.Errorf("title and content are required when template_code is not provided")
+	}
+	return s.CreateNotification(ctx, userID, title, content, ChannelInApp, CategorySystem)
+}
+
+func (s *NotificationService) ListTemplates(ctx context.Context) ([]NotificationTemplate, error) {
+	return s.repo.FindActiveTemplates(ctx)
+}
+
+func (s *NotificationService) GetTemplateByCode(ctx context.Context, code string) (*NotificationTemplate, error) {
+	return s.repo.GetTemplateByCode(ctx, code)
+}
+
 func (s *NotificationService) ListNotifications(ctx context.Context, userID int64, page, size int) ([]*Notification, int64, error) {
 	if page <= 0 {
 		page = 1

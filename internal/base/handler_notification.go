@@ -149,7 +149,7 @@ func (h *NotificationHandler) SendSystemNotification(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	n, err := h.svc.CreateNotification(c, req.UserID, req.Title, req.Content, ChannelInApp, CategorySystem)
+	n, err := h.svc.CreateSystemNotification(c, req.UserID, req.TemplateCode, req.Title, req.Content)
 	if err != nil {
 		c.Error(err)
 		return
@@ -163,6 +163,24 @@ func (h *NotificationHandler) SendSystemNotification(c *gin.Context) {
 		}
 	}
 	response.Success(c, nil)
+}
+
+// ListTemplates 通知模板列表
+// @Summary 通知模板列表
+// @Tags notifications
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {object} response.Response{data=NotificationTemplateListResult}
+// @Router /api/v1/notifications/templates [get]
+func (h *NotificationHandler) ListTemplates(c *gin.Context) {
+	list, err := h.svc.ListTemplates(c)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, &NotificationTemplateListResult{
+		List: templateToRespList(list),
+	})
 }
 
 // pushToWS 通过 WebSocket 推送通知给指定用户
@@ -233,6 +251,27 @@ func safeStr(s *string) string {
 	return *s
 }
 
+func templateToResp(t *NotificationTemplate) *NotificationTemplateResp {
+	return &NotificationTemplateResp{
+		ID:              t.ID,
+		TemplateCode:    t.TemplateCode,
+		Channel:         t.Channel,
+		TitleTemplate:   t.TitleTemplate,
+		ContentTemplate: t.ContentTemplate,
+		Category:        t.Category,
+		Priority:        t.Priority,
+		Status:          t.Status,
+	}
+}
+
+func templateToRespList(list []NotificationTemplate) []*NotificationTemplateResp {
+	resp := make([]*NotificationTemplateResp, len(list))
+	for i, t := range list {
+		resp[i] = templateToResp(&t)
+	}
+	return resp
+}
+
 // ── Routes ────────────────────────────────────────
 
 func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, db *gorm.DB, wsHub *ws.Hub) *NotificationService {
@@ -240,10 +279,12 @@ func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositor
 	svc := NewNotificationService(repo)
 	h := NewNotificationHandler(svc, wsHub)
 
+
 	notify := v1.Group("/notifications")
 	notify.Use(middleware.JWTAuth())
 	{
 		notify.GET("", h.ListNotifications)
+		notify.GET("/templates", h.ListTemplates)
 		notify.GET("/unread", h.GetUnreadCount)
 		notify.PUT("/:id/read", h.MarkAsRead)
 		notify.PUT("/readall", h.MarkAllAsRead)
@@ -255,3 +296,4 @@ func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositor
 
 	return svc
 }
+
