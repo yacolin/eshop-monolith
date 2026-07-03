@@ -24,6 +24,9 @@ const (
 	brandEntityTTL     = 10 * time.Minute
 	categoryAllTTL     = 10 * time.Minute
 	categoryEntityTTL  = 10 * time.Minute
+	skuByProductTTL    = 10 * time.Minute
+	productAttrsTTL    = 10 * time.Minute
+	attrsByCategoryTTL = 10 * time.Minute
 	delayedDeleteDelay = 500 * time.Millisecond
 
 	// L1 local cache
@@ -179,6 +182,96 @@ func delAllSPUListCache(ctx context.Context, rdb redis.UniversalClient) {
 	}
 	// SCAN 可能因连接断开或超时失败，忽略错误（延迟双删的二次删除会兜底）
 	_ = iter.Err()
+}
+
+// ── SKU List Cache (by product_id) ──
+
+func cacheKeySKUByProduct(productID int64) string {
+	return fmt.Sprintf("sku:by_product:%d", productID)
+}
+
+func getSKUListByProduct(ctx context.Context, rdb redis.UniversalClient, productID int64) ([]SKU, error) {
+	data, err := rdb.Get(ctx, cacheKeySKUByProduct(productID)).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	var list []SKU
+	if err := sonic.Unmarshal(data, &list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+func setSKUListByProduct(ctx context.Context, rdb redis.UniversalClient, productID int64, skus []SKU) error {
+	data, err := sonic.Marshal(skus)
+	if err != nil {
+		return err
+	}
+	return rdb.Set(ctx, cacheKeySKUByProduct(productID), data, skuByProductTTL).Err()
+}
+
+func delSKUListByProduct(ctx context.Context, rdb redis.UniversalClient, productID int64) {
+	rdb.Del(ctx, cacheKeySKUByProduct(productID))
+}
+
+// ── ProductAttrs Cache (by product_id) ──
+
+func cacheKeyProductAttrs(productID int64) string {
+	return fmt.Sprintf("product_attrs:%d", productID)
+}
+
+func getProductAttrsCache(ctx context.Context, rdb redis.UniversalClient, productID int64) ([]ProductAttrResponse, error) {
+	data, err := rdb.Get(ctx, cacheKeyProductAttrs(productID)).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	var list []ProductAttrResponse
+	if err := sonic.Unmarshal(data, &list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+func setProductAttrsCache(ctx context.Context, rdb redis.UniversalClient, productID int64, attrs []ProductAttrResponse) error {
+	data, err := sonic.Marshal(attrs)
+	if err != nil {
+		return err
+	}
+	return rdb.Set(ctx, cacheKeyProductAttrs(productID), data, productAttrsTTL).Err()
+}
+
+func delProductAttrsCache(ctx context.Context, rdb redis.UniversalClient, productID int64) {
+	rdb.Del(ctx, cacheKeyProductAttrs(productID))
+}
+
+// ── Category→Attributes Cache ──
+
+func cacheKeyAttrsByCategory(categoryID int64) string {
+	return fmt.Sprintf("attrs:by_category:%d", categoryID)
+}
+
+func getAttrsByCategoryCache(ctx context.Context, rdb redis.UniversalClient, categoryID int64) ([]Attribute, error) {
+	data, err := rdb.Get(ctx, cacheKeyAttrsByCategory(categoryID)).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	var list []Attribute
+	if err := sonic.Unmarshal(data, &list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+func setAttrsByCategoryCache(ctx context.Context, rdb redis.UniversalClient, categoryID int64, attrs []Attribute) error {
+	data, err := sonic.Marshal(attrs)
+	if err != nil {
+		return err
+	}
+	return rdb.Set(ctx, cacheKeyAttrsByCategory(categoryID), data, attrsByCategoryTTL).Err()
+}
+
+func delAttrsByCategoryCache(ctx context.Context, rdb redis.UniversalClient, categoryID int64) {
+	rdb.Del(ctx, cacheKeyAttrsByCategory(categoryID))
 }
 
 // ── Brand Cache ──

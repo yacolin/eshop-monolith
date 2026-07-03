@@ -423,14 +423,14 @@ func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailRes
 	var skus []SKU
 	g.Go(func() error {
 		var err error
-		skus, err = s.repo.FindSKUsByProductID(egCtx, id, "")
+		skus, err = s.getCachedSKUs(egCtx, id)
 		return err
 	})
 
 	var prodAttrs []ProductAttrResponse
 	g.Go(func() error {
 		var err error
-		prodAttrs, err = s.repo.FindProductAttrsWithName(egCtx, id)
+		prodAttrs, err = s.getCachedProductAttrs(egCtx, id)
 		return err
 	})
 
@@ -471,6 +471,58 @@ func (s *SpuService) GetDetailByID(ctx context.Context, id int64) (*SPUDetailRes
 	resp.Description = descResp
 	resp.SKUs = skus
 	return resp, nil
+}
+
+
+// getCachedSKUs 带缓存的 SKU 列表查询
+func (s *SpuService) getCachedSKUs(ctx context.Context, productID int64) ([]SKU, error) {
+	if s.rdb != nil {
+		if list, err := getSKUListByProduct(ctx, s.rdb, productID); err == nil {
+			return list, nil
+		}
+	}
+	list, err := s.repo.FindSKUsByProductID(ctx, productID, "")
+	if err != nil {
+		return nil, err
+	}
+	if s.rdb != nil {
+		_ = setSKUListByProduct(ctx, s.rdb, productID, list)
+	}
+	return list, nil
+}
+
+// getCachedProductAttrs 带缓存的商品属性查询
+func (s *SpuService) getCachedProductAttrs(ctx context.Context, productID int64) ([]ProductAttrResponse, error) {
+	if s.rdb != nil {
+		if attrs, err := getProductAttrsCache(ctx, s.rdb, productID); err == nil {
+			return attrs, nil
+		}
+	}
+	attrs, err := s.repo.FindProductAttrsWithName(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	if s.rdb != nil {
+		_ = setProductAttrsCache(ctx, s.rdb, productID, attrs)
+	}
+	return attrs, nil
+}
+
+// getCachedAttrsByCategory 带缓存的类目属性查询
+func (s *SpuService) getCachedAttrsByCategory(ctx context.Context, categoryID int64) ([]Attribute, error) {
+	if s.rdb != nil {
+		if attrs, err := getAttrsByCategoryCache(ctx, s.rdb, categoryID); err == nil {
+			return attrs, nil
+		}
+	}
+	attrs, err := s.attrRepo.ListByCategory(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	if s.rdb != nil {
+		_ = setAttrsByCategoryCache(ctx, s.rdb, categoryID, attrs)
+	}
+	return attrs, nil
 }
 
 // loadSKUInventory 补充 SKU 库存信息
@@ -570,7 +622,7 @@ func (s *SpuService) mergeAttrs(specAttrs, prodAttrs []ProductAttrResponse, cate
 	attrNameMap := map[string]int64{}
 	attrOrder := map[string]int{}
 	if categoryID > 0 {
-		attrs, err := s.attrRepo.ListByCategory(ctx, categoryID)
+		attrs, err := s.getCachedAttrsByCategory(ctx, categoryID)
 		if err == nil {
 			for i, a := range attrs {
 				attrNameMap[a.Name] = a.ID
