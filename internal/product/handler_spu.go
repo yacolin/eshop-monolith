@@ -67,6 +67,21 @@ func (h *SpuHandler) GetByID(c *gin.Context) {
 	ReleaseDetailResponse(result)
 }
 
+// GetByIDPure 纯商品查询（不含 SKU/属性/描述，走多级缓存，供压测对比）
+func (h *SpuHandler) GetByIDPure(c *gin.Context) {
+	id, err := utils.ParseIntParam(c, "id")
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	result, err := h.svc.GetByID(c, id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	response.Success(c, result)
+}
+
 // List 商品列表
 // @Summary 商品列表（keyset 游标分页）
 // @Tags products
@@ -173,6 +188,7 @@ func RegisterProductRoutes(v1 *gin.RouterGroup, db *gorm.DB, rdb *redis.Client) 
 	{
 		products.GET("", h.List)
 		products.GET("/:id", h.GetByID)
+		products.GET("/pure/:id", h.GetByIDPure)
 	}
 	auth := v1.Group("/products")
 	auth.Use(middleware.JWTAuth())
