@@ -1,6 +1,7 @@
 server:
   port: 8080
-  mode: debug # debug, release, test
+  mode: debug  # debug, release, test
+  env: development  # development, production, test  ← 新增
   read_timeout: 30s
   write_timeout: 30s
 
@@ -11,26 +12,37 @@ mysql:
   password: 123456
   database: eshop_db
   charset: utf8mb4
-  # Unix socket 路径（留空自动探测 /tmp/mysql.sock 或 /var/run/mysqld/mysqld.sock）
-  max_idle_conns: 50
+  socket: ""  # Unix socket 路径（留空自动探测）
+  max_idle_conns: 50   # 高并发预热连接
   max_open_conns: 50
+  max_lifetime: 1h     # ← 新增
+  max_idle_time: 5m    # ← 新增
+  timeout: 10s         # ← 新增
+  read_timeout: 30s    # ← 新增
+  write_timeout: 30s   # ← 新增
 
 redis:
   host: localhost
   port: 6379
   password: ""
   db: 0
-  pool_size: 10
+  pool_size: 20       # 应对 100 并发
+  min_idle_conns: 5   # 预热连接数
+  max_retries: 0      # 去掉重试避免延迟放大
+  dial_timeout: 5s     # ← 新增
+  read_timeout: 3s     # ← 新增
+  write_timeout: 3s    # ← 新增
+  pool_timeout: 4s     # ← 新增
 
 jwt:
   secret: "your-secret-key-change-in-production"
   expire_hours: 24
-  refresh_expire_hours: 168 # 7 days
+  refresh_expire_hours: 168  # 7 days
 
 log:
-  level: info # debug, info, warn, error
-  format: json # json, text
-  output: stdout # stdout, file
+  level: info  # debug, info, warn, error
+  format: json  # json, text
+  output: stdout  # stdout, file
   file_path: logs/app.log
 
 rate_limit:
@@ -53,6 +65,10 @@ cors:
     - "Origin"
     - "Content-Type"
     - "Authorization"
+
+pagination:
+  default_size: 10  # ← 新增
+  max_size: 100     # ← 新增
 
 rabbitmq:
   host: localhost
