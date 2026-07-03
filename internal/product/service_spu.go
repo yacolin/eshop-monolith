@@ -314,22 +314,54 @@ func (s *SpuService) listFromZSET(ctx context.Context, req *SPUListReq, cursor c
 	if v != nil {
 		return v.(*SPUListResult), nil
 	}
-	var cursorRank int64 = -1
-	if req.Cursor != "" && cursor.ID > 0 {
-		rank, err := getSPUListRank(ctx, s.rdb, req.CategoryID, req.BrandID, req.Status, cursor.ID)
-		if err != nil || rank < 0 {
-			return nil, fmt.Errorf("cursor not in cache")
-		}
-		cursorRank = rank + 1
-	}
-	ids, err := getSPUListIDs(ctx, s.rdb, req.CategoryID, req.BrandID, req.Status, cursorRank, req.Size+1)
+	// 一次 EVAL: ZRANK + ZRANGE + MGET
+	ids, hit, err := fetchSPUListZSET(ctx, s.rdb, req.CategoryID, req.BrandID, req.Status, cursor.ID, req.Size+1)
 	if err != nil {
 		return nil, err
 	}
 	if len(ids) == 0 {
 		return &SPUListResult{List: []*SPU{}}, nil
 	}
-	return s.buildListResult(ctx, ids, req.Size)
+	return s.buildResultFromHit(ctx, ids, hit, req.Size)
+}
+
+func (s *SpuService) buildResultFromHit(ctx context.Context, ids []int64, hit map[int64]*SPU, size int) (*SPUListResult, error) {
+	hasMore := len(ids) > size
+	if hasMore {
+		ids = ids[:size]
+	}
+	var miss []int64
+	for _, id := range ids {
+		if _, ok := hit[id]; !ok {
+			miss = append(miss, id)
+		}
+	}
+	if len(miss) > 0 {
+		var dbSPUs []SPU
+		if err := s.db.WithContext(ctx).Where("id IN ?", miss).Find(&dbSPUs).Error; err != nil {
+			return nil, err
+		}
+		for i := range dbSPUs {
+			hit[dbSPUs[i].ID] = &dbSPUs[i]
+			s.bloomFilter.add(dbSPUs[i].ID)
+			s.localCache.setSingle(dbSPUs[i].ID, &dbSPUs[i])
+			if s.rdb != nil {
+				_ = setSPUEntity(ctx, s.rdb, &dbSPUs[i])
+			}
+		}
+	}
+	list := make([]*SPU, 0, len(ids))
+	for _, id := range ids {
+		if spu, ok := hit[id]; ok {
+			list = append(list, spu)
+		}
+	}
+	cursor := ""
+	if len(list) > 0 {
+		last := list[len(list)-1]
+		cursor = base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(last.ID, 10)))
+	}
+	return &SPUListResult{List: list, Cursor: cursor, HasMore: hasMore}, nil
 }
 
 func (s *SpuService) listFromDB(ctx context.Context, req *SPUListReq, cursor cursorInfo) (*SPUListResult, error) {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -131,27 +130,6 @@ func batchFetchSPUEntities(ctx context.Context, rdb redis.UniversalClient, ids [
 
 // ── SPU List ZSET Cache ──
 
-// getSPUListIDs 从 ZSET 获取指定游标后的 ID 列表（id ASC）。cursorRank=-1 表示第一页。
-func getSPUListIDs(ctx context.Context, rdb redis.UniversalClient, categoryID, brandID *int64, status *int8, cursorRank int64, count int) ([]int64, error) {
-	key := cacheKeySPUListIDs(categoryID, brandID, status)
-	start := int64(0)
-	if cursorRank >= 0 {
-		start = cursorRank
-	}
-	members, err := rdb.ZRange(ctx, key, start, start+int64(count)-1).Result()
-	if err != nil {
-		return nil, err
-	}
-	ids := make([]int64, 0, len(members))
-	for _, m := range members {
-		id, _ := strconv.ParseInt(strings.TrimSpace(m), 10, 64)
-		if id > 0 {
-			ids = append(ids, id)
-		}
-	}
-	return ids, nil
-}
-
 // setSPUListIDs 将 SPU 列表 ID 写入 ZSET，按 id ASC 排序
 func setSPUListIDs(ctx context.Context, rdb redis.UniversalClient, categoryID, brandID *int64, status *int8, spus []SPU) error {
 	key := cacheKeySPUListIDs(categoryID, brandID, status)
@@ -168,10 +146,83 @@ func setSPUListIDs(ctx context.Context, rdb redis.UniversalClient, categoryID, b
 	return rdb.Expire(ctx, key, spuListTTL).Err()
 }
 
-// getSPUListRank 获取 SPU ID 在 ZSET 中的排名（ZRANK），-1 表示不存在
-func getSPUListRank(ctx context.Context, rdb redis.UniversalClient, categoryID, brandID *int64, status *int8, id int64) (int64, error) {
+// spuListFetchScript ZRANK + ZRANGE + MGET，一次 EVAL 往返
+var spuListFetchScript = redis.NewScript(`
+local member_fmt = function(id) return string.format("%020d", id) end
+
+-- cursor
+local cursor_id = tonumber(ARGV[1])
+local start = 0
+if cursor_id and cursor_id > 0 then
+    local rank = redis.call("ZRANK", KEYS[1], member_fmt(cursor_id))
+    if not rank then
+        return {0, -1}
+    end
+    start = rank + 1
+end
+
+local count = tonumber(ARGV[2])
+local members = redis.call("ZRANGE", KEYS[1], start, start + count - 1)
+local n = #members
+if n == 0 then
+    return {0, 0}
+end
+
+local result = {n, 0}
+for i = 1, n do
+    result[#result + 1] = tonumber(members[i])
+end
+
+local keys = {}
+for i = 1, n do
+    keys[i] = ARGV[3] .. tonumber(members[i])
+end
+
+local entities = redis.call("MGET", unpack(keys))
+for i = 1, #entities do
+    result[#result + 1] = entities[i]
+end
+
+return result
+`)
+
+// fetchSPUListZSET ZRANK + ZRANGE + MGET 一次 EVAL 往返
+func fetchSPUListZSET(ctx context.Context, rdb redis.UniversalClient, categoryID, brandID *int64, status *int8, cursorID int64, limit int) ([]int64, map[int64]*SPU, error) {
 	key := cacheKeySPUListIDs(categoryID, brandID, status)
-	return rdb.ZRank(ctx, key, spuZSETMember(id)).Result()
+	vals, err := spuListFetchScript.Run(ctx, rdb, []string{key}, cursorID, limit, "spu:").Result()
+	if err != nil {
+		return nil, nil, err
+	}
+	arr := vals.([]interface{})
+	n := arr[0].(int64)
+	st := arr[1].(int64)
+	if n == 0 {
+		if st == -1 {
+			return nil, nil, fmt.Errorf("cursor not in cache")
+		}
+		return []int64{}, map[int64]*SPU{}, nil
+	}
+	ids := make([]int64, n)
+	for i := int64(0); i < n; i++ {
+		ids[i] = arr[2+i].(int64)
+	}
+	hit := make(map[int64]*SPU, n)
+	for i := int64(0); i < n; i++ {
+		v := arr[2+n+i]
+		if v == nil {
+			continue
+		}
+		s, ok := v.(string)
+		if !ok {
+			continue
+		}
+		var spu SPU
+		if err := sonic.Unmarshal([]byte(s), &spu); err != nil {
+			continue
+		}
+		hit[ids[i]] = &spu
+	}
+	return ids, hit, nil
 }
 
 // delAllSPUListCache 删除所有 SPU 列表缓存 ZSET
