@@ -207,7 +207,8 @@ assessment.md
 resume.md
 
 
-docs/
+docs/*
+!docs/schema.sql
 docs/superpowers/specs/
 
 scripts/*.sh
