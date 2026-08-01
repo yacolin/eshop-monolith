@@ -9,7 +9,6 @@ import (
 	"eshop-monolith/internal/user"
 	"eshop-monolith/pkg/config"
 	"fmt"
-	"os"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -29,7 +28,6 @@ type MySQLConfig struct {
 	Password     string
 	Database     string
 	Charset      string
-	Socket       string
 	MaxIdleConns int
 	MaxOpenConns int
 	MaxLifetime  time.Duration
@@ -139,13 +137,6 @@ func buildMySQLDSN(cfg config.MySQLConfig) string {
 		getDurationOrDefault(cfg.WriteTimeout, defaultWriteTimeout),
 	)
 
-	// 优先使用Unix socket
-	sock := resolveSocket(cfg.Socket)
-	if sock != "" {
-		return fmt.Sprintf("%s:%s@unix(%s)/%s?%s",
-			cfg.Username, cfg.Password, sock, cfg.Database, baseParams)
-	}
-
 	// 使用TCP连接
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?%s",
 		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database, baseParams)
@@ -157,38 +148,6 @@ func getDurationOrDefault(d, defaultVal time.Duration) time.Duration {
 		return defaultVal
 	}
 	return d
-}
-
-// resolveSocket 解析Unix socket路径
-func resolveSocket(cfgSocket string) string {
-	if cfgSocket != "" {
-		if _, err := os.Stat(cfgSocket); err == nil {
-			return cfgSocket
-		}
-	}
-
-	// 支持环境变量
-	if envSock := os.Getenv("MYSQL_UNIX_PORT"); envSock != "" {
-		if _, err := os.Stat(envSock); err == nil {
-			return envSock
-		}
-	}
-
-	// 常见socket路径
-	commonPaths := []string{
-		"/tmp/mysql.sock",
-		"/var/run/mysqld/mysqld.sock",
-		"/run/mysqld/mysqld.sock",
-		"/var/lib/mysql/mysql.sock",
-	}
-
-	for _, p := range commonPaths {
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
-	}
-
-	return ""
 }
 
 // configureConnectionPool 配置连接池（接收 *sql.DB）
@@ -222,26 +181,6 @@ func startHealthCheck(sqlDB *sql.DB) {
 			cancel()
 		}
 	}()
-}
-
-// ============= 数据库迁移 =============
-
-// MigrateDB 执行数据库迁移（独立函数）
-func MigrateDB(db *gorm.DB) error {
-	// 检查环境，生产环境禁止自动迁移
-	env := os.Getenv("SERVER_ENV")
-	if env == "production" {
-		return fmt.Errorf("auto migration is disabled in production environment")
-	}
-
-	// 可选：只在开发/测试环境执行
-	if env == "development" || env == "test" || env == "" {
-		if err := db.AutoMigrate(); err != nil {
-			return fmt.Errorf("failed to migrate database: %w", err)
-		}
-	}
-
-	return nil
 }
 
 // ============= Redis初始化 =============

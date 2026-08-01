@@ -42,7 +42,6 @@ type MySQLConfig struct {
 	Password     string        `mapstructure:"password" json:"-"` // 不序列化密码
 	Database     string        `mapstructure:"database" json:"database"`
 	Charset      string        `mapstructure:"charset" json:"charset"`
-	Socket       string        `mapstructure:"socket" json:"socket"`
 	MaxIdleConns int           `mapstructure:"max_idle_conns" json:"max_idle_conns"`
 	MaxOpenConns int           `mapstructure:"max_open_conns" json:"max_open_conns"`
 	MaxLifetime  time.Duration `mapstructure:"max_lifetime" json:"max_lifetime"`
@@ -179,7 +178,6 @@ func setDefaults() {
 	viper.SetDefault("mysql.password", "root")
 	viper.SetDefault("mysql.database", "eshop_db")
 	viper.SetDefault("mysql.charset", "utf8mb4")
-	viper.SetDefault("mysql.socket", "")
 	viper.SetDefault("mysql.max_idle_conns", 10)
 	viper.SetDefault("mysql.max_open_conns", 100)
 	viper.SetDefault("mysql.max_lifetime", "1h")

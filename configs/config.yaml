@@ -12,7 +12,6 @@ mysql:
   password: 123456
   database: eshop_db
   charset: utf8mb4
-  socket: ""  # Unix socket 路径（留空自动探测）
   max_idle_conns: 50   # 高并发预热连接
   max_open_conns: 50
   max_lifetime: 1h     # ← 新增

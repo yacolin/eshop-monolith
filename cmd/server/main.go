@@ -48,17 +48,7 @@ func main() {
 	log.Printf("Database initialized successfully (MaxOpenConns=%d, MaxIdleConns=%d)", 
 		cfg.MySQL.MaxOpenConns, cfg.MySQL.MaxIdleConns)
 
-	// 4. 执行数据库迁移（仅在开发/测试环境）
-	if cfg.Server.Env == "development" || cfg.Server.Env == "test" {
-		log.Println("Running database migrations...")
-		if err := repository.MigrateDB(db); err != nil {
-			log.Printf("Migration warning: %v", err)
-		} else {
-			log.Println("Database migrations completed successfully")
-		}
-	}
-
-	// 5. 初始化Redis
+	// 4. 初始化Redis
 	log.Println("Initializing Redis...")
 	redisClient, err := repository.InitRedis(cfg.Redis)
 	if err != nil {

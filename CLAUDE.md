@@ -47,18 +47,19 @@ API (handler + dto) → Service → Domain (model + repo interface) ← Reposito
 
 | 目录 | 职责 |
 |------|------|
-| `api/handlers/` | Gin handler, 调用 service, 通过 `c.Error(err)` 传递错误 |
-| `api/dto/` | 请求/响应 DTO, 使用 `query.Pagination` 嵌入分页 |
-| `api/routes/` | 路由注册 |
-| `service/` | 业务逻辑编排, 事务管理, 事件发布 |
-| `domain/models/` | GORM model, 主键用 `int64 autoIncrement` |
-| `domain/repositories/` | Repository 接口 + GORM 实现（同一文件） |
-| `events/` | 领域事件结构体 |
+| `handler_*.go` | Gin handler, 调用 service, 通过 `c.Error(err)` 传递错误 |
+| `dto_*.go` | 请求/响应 DTO, 使用 `query.Pagination` 嵌入分页 |
+| `service_*.go` | 业务逻辑编排, 事务管理, 事件发布 |
+| `model_*.go` | GORM model, 主键用 `int64 autoIncrement` |
+| `repo_*.go` | Repository 接口 + GORM 实现（同一文件） |
+| `events.go` | 领域事件结构体 |
+
+> 注: 模块采用扁平结构, 文件按 `{kind}_{entity}.go` 命名, 不拆分 api/service/domain 子目录
 
 ### Cross-Module Patterns
 
-- **`internal/infra/repository/db.go`**: `Repositories` 聚合所有模块的 repo 实现, 在 `main.go` 中初始化后注入路由；`InitDB()` 中 `AutoMigrate` 注册所有 PO 模型
-- **`internal/infra/repository/models/`**: PO 持久化对象，每个模型含 `ToDomain()` / `FromDomain()` 方法
+- **`internal/infra/repository/db.go`**: `Repositories` 聚合所有模块的 repo 实现, 在 `main.go` 中初始化后注入路由；`InitDB()` 只负责连接, 不做自动迁移
+- **表结构管理**: 不启用 AutoMigrate（会改动线上数据库）, 建表用 `docs/schema.sql` 手动执行；模型变更后用 `go run scripts/gen_schema.go > docs/schema.sql` 重新生成 DDL
 - **`internal/infra/eventbus/`**: 订阅/发布模式, 按模块拆分 handler 文件
 - **`internal/infra/router/router.go`**: 路由总入口, 所有模块路由在此注册
 
@@ -86,10 +87,9 @@ API (handler + dto) → Service → Domain (model + repo interface) ← Reposito
 - **导入顺序**: 标准库 → 第三方 → 内部包, 三组间空行分隔
 - **金额存储**: 统一以「分」为单位(int64), 避免浮点精度问题
 - **时间字段**: 使用 `utils.Timestamp` 类型, JSON 序列化为毫秒级时间戳
-- **表名**: GORM `TableName()` 返回蛇形复数 (orders, order_items)
+- **表名**: GORM `TableName()` 返回带模块前缀的蛇形复数 (`tx_orders`、`usr_users`、`sp_products`)
 - **软删除**: `gorm.DeletedAt` 嵌入 model
 - **密码**: bcrypt (`utils.CryptPassword`)
-- **自动迁移**: `repository.InitDB` 中 `db.AutoMigrate()` 所有 PO 模型
 - **主键**: 全表统一 `int64 autoIncrement`, 无 UUID 主键
 - **Swagger**: @Tags 使用**英文小写复数** (`orders`、`coupons`、`promotions`)
 
@@ -104,11 +104,10 @@ API (handler + dto) → Service → Domain (model + repo interface) ← Reposito
 
 ### 添加新模块步骤
 
-1. `internal/{module}/domain/models/` — 定义 model（每实体一个文件, 含 `TableName()`）
-2. `internal/{module}/domain/repositories/` — 定义 repo 接口 + GORM 实现（同一文件）
-3. `internal/infra/repository/models/` — 创建 PO 持久化对象（含 `ToDomain()` / `FromDomain()`）
-4. `internal/infra/repository/db.go` — 注册 AutoMigrate, 加入 `Repositories` struct
-5. `internal/{module}/service/` — 业务逻辑
-6. `internal/{module}/api/dto/` + `api/handlers/` — DTO + Handler
-7. `internal/{module}/api/routes/` — 路由注册
-8. `internal/infra/router/router.go` — 挂载路由, 如需与订单系统集成则传递 Service
+1. `internal/{module}/model_{entity}.go` — 定义 GORM model（每实体一个文件, 含 `TableName()`）
+2. `internal/{module}/repo_{entity}.go` — 定义 repo 接口 + GORM 实现（同一文件）
+3. `internal/{module}/service_{entity}.go` — 业务逻辑
+4. `internal/{module}/dto_{entity}.go` + `handler_{entity}.go` — DTO + Handler
+5. `internal/{module}/routes.go` — 路由注册
+6. `internal/infra/router/router.go` — 挂载路由, 如需与订单系统集成则传递 Service
+7. 重新生成建表脚本: `go run scripts/gen_schema.go > docs/schema.sql`（新增表时手动执行）
