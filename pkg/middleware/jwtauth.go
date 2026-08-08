@@ -1,11 +1,12 @@
 package middleware
 
 import (
-	"eshop-monolith/pkg/errcode"
-	"eshop-monolith/pkg/utils"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"eshop-monolith/pkg/errcode"
+	"eshop-monolith/pkg/token"
 )
 
 // JWTAuth validates the Authorization header and token, but delegates error
@@ -26,65 +27,16 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
-		tokenString := parts[1]
-		claims, err := utils.ParseToken(tokenString)
+		claims, err := token.ParseToken(parts[1])
 		if err != nil {
 			c.Error(errcode.ErrUnauthorized)
 			c.Abort()
 			return
 		}
 
-		userID, ok := claims["user_id"]
-		if !ok {
-			c.Error(errcode.ErrUnauthorized)
-			c.Abort()
-			return
-		}
-
-		switch v := userID.(type) {
-		case string:
-			c.Set("user_id", v)
-		case float64:
-			c.Set("user_id", uint(v))
-		default:
-			c.Error(errcode.ErrUnauthorized)
-			c.Abort()
-			return
-		}
-
-		if roles, ok := claims["roles"]; ok {
-			if rolesSlice, ok := roles.([]interface{}); ok {
-				roleNames := make([]string, 0, len(rolesSlice))
-				for _, r := range rolesSlice {
-					if roleName, ok := r.(string); ok {
-						roleNames = append(roleNames, roleName)
-					}
-				}
-				c.Set("roles", roleNames)
-			}
-		}
-
+		c.Set("user_id", claims.UserID) // 统一 int64
+		c.Set("username", claims.Username)
+		c.Set("roles", claims.Roles)
 		c.Next()
 	}
 }
-
-// GetUserID returns the typed user id set by `JWTAuth` and a boolean indicating presence.
-// Use this helper in handlers to avoid casting from float64 everywhere.
-// func GetUserID(c *gin.Context) (uint, bool) {
-// 	v, ok := c.Get("user_id")
-// 	if !ok {
-// 		return 0, false
-// 	}
-// 	switch id := v.(type) {
-// 	case uint:
-// 		return id, true
-// 	case int:
-// 		return uint(id), true
-// 	case int64:
-// 		return uint(id), true
-// 	case float64:
-// 		return uint(id), true
-// 	default:
-// 		return 0, false
-// 	}
-// }

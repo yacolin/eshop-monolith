@@ -10,7 +10,7 @@ import (
 	"eshop-monolith/pkg/errcode"
 	"eshop-monolith/pkg/logger"
 	"eshop-monolith/pkg/response"
-	"eshop-monolith/pkg/utils"
+	jwtpkg "eshop-monolith/pkg/token"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -51,17 +51,13 @@ func (h *Handler) Upgrade(c *gin.Context) {
 		return
 	}
 
-	claims, err := utils.ParseToken(token)
+	claims, err := jwtpkg.ParseToken(token)
 	if err != nil {
 		c.Error(errcode.ErrUnauthorized)
 		return
 	}
 
-	userID, err := extractUserIDFromClaims(claims)
-	if err != nil {
-		c.Error(errcode.ErrUnauthorized)
-		return
-	}
+	userID := claims.UserID
 
 	lastSeqStr := c.Query("last_seq")
 	var lastSeq int64
@@ -139,17 +135,13 @@ func (h *Handler) Reconnect(c *gin.Context) {
 		token = token[7:]
 	}
 
-	claims, err := utils.ParseToken(token)
+	claims, err := jwtpkg.ParseToken(token)
 	if err != nil {
 		c.Error(errcode.ErrUnauthorized)
 		return
 	}
 
-	userID, err := extractUserIDFromClaims(claims)
-	if err != nil {
-		c.Error(errcode.ErrUnauthorized)
-		return
-	}
+	userID := claims.UserID
 
 	var req dto.ReconnectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -246,17 +238,13 @@ func (h *Handler) GetUserSession(c *gin.Context) {
 		token = token[7:]
 	}
 
-	claims, err := utils.ParseToken(token)
+	claims, err := jwtpkg.ParseToken(token)
 	if err != nil {
 		c.Error(errcode.ErrUnauthorized)
 		return
 	}
 
-	userID, err := extractUserIDFromClaims(claims)
-	if err != nil {
-		c.Error(errcode.ErrUnauthorized)
-		return
-	}
+	userID := claims.UserID
 
 	session, err := h.hub.sessionMgr.GetSession(userID)
 	if err != nil {
@@ -348,28 +336,4 @@ func (h *Handler) PushTestMessage(c *gin.Context) {
 
 	h.hub.Broadcast(data)
 	response.Success(c, gin.H{"target": "all", "message": "测试消息已广播到所有在线用户"})
-}
-
-func extractUserIDFromClaims(claims map[string]interface{}) (int64, error) {
-	v, ok := claims["user_id"]
-	if !ok {
-		return 0, errcode.ErrUnauthorized
-	}
-
-	switch id := v.(type) {
-	case float64:
-		return int64(id), nil
-	case int64:
-		return id, nil
-	case int:
-		return int64(id), nil
-	case string:
-		n, err := strconv.ParseInt(id, 10, 64)
-		if err != nil {
-			return 0, errcode.ErrUnauthorized
-		}
-		return n, nil
-	default:
-		return 0, errcode.ErrUnauthorized
-	}
 }
