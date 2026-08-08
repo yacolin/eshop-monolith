@@ -171,7 +171,6 @@ func RegisterUserRoutes(v1 *gin.RouterGroup, db *gorm.DB, userRepo IuserReposito
 	userSvc := NewUserService(userRepo, infoRepo, roleRepo)
 	roleSvc := NewRoleService(roleRepo)
 	h := NewUserHandler(userSvc, roleSvc)
-	roleCfg := NewRequireRoleConfig(roleRepo)
 
 	users := v1.Group("/users")
 	users.Use(middleware.JWTAuth())
@@ -181,7 +180,7 @@ func RegisterUserRoutes(v1 *gin.RouterGroup, db *gorm.DB, userRepo IuserReposito
 	}
 
 	admin := v1.Group("/users")
-	admin.Use(middleware.JWTAuth(), RequireAdmin(roleCfg))
+	admin.Use(middleware.JWTAuth(), middleware.RequireAdmin())
 	{
 		admin.GET("", h.List)
 		admin.POST("/:user_id/roles", h.AssignRole)

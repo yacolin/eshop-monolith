@@ -8,7 +8,6 @@ import (
 
 	"eshop-monolith/internal/infra/repository"
 	ws "eshop-monolith/internal/infra/ws"
-	"eshop-monolith/internal/user"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
@@ -289,8 +288,7 @@ func RegisterNotificationRoutes(v1 *gin.RouterGroup, repos *repository.Repositor
 		notify.DELETE("/:id", h.DeleteNotification)
 	}
 
-	roleCfg := user.NewRequireRoleConfig(repos.Role)
-	notify.POST("/system", user.RequireAdmin(roleCfg), h.SendSystemNotification)
+	notify.POST("/system", middleware.RequireAdmin(), h.SendSystemNotification)
 
 	return svc
 }

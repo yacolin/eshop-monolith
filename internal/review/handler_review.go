@@ -8,7 +8,6 @@ import (
 	"gorm.io/gorm"
 
 	"eshop-monolith/internal/infra/repository"
-	"eshop-monolith/internal/user"
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
 	"eshop-monolith/pkg/utils"
@@ -341,9 +340,8 @@ func RegisterReviewRoutes(v1 *gin.RouterGroup, repos *repository.Repositories, d
 	}
 
 	// 管理端路由（需要管理员权限）
-	roleCfg := user.NewRequireRoleConfig(repos.Role)
 	admin := v1.Group("/admin/reviews")
-	admin.Use(middleware.JWTAuth(), user.RequireAdmin(roleCfg))
+	admin.Use(middleware.JWTAuth(), middleware.RequireAdmin())
 	{
 		admin.GET("/pending", h.ListPendingReviews)
 		admin.PATCH("/:id/moderate", h.ModerateReview)
