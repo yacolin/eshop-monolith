@@ -11,15 +11,8 @@ type UserListReq struct {
 
 // ── Response ──
 
-type UserRoleBrief struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-}
-
 type UserListItem struct {
 	*User
-	Roles []UserRoleBrief `json:"roles"`
 }
 
 type UserListResult struct {

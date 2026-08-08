@@ -5,15 +5,15 @@ import (
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/response"
+	"eshop-monolith/pkg/token"
 )
 
 type AuthHandler struct {
-	authSvc  *AuthService
-	tokenSvc *TokenService
+	authSvc *AuthService
 }
 
-func NewAuthHandler(authSvc *AuthService, tokenSvc *TokenService) *AuthHandler {
-	return &AuthHandler{authSvc: authSvc, tokenSvc: tokenSvc}
+func NewAuthHandler(authSvc *AuthService) *AuthHandler {
+	return &AuthHandler{authSvc: authSvc}
 }
 
 // LoginByPassword 密码登录
@@ -83,7 +83,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	tokenPair, err := h.tokenSvc.RefreshToken(c, req.RefreshToken)
+	tokenPair, err := token.RefreshToken(req.RefreshToken)
 	if err != nil {
 		c.Error(err)
 		return
@@ -98,9 +98,9 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 // ── Routes ────────────────────────────────────────
 
-func RegisterAuthRoutes(v1 *gin.RouterGroup, db *gorm.DB, tokenSvc *TokenService, roleRepo IroleRepository, userRepo IuserRepository, infoRepo IuserInfoRepository, loginHistoryRepo IloginHistoryRepository) {
-	authSvc := NewAuthService(db, userRepo, infoRepo, roleRepo, loginHistoryRepo, tokenSvc)
-	h := NewAuthHandler(authSvc, tokenSvc)
+func RegisterAuthRoutes(v1 *gin.RouterGroup, db *gorm.DB, userRepo IuserRepository, infoRepo IuserInfoRepository, loginHistoryRepo IloginHistoryRepository) {
+	authSvc := NewAuthService(db, userRepo, infoRepo, loginHistoryRepo)
+	h := NewAuthHandler(authSvc)
 
 	auth := v1.Group("/auth")
 	{

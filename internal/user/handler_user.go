@@ -6,16 +6,14 @@ import (
 
 	"eshop-monolith/pkg/middleware"
 	"eshop-monolith/pkg/response"
-	"eshop-monolith/pkg/utils"
 )
 
 type UserHandler struct {
 	userSvc *UserService
-	roleSvc *RoleService
 }
 
-func NewUserHandler(userSvc *UserService, roleSvc *RoleService) *UserHandler {
-	return &UserHandler{userSvc: userSvc, roleSvc: roleSvc}
+func NewUserHandler(userSvc *UserService) *UserHandler {
+	return &UserHandler{userSvc: userSvc}
 }
 
 // GetProfile 获取当前用户资料
@@ -110,67 +108,11 @@ func (h *UserHandler) List(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// AssignRole 给用户分配角色
-// @Summary 给用户分配角色
-// @Tags users
-// @Security ApiKeyAuth
-// @Accept json
-// @Produce json
-// @Param user_id path int true "用户ID"
-// @Param request body AssignRoleReq true "角色ID"
-// @Success 200 {object} response.Response
-// @Router /api/v1/users/{user_id}/roles [post]
-func (h *UserHandler) AssignRole(c *gin.Context) {
-	userID, err := utils.ParseIntParam(c, "user_id")
-	if err != nil {
-		c.Error(err)
-		return
-	}
-	var req AssignRoleReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(err)
-		return
-	}
-	if err := h.roleSvc.AssignToUser(c, userID, req.RoleID); err != nil {
-		c.Error(err)
-		return
-	}
-	response.Success(c, nil)
-}
-
-// RemoveRole 移除用户的角色
-// @Summary 移除用户的角色
-// @Tags users
-// @Security ApiKeyAuth
-// @Produce json
-// @Param user_id path int true "用户ID"
-// @Param role_id path int true "角色ID"
-// @Success 200 {object} response.Response
-// @Router /api/v1/users/{user_id}/roles/{role_id} [delete]
-func (h *UserHandler) RemoveRole(c *gin.Context) {
-	userID, err := utils.ParseIntParam(c, "user_id")
-	if err != nil {
-		c.Error(err)
-		return
-	}
-	roleID, err := utils.ParseIntParam(c, "role_id")
-	if err != nil {
-		c.Error(err)
-		return
-	}
-	if err := h.roleSvc.RemoveFromUser(c, userID, roleID); err != nil {
-		c.Error(err)
-		return
-	}
-	response.Success(c, nil)
-}
-
 // ── Routes ────────────────────────────────────────
 
-func RegisterUserRoutes(v1 *gin.RouterGroup, db *gorm.DB, userRepo IuserRepository, infoRepo IuserInfoRepository, roleRepo IroleRepository) {
-	userSvc := NewUserService(userRepo, infoRepo, roleRepo)
-	roleSvc := NewRoleService(roleRepo)
-	h := NewUserHandler(userSvc, roleSvc)
+func RegisterUserRoutes(v1 *gin.RouterGroup, db *gorm.DB, userRepo IuserRepository, infoRepo IuserInfoRepository) {
+	userSvc := NewUserService(userRepo, infoRepo)
+	h := NewUserHandler(userSvc)
 
 	users := v1.Group("/users")
 	users.Use(middleware.JWTAuth())
@@ -183,7 +125,5 @@ func RegisterUserRoutes(v1 *gin.RouterGroup, db *gorm.DB, userRepo IuserReposito
 	admin.Use(middleware.JWTAuth(), middleware.RequireAdmin())
 	{
 		admin.GET("", h.List)
-		admin.POST("/:user_id/roles", h.AssignRole)
-		admin.DELETE("/:user_id/roles/:role_id", h.RemoveRole)
 	}
 }

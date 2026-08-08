@@ -12,11 +12,10 @@ import (
 type UserService struct {
 	userRepo IuserRepository
 	infoRepo IuserInfoRepository
-	roleRepo IroleRepository
 }
 
-func NewUserService(userRepo IuserRepository, infoRepo IuserInfoRepository, roleRepo IroleRepository) *UserService {
-	return &UserService{userRepo: userRepo, infoRepo: infoRepo, roleRepo: roleRepo}
+func NewUserService(userRepo IuserRepository, infoRepo IuserInfoRepository) *UserService {
+	return &UserService{userRepo: userRepo, infoRepo: infoRepo}
 }
 
 func (s *UserService) GetProfile(ctx context.Context, userID int64) (*User, *UserInfo, error) {
@@ -54,12 +53,7 @@ func (s *UserService) List(ctx context.Context, req *UserListReq) (*UserListResu
 	}
 	items := make([]*UserListItem, len(users))
 	for i := range users {
-		roles, _ := s.roleRepo.GetByUserID(ctx, users[i].ID)
-		roleBriefs := make([]UserRoleBrief, len(roles))
-		for j := range roles {
-			roleBriefs[j] = UserRoleBrief{ID: roles[j].ID, Name: roles[j].Name, DisplayName: roles[j].DisplayName}
-		}
-		items[i] = &UserListItem{User: &users[i], Roles: roleBriefs}
+		items[i] = &UserListItem{User: &users[i]}
 	}
 	return &UserListResult{Total: total, List: items}, nil
 }

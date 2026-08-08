@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"eshop-monolith/pkg/errcode"
+	"eshop-monolith/pkg/token"
 	"eshop-monolith/pkg/utils"
 )
 
@@ -14,23 +15,19 @@ type AuthService struct {
 	db               *gorm.DB
 	userRepo         IuserRepository
 	infoRepo         IuserInfoRepository
-	roleRepo         IroleRepository
 	loginHistoryRepo IloginHistoryRepository
-	tokenSvc         *TokenService
 }
 
-func NewAuthService(db *gorm.DB, userRepo IuserRepository, infoRepo IuserInfoRepository, roleRepo IroleRepository, loginHistoryRepo IloginHistoryRepository, tokenSvc *TokenService) *AuthService {
+func NewAuthService(db *gorm.DB, userRepo IuserRepository, infoRepo IuserInfoRepository, loginHistoryRepo IloginHistoryRepository) *AuthService {
 	return &AuthService{
 		db:               db,
 		userRepo:         userRepo,
 		infoRepo:         infoRepo,
-		roleRepo:         roleRepo,
 		loginHistoryRepo: loginHistoryRepo,
-		tokenSvc:         tokenSvc,
 	}
 }
 
-func (s *AuthService) LoginByPassword(ctx context.Context, username, password string) (*User, *TokenPair, error) {
+func (s *AuthService) LoginByPassword(ctx context.Context, username, password string) (*User, *token.TokenPair, error) {
 	if username == "" || password == "" {
 		return nil, nil, errcode.ErrInvalidCredentials
 	}
@@ -51,7 +48,8 @@ func (s *AuthService) LoginByPassword(ctx context.Context, username, password st
 		return nil, nil, errcode.ErrInvalidCredentials
 	}
 
-	tokenPair, err := s.tokenSvc.GenerateTokenPair(ctx, user.ID, user.Username)
+	// C 端用户已无角色体系(usr_roles 等表已从库中删除),roles 为空
+	tokenPair, err := token.GenerateTokenPair(user.ID, user.Username, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -60,7 +58,7 @@ func (s *AuthService) LoginByPassword(ctx context.Context, username, password st
 	return user, tokenPair, nil
 }
 
-func (s *AuthService) Register(ctx context.Context, req *RegisterReq) (*User, *TokenPair, error) {
+func (s *AuthService) Register(ctx context.Context, req *RegisterReq) (*User, *token.TokenPair, error) {
 	if req.Username != "" {
 		existing, err := s.userRepo.FindByUsername(ctx, req.Username)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -90,21 +88,13 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterReq) (*User, *T
 		}
 
 		info := &UserInfo{UserID: user.ID}
-		if err := tx.Create(info).Error; err != nil {
-			return err
-		}
-
-		var roleID int64
-		if err := tx.Raw("SELECT id FROM usr_roles WHERE name = ?", "user").Scan(&roleID).Error; err != nil {
-			return err
-		}
-		return tx.Exec("INSERT INTO usr_user_roles (user_id, role_id) VALUES (?, ?)", user.ID, roleID).Error
+		return tx.Create(info).Error // 不再插入 usr_user_roles(表已删除)
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	tokenPair, err := s.tokenSvc.GenerateTokenPair(ctx, user.ID, user.Username)
+	tokenPair, err := token.GenerateTokenPair(user.ID, user.Username, nil)
 	if err != nil {
 		return nil, nil, err
 	}

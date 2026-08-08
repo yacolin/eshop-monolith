@@ -239,8 +239,6 @@ type Repositories struct {
 	User         user.IuserRepository
 	UserInfo     user.IuserInfoRepository
 	LoginHistory user.IloginHistoryRepository
-	Role         user.IroleRepository
-	Permission   user.IpermissionRepository
 }
 
 // NewRepositories 创建仓储集合
@@ -253,8 +251,6 @@ func NewRepositories(db *gorm.DB, redisClient *redis.Client) *Repositories {
 		User:         user.NewUserRepository(db),
 		UserInfo:     user.NewUserInfoRepository(db),
 		LoginHistory: user.NewLoginHistoryRepository(db),
-		Role:         user.NewRoleRepository(db),
-		Permission:   user.NewPermissionRepository(db),
 	}
 }
 

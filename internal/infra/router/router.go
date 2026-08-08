@@ -113,11 +113,8 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		// [DEPRECATED] couponRoutes.RegisterPromotionRoutes(v1, repos, db, mqClient)
 
 		// [DEPRECATED] orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
-		tokenService := user.NewTokenService("your-secret-key-change-in-production", repos.Role)
-		user.RegisterUserRoutes(v1, db, repos.User, repos.UserInfo, repos.Role)
-		user.RegisterAuthRoutes(v1, db, tokenService, repos.Role, repos.User, repos.UserInfo, repos.LoginHistory)
-		user.RegisterPermissionRoutes(v1, db, repos.Permission, repos.Role)
-		user.RegisterRoleRoutes(v1, db, repos.Role)
+		user.RegisterUserRoutes(v1, db, repos.User, repos.UserInfo)
+		user.RegisterAuthRoutes(v1, db, repos.User, repos.UserInfo, repos.LoginHistory)
 		notifSvc = base.RegisterNotificationRoutes(v1, repos, db, wsHub)
 		review.RegisterReviewRoutes(v1, repos, db)
 		user.RegisterAddressRoutes(v1, db)
