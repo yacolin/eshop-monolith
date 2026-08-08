@@ -1,8 +1,9 @@
 //go:build ignore
 
 // gen_schema.go 一次性工具:在临时数据库上跑 AutoMigrate 生成 CREATE TABLE DDL
-// 用法: go run -tags ignore scripts/gen_schema.go > docs/schema.sql
+// 用法: go run scripts/gen_schema.go > docs/schema.sql
 // 说明: 在临时库 eshop_schema_gen 上执行, 完成后自动 DROP, 不影响业务库
+// 注意: 不用 -tags ignore(显式文件参数时 go run 本就忽略 build tag;加 tag 会破坏标准库构建)
 package main
 
 import (
