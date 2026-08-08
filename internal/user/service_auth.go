@@ -60,12 +60,12 @@ func (s *AuthService) LoginByPassword(ctx context.Context, username, password st
 
 func (s *AuthService) Register(ctx context.Context, req *RegisterReq) (*User, *token.TokenPair, error) {
 	if req.Username != "" {
-		existing, err := s.userRepo.FindByUsername(ctx, req.Username)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil, err
-		}
-		if existing != nil {
+		_, err := s.userRepo.FindByUsername(ctx, req.Username)
+		if err == nil {
 			return nil, nil, errcode.ErrUsernameAlreadyExists
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, err
 		}
 	}
 
