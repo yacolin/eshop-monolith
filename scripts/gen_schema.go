@@ -18,6 +18,7 @@ import (
 	"eshop-monolith/internal/marketing"
 	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/review"
+	"eshop-monolith/internal/staff"
 	"eshop-monolith/internal/trade"
 	"eshop-monolith/internal/user"
 )
@@ -64,8 +65,10 @@ func main() {
 		&trade.Cart{}, &trade.CartItem{}, &trade.OrderItem{}, &trade.OrderLog{}, &trade.Order{},
 		&trade.PaymentLog{}, &trade.Payment{}, &trade.Refund{},
 		// user
-		&user.Address{}, &user.UserInfo{}, &user.LoginHistory{}, &user.Permission{}, &user.RolePermission{},
-		&user.Role{}, &user.UserRole{}, &user.User{},
+		&user.Address{}, &user.UserInfo{}, &user.LoginHistory{}, &user.User{},
+		// staff
+		&staff.Staff{}, &staff.SysRole{}, &staff.SysPermission{}, &staff.SysStaffRole{},
+		&staff.SysRolePermission{}, &staff.StaffLoginHistory{},
 	}
 
 	if err := genDB.AutoMigrate(models...); err != nil {
