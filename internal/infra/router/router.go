@@ -10,6 +10,7 @@ import (
 	"eshop-monolith/internal/marketing"
 	"eshop-monolith/internal/product"
 	"eshop-monolith/internal/review"
+	"eshop-monolith/internal/staff"
 	"eshop-monolith/internal/trade"
 	"eshop-monolith/internal/user"
 
@@ -115,6 +116,7 @@ func SetupRouter(cfg *config.Config, repos *repository.Repositories, db *gorm.DB
 		// [DEPRECATED] orderSvc = orderRoutes.RegisterOrderRoutes(v1, repos, db, mqClient, couponSvc)
 		user.RegisterUserRoutes(v1, db, repos.User, repos.UserInfo)
 		user.RegisterAuthRoutes(v1, db, repos.User, repos.UserInfo, repos.LoginHistory)
+		staff.RegisterAuthRoutes(v1, db)
 		notifSvc = base.RegisterNotificationRoutes(v1, repos, db, wsHub)
 		review.RegisterReviewRoutes(v1, repos, db)
 		user.RegisterAddressRoutes(v1, db)
