@@ -81,6 +81,7 @@ var (
 	ErrInsufficientPermissions = &BizError{Code: 2002, Message: "insufficient permissions"}
 	ErrCannotModifySystemRole  = &BizError{Code: 2003, Message: "cannot modify system role"}
 	ErrCannotDeleteSystemRole  = &BizError{Code: 2004, Message: "cannot delete system role"}
+	ErrCannotOperateSelf       = &BizError{Code: 2005, Message: "cannot delete or disable self or builtin admin"}
 )
 
 // ==================== 域：品牌/类目（4001-4099） ====================
